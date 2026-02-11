@@ -1,0 +1,211 @@
+@model JobOrderDetailViewModel
+@{
+    ViewData["Title"] = Model.OrderNumber;
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Job Orders", Url = Url.Action("Index") }, new() { Label = Model.OrderNumber, IsActive = true } } })" />
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">@Model.OrderNumber</h1>
+        <p class="text-muted">Created @Model.CreatedAt.ToString("MMMM d, yyyy 'at' h:mm tt")</p>
+    </div>
+    <div class="page-actions">
+        @{
+            var statusClass = Model.Status switch
+            {
+                JobOrderStatus.CheckedIn => "info",
+                JobOrderStatus.Diagnosis => "warning",
+                JobOrderStatus.WaitingForParts => "secondary",
+                JobOrderStatus.InProgress => "primary",
+                JobOrderStatus.Completed => "success",
+                JobOrderStatus.ReadyForPickup => "info",
+                JobOrderStatus.Delivered => "success",
+                _ => "secondary"
+            };
+        }
+        <span class="badge badge-lg badge-@statusClass">@Model.Status</span>
+        @if (Model.Status == JobOrderStatus.Completed && !Model.HasInvoice)
+        {
+            <a asp-action="Create" asp-controller="Invoices" asp-route-jobOrderId="@Model.Id" class="btn btn-primary">Create Invoice</a>
+        }
+    </div>
+</div>
+
+<div class="grid-3">
+    <div class="col-span-2">
+        <!-- Job Details Card -->
+        <div class="card mb-6">
+            <div class="card-header">
+                <h3 class="card-title">Device Information</h3>
+            </div>
+            <div class="card-body">
+                <dl class="detail-grid">
+                    <div class="detail-item">
+                        <dt>Device</dt>
+                        <dd>@Model.DeviceType</dd>
+                    </div>
+                    <div class="detail-item">
+                        <dt>Serial Number</dt>
+                        <dd>@(Model.DeviceSerial ?? "Not provided")</dd>
+                    </div>
+                    <div class="detail-item">
+                        <dt>Accessories</dt>
+                        <dd>@(Model.DeviceAccessories ?? "None")</dd>
+                    </div>
+                    <div class="detail-item">
+                        <dt>Priority</dt>
+                        <dd><span class="badge badge-@(Model.Priority == "High" || Model.Priority == "Urgent" ? "danger" : "secondary")">@Model.Priority</span></dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+
+        <!-- Issue Description -->
+        <div class="card mb-6">
+            <div class="card-header">
+                <h3 class="card-title">Issue Description</h3>
+            </div>
+            <div class="card-body">
+                <p>@Model.IssueDescription</p>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.TechnicianNotes))
+        {
+            <div class="card mb-6">
+                <div class="card-header">
+                    <h3 class="card-title">Technician Notes</h3>
+                </div>
+                <div class="card-body">
+                    <p>@Model.TechnicianNotes</p>
+                </div>
+            </div>
+        }
+
+        <!-- Line Items -->
+        @if (Model.LineItems.Any())
+        {
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Services & Parts</h3>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Type</th>
+                                <th class="text-right">Qty</th>
+                                <th class="text-right">Unit Price</th>
+                                <th class="text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.LineItems)
+                            {
+                                <tr>
+                                    <td>@item.Description</td>
+                                    <td><span class="badge badge-@(item.Type == "Service" ? "primary" : "secondary")">@item.Type</span></td>
+                                    <td class="text-right">@item.Quantity</td>
+                                    <td class="text-right">@item.UnitPrice.ToString("C")</td>
+                                    <td class="text-right">@item.Total.ToString("C")</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4" class="text-right"><strong>Subtotal</strong></td>
+                                <td class="text-right">@Model.Subtotal.ToString("C")</td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" class="text-right">Tax (@Model.TaxRate%)</td>
+                                <td class="text-right">@Model.TaxAmount.ToString("C")</td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" class="text-right"><strong>Total</strong></td>
+                                <td class="text-right"><strong>@Model.Total.ToString("C")</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div>
+        <!-- Customer Card -->
+        <div class="card mb-6">
+            <div class="card-header">
+                <h3 class="card-title">Customer</h3>
+            </div>
+            <div class="card-body">
+                <p class="font-medium">@Model.CustomerName</p>
+                <p class="text-sm text-muted">@Model.CustomerEmail</p>
+                <p class="text-sm text-muted">@Model.CustomerPhone</p>
+                <a asp-action="Details" asp-controller="Customers" asp-route-id="@Model.CustomerId" class="btn btn-ghost btn-sm mt-3">View Customer</a>
+            </div>
+        </div>
+
+        <!-- Assignment Card -->
+        <div class="card mb-6">
+            <div class="card-header">
+                <h3 class="card-title">Assignment</h3>
+            </div>
+            <div class="card-body">
+                <p class="font-medium">@(Model.AssignedTechnicianName ?? "Unassigned")</p>
+                @if (Model.EstimatedCompletionDate.HasValue)
+                {
+                    <p class="text-sm text-muted mt-2">Est. completion: @Model.EstimatedCompletionDate.Value.ToString("MMM d, yyyy")</p>
+                }
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Timeline</h3>
+            </div>
+            <div class="card-body p-0">
+                <div class="timeline">
+                    @foreach (var item in Model.Timeline)
+                    {
+                        <div class="timeline-item">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <p class="timeline-title">@item.Status</p>
+                                <p class="timeline-description">@item.Description</p>
+                                <p class="timeline-meta">@item.Timestamp.ToString("MMM d, h:mm tt") · @item.CompletedBy</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .page-actions { display: flex; align-items: center; gap: 10px; }
+    .badge-lg { padding: 6px 14px; font-size: 13px; font-weight: 600; }
+    .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+    .col-span-2 { grid-column: span 1; }
+    .mb-6 { margin-bottom: 24px; }
+    .mt-3 { margin-top: 12px; }
+    .detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .detail-item dt { font-size: 12px; color: #9ca3af; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
+    .detail-item dd { color: #1f2937; font-weight: 500; font-size: 14px; }
+    .font-medium { font-weight: 500; }
+    .text-right { text-align: right; }
+    .timeline { padding: 16px; }
+    .timeline-item { display: flex; gap: 12px; padding-bottom: 20px; position: relative; }
+    .timeline-item:not(:last-child)::before { content: ''; position: absolute; left: 5px; top: 16px; bottom: 0; width: 2px; background: #e5e7eb; }
+    .timeline-marker { width: 12px; height: 12px; border-radius: 50%; background: #3b82f6; flex-shrink: 0; margin-top: 4px; }
+    .timeline-content { flex: 1; }
+    .timeline-title { font-weight: 500; color: #1f2937; font-size: 14px; }
+    .timeline-description { font-size: 13px; color: #6b7280; margin-top: 2px; }
+    .timeline-meta { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+    @@media (max-width: 1024px) { .grid-3 { grid-template-columns: 1fr; } .page-header { flex-direction: column; gap: 16px; } }
+</style>

@@ -1,0 +1,198 @@
+@model InventoryListViewModel
+@{
+    ViewData["Title"] = "Inventory";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Inventory", IsActive = true } } })" />
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Inventory</h1>
+        <p class="page-subtitle">@Model.TotalCount items &middot; <span class="low-stock-text">@Model.LowStockCount low stock</span></p>
+    </div>
+    <div class="page-actions">
+        <button type="button" class="btn btn-primary" onclick="openAjaxModal('@Url.Action("CreateModal", "Inventory", new { area = "Admin" })', 'Add Inventory Item')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Add Item
+        </button>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success" style="margin-bottom: 20px; padding: 12px 16px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; color: #065f46; font-size: 14px;">
+        @TempData["Success"]
+    </div>
+}
+
+<!-- Quick Stats -->
+<div class="inv-stats">
+    <div class="inv-stat-card">
+        <div class="inv-stat-icon inv-stat-blue">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+        </div>
+        <div>
+            <span class="inv-stat-label">Total Items</span>
+            <span class="inv-stat-value">@Model.TotalCount</span>
+        </div>
+    </div>
+    <div class="inv-stat-card">
+        <div class="inv-stat-icon inv-stat-amber">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        </div>
+        <div>
+            <span class="inv-stat-label">Low Stock</span>
+            <span class="inv-stat-value inv-stat-warn">@Model.LowStockCount</span>
+        </div>
+    </div>
+    <div class="inv-stat-card">
+        <div class="inv-stat-icon inv-stat-purple">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+        </div>
+        <div>
+            <span class="inv-stat-label">Categories</span>
+            <span class="inv-stat-value">@Model.Categories.Count</span>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <form method="get" class="filter-form">
+            <div class="search-input-wrapper">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" name="search" value="@Model.SearchTerm" placeholder="Search by SKU, name, or brand..." class="form-input search-input" />
+            </div>
+            <select name="category" class="form-select" onchange="this.form.submit()">
+                <option value="">All Categories</option>
+                @foreach (var cat in Model.Categories)
+                {
+                    <option value="@cat" selected="@(Model.CategoryFilter == cat)">@cat</option>
+                }
+            </select>
+            <label class="low-stock-toggle">
+                <input type="checkbox" name="lowStock" value="true" @(Model.LowStockOnly == true ? "checked" : "") onchange="this.form.submit()" />
+                <span>Low stock only</span>
+            </label>
+            <button type="submit" class="btn btn-outline-primary">Filter</button>
+        </form>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Items.Any())
+        {
+            <div class="table-container">
+                <table class="table" style="table-layout: fixed;">
+                    <colgroup>
+                        <col style="width: 12%;" />
+                        <col style="width: 22%;" />
+                        <col style="width: 12%;" />
+                        <col style="width: 12%;" />
+                        <col style="width: 11%;" />
+                        <col style="width: 11%;" />
+                        <col style="width: 10%;" />
+                        <col style="width: 10%;" />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Item</th>
+                            <th class="text-center">Category</th>
+                            <th class="text-center">Stock</th>
+                            <th class="text-right">Cost</th>
+                            <th class="text-right">Price</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr class="@(item.IsLowStock ? "row-warning" : "")">
+                                <td><span class="sku-text">@item.SKU</span></td>
+                                <td>
+                                    <div class="item-cell">
+                                        <span class="item-name">@item.Name</span>
+                                        @if (!string.IsNullOrEmpty(item.Brand))
+                                        {
+                                            <span class="item-brand">@item.Brand</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="text-center"><span class="category-badge">@item.Category</span></td>
+                                <td class="text-center">
+                                    <div class="stock-cell">
+                                        <span class="stock-qty @(item.IsLowStock ? "stock-low" : "")">@item.QuantityInStock</span>
+                                        <span class="stock-reorder">/ @item.ReorderLevel min</span>
+                                    </div>
+                                </td>
+                                <td class="text-right"><span class="price-text">@item.CostPrice.ToString("C")</span></td>
+                                <td class="text-right"><span class="price-text price-bold">@item.SellingPrice.ToString("C")</span></td>
+                                <td class="text-center"><span class="badge @item.StockStatusClass">@item.StockStatus</span></td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button type="button" class="btn-action" title="Edit" onclick="openAjaxModal('@Url.Action("EditModal", "Inventory", new { area = "Admin", id = item.Id })', 'Edit Inventory Item')">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel { CurrentPage = Model.CurrentPage, TotalPages = Model.TotalPages, BaseUrl = Url.Action("Index") })" />
+            }
+        }
+        else
+        {
+            <partial name="~/Views/Shared/_EmptyState.cshtml" model="@(new { Icon = "package", Title = "No items found", Description = Model.SearchTerm != null ? "Try a different search term" : "Add your first inventory item to get started" })" />
+        }
+    </div>
+</div>
+
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: #6b7280; }
+    .low-stock-text { color: #f59e0b; font-weight: 500; }
+    .inv-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .inv-stat-card { display: flex; align-items: center; gap: 14px; padding: 16px 20px; background: white; border-radius: 10px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .inv-stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .inv-stat-blue { background: rgba(59,130,246,0.1); color: #3b82f6; }
+    .inv-stat-amber { background: rgba(245,158,11,0.1); color: #f59e0b; }
+    .inv-stat-purple { background: rgba(139,92,246,0.1); color: #8b5cf6; }
+    .inv-stat-label { display: block; font-size: 12px; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .inv-stat-value { display: block; font-size: 22px; font-weight: 700; color: #1f2937; line-height: 1.2; }
+    .inv-stat-warn { color: #f59e0b; }
+    .filter-form { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .search-input-wrapper { position: relative; flex: 1; min-width: 200px; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
+    .search-input { padding-left: 40px; min-width: 240px; }
+    .low-stock-toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #374151; cursor: pointer; white-space: nowrap; }
+    .low-stock-toggle input { accent-color: #3b82f6; }
+    .sku-text { font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace; font-size: 12px; color: #6b7280; background: #f9fafb; padding: 3px 8px; border-radius: 4px; white-space: nowrap; }
+    .item-cell { display: flex; flex-direction: column; gap: 2px; }
+    .item-name { font-size: 13px; font-weight: 500; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .item-brand { font-size: 12px; color: #9ca3af; }
+    .category-badge { font-size: 11px; padding: 3px 10px; border-radius: 99px; background: #f3f4f6; color: #374151; font-weight: 500; display: inline-block; }
+    .stock-cell { display: inline-flex; align-items: baseline; gap: 3px; justify-content: center; }
+    .stock-qty { font-weight: 600; font-size: 14px; color: #1f2937; }
+    .stock-low { color: #ef4444; }
+    .stock-reorder { font-size: 11px; color: #d1d5db; }
+    .price-text { font-size: 13px; color: #374151; white-space: nowrap; }
+    .price-bold { font-weight: 600; }
+    .row-warning { background: #fffbeb; }
+    .action-buttons { display: flex; gap: 4px; justify-content: flex-end; }
+    .btn-action { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: #6b7280; transition: all 0.15s; border: none; background: none; cursor: pointer; text-decoration: none; }
+    .btn-action:hover { background: #f3f4f6; color: #3b82f6; }
+    @@media (max-width: 1024px) { .inv-stats { grid-template-columns: 1fr; } }
+    @@media (max-width: 768px) {
+        .page-header { flex-direction: column; gap: 12px; }
+        .filter-form { flex-direction: column; width: 100%; }
+        .search-input { min-width: 100%; }
+        .table { table-layout: auto !important; }
+    }
+</style>

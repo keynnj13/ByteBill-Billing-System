@@ -1,0 +1,102 @@
+@model JobOrderCreateViewModel
+
+<form id="jobOrderEditForm" asp-action="Edit" asp-controller="JobOrders" asp-area="Admin" method="post" data-ajax="true">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+
+    <div class="modal-form-body">
+        <!-- Customer Section -->
+        <div class="form-section">
+            <h4 class="form-section-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                Customer
+            </h4>
+            <div class="form-group">
+                <label asp-for="CustomerId" class="form-label">Customer <span class="required">*</span></label>
+                <select asp-for="CustomerId" class="form-select">
+                    <option value="">Select a customer...</option>
+                    @foreach (var customer in Model.AvailableCustomers)
+                    {
+                        <option value="@customer.Id">@customer.FullName (@customer.Phone)</option>
+                    }
+                </select>
+                <span asp-validation-for="CustomerId" class="field-error"></span>
+            </div>
+        </div>
+
+        <!-- Device Section -->
+        <div class="form-section">
+            <h4 class="form-section-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                Device Information
+            </h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label asp-for="DeviceType" class="form-label">Device Type <span class="required">*</span></label>
+                    <input asp-for="DeviceType" class="form-input" placeholder="e.g., Laptop, Desktop, Phone" />
+                    <span asp-validation-for="DeviceType" class="field-error"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Brand" class="form-label">Brand</label>
+                    <input asp-for="Brand" class="form-input" placeholder="e.g., Dell, HP, Apple" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label asp-for="Model" class="form-label">Model</label>
+                    <input asp-for="Model" class="form-input" placeholder="e.g., XPS 15, Pavilion" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="SerialNumber" class="form-label">Serial Number</label>
+                    <input asp-for="SerialNumber" class="form-input" placeholder="Device serial number" />
+                </div>
+            </div>
+        </div>
+
+        <!-- Issue & Assignment Section -->
+        <div class="form-section">
+            <h4 class="form-section-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                Issue & Assignment
+            </h4>
+            <div class="form-group">
+                <label asp-for="ProblemDescription" class="form-label">Problem Description <span class="required">*</span></label>
+                <textarea asp-for="ProblemDescription" class="form-input" rows="3" placeholder="Describe the issue reported by the customer..."></textarea>
+                <span asp-validation-for="ProblemDescription" class="field-error"></span>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label asp-for="Priority" class="form-label">Priority</label>
+                    <select asp-for="Priority" class="form-select">
+                        <option value="Low">Low</option>
+                        <option value="Normal">Normal</option>
+                        <option value="High">High</option>
+                        <option value="Urgent">Urgent</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label asp-for="AssignedTechnicianId" class="form-label">Assigned Technician</label>
+                    <select asp-for="AssignedTechnicianId" class="form-select">
+                        <option value="">Unassigned</option>
+                        @foreach (var tech in Model.AvailableTechnicians)
+                        {
+                            <option value="@tech.Id">@tech.FullName (@tech.ActiveJobOrders active jobs)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label asp-for="EstimatedCompletionDate" class="form-label">Estimated Completion</label>
+                <input asp-for="EstimatedCompletionDate" type="date" class="form-input" style="max-width: 280px;" />
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-form-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeAjaxModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            Update Job Order
+        </button>
+    </div>
+</form>

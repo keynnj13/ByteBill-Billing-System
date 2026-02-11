@@ -1,0 +1,108 @@
+@model CustomerDetailViewModel
+
+<div class="modal-detail-body">
+    <!-- Customer Header -->
+    <div class="modal-detail-header">
+        <div class="avatar-lg">@Model.Name.Substring(0, 1)@(Model.Name.Contains(" ") ? Model.Name.Split(' ').Last().Substring(0, 1) : "")</div>
+        <div>
+            <h3 class="modal-detail-name">@Model.Name</h3>
+            <p class="modal-detail-sub">Customer since @Model.CreatedAt.ToString("MMMM yyyy")</p>
+        </div>
+        <div class="modal-detail-actions">
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="openAjaxModal('@Url.Action("EditModal", "Customers", new { area = "Admin", id = Model.Id })', 'Edit Customer')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                Edit
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="modal-stats-row">
+        <div class="modal-stat">
+            <span class="modal-stat-label">Total Orders</span>
+            <span class="modal-stat-value">@Model.TotalOrders</span>
+        </div>
+        <div class="modal-stat">
+            <span class="modal-stat-label">Total Spent</span>
+            <span class="modal-stat-value">@Model.TotalSpent.ToString("C")</span>
+        </div>
+        <div class="modal-stat">
+            <span class="modal-stat-label">Outstanding</span>
+            <span class="modal-stat-value @(Model.OutstandingBalance > 0 ? "text-danger" : "")">@Model.OutstandingBalance.ToString("C")</span>
+        </div>
+    </div>
+
+    <!-- Contact Information -->
+    <div class="modal-detail-section">
+        <h4 class="modal-section-title">Contact Information</h4>
+        <dl class="modal-detail-list">
+            <div class="modal-detail-item">
+                <dt>Email</dt>
+                <dd><a href="mailto:@Model.Email" class="text-link">@Model.Email</a></dd>
+            </div>
+            <div class="modal-detail-item">
+                <dt>Phone</dt>
+                <dd>@(Model.Phone ?? "Not provided")</dd>
+            </div>
+            <div class="modal-detail-item">
+                <dt>Address</dt>
+                <dd>@(Model.Address ?? "Not provided")</dd>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.Notes))
+            {
+                <div class="modal-detail-item">
+                    <dt>Notes</dt>
+                    <dd>@Model.Notes</dd>
+                </div>
+            }
+        </dl>
+    </div>
+
+    <!-- Recent Orders -->
+    <div class="modal-detail-section">
+        <h4 class="modal-section-title">Recent Orders</h4>
+        @if (Model.RecentOrders.Any())
+        {
+            <div class="table-container">
+                <table class="table table-compact">
+                    <thead>
+                        <tr>
+                            <th>Order</th>
+                            <th>Device</th>
+                            <th>Status</th>
+                            <th class="text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var order in Model.RecentOrders)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="text-link font-medium">@order.OrderNumber</span>
+                                    <span class="cell-sub">@order.CreatedAt.ToString("MMM d, yyyy")</span>
+                                </td>
+                                <td>@order.DeviceType</td>
+                                <td><span class="badge badge-@order.StatusClass">@order.Status</span></td>
+                                <td class="text-right font-medium">@order.Total.ToString("C")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="empty-box-sm">
+                <p class="text-muted">No orders yet</p>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="modal-form-footer">
+    <button type="button" class="btn btn-ghost" onclick="closeAjaxModal()">Close</button>
+    <a asp-action="Create" asp-controller="JobOrders" asp-area="Admin" asp-route-customerId="@Model.Id" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        New Job Order
+    </a>
+</div>

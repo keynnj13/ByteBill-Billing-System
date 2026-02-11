@@ -1,0 +1,61 @@
+@model ByteBill_BS.ViewModels.Common.PaginationViewModel
+
+@if (Model.TotalPages > 1)
+{
+    <div class="flex items-center justify-between mt-3">
+        <p class="pagination-info">
+            Showing @Model.StartItem to @Model.EndItem of @Model.TotalItems results
+        </p>
+        
+        <nav class="pagination" aria-label="Pagination">
+            <a href="@(Model.BaseUrl)?page=@(Model.CurrentPage - 1)" 
+               class="pagination-btn @(!Model.HasPreviousPage ? "disabled" : "")"
+               @(!Model.HasPreviousPage ? "aria-disabled=true tabindex=-1" : "")
+               aria-label="Previous page">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+            </a>
+            
+            @{
+                var startPage = Math.Max(1, Model.CurrentPage - 2);
+                var endPage = Math.Min(Model.TotalPages, Model.CurrentPage + 2);
+                
+                if (startPage > 1)
+                {
+                    <a href="@(Model.BaseUrl)?page=1" class="pagination-btn">1</a>
+                    if (startPage > 2)
+                    {
+                        <span class="pagination-btn" style="border: none; cursor: default;">...</span>
+                    }
+                }
+                
+                for (int i = startPage; i <= endPage; i++)
+                {
+                    var isActive = i == Model.CurrentPage;
+                    <a href="@(Model.BaseUrl)?page=@i" 
+                       class="pagination-btn @(isActive ? "active" : "")"
+                       @(isActive ? "aria-current=page" : "")>@i</a>
+                }
+                
+                if (endPage < Model.TotalPages)
+                {
+                    if (endPage < Model.TotalPages - 1)
+                    {
+                        <span class="pagination-btn" style="border: none; cursor: default;">...</span>
+                    }
+                    <a href="@(Model.BaseUrl)?page=@Model.TotalPages" class="pagination-btn">@Model.TotalPages</a>
+                }
+            }
+            
+            <a href="@(Model.BaseUrl)?page=@(Model.CurrentPage + 1)" 
+               class="pagination-btn @(!Model.HasNextPage ? "disabled" : "")"
+               @(!Model.HasNextPage ? "aria-disabled=true tabindex=-1" : "")
+               aria-label="Next page">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </a>
+        </nav>
+    </div>
+}

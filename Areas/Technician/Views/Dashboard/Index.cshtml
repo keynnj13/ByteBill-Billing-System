@@ -1,0 +1,200 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Technician Dashboard";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", IsActive = true } } })" />
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">My Dashboard</h1>
+        <p class="text-muted">Your assigned jobs and work queue</p>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: var(--blue-light); color: var(--blue);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+        </div>
+        <div class="stat-content">
+            <p class="stat-label">My Jobs Today</p>
+            <p class="stat-value">@ViewBag.MyJobsToday</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: var(--emerald-light); color: var(--emerald);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        </div>
+        <div class="stat-content">
+            <p class="stat-label">Completed Today</p>
+            <p class="stat-value">@ViewBag.CompletedToday</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: var(--amber-light); color: var(--amber);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </div>
+        <div class="stat-content">
+            <p class="stat-label">In Progress</p>
+            <p class="stat-value">@ViewBag.InProgress</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: var(--purple-light); color: var(--purple);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+        </div>
+        <div class="stat-content">
+            <p class="stat-label">Waiting Parts</p>
+            <p class="stat-value">@ViewBag.WaitingParts</p>
+        </div>
+    </div>
+</div>
+
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Recent Activity</h3>
+        </div>
+        <div class="card-body p-0">
+            <ul class="activity-list">
+                @foreach (var activity in Model.RecentActivity)
+                {
+                    <li class="activity-item">
+                        <div class="activity-icon activity-icon-@activity.IconColor">
+                            <partial name="~/Views/Shared/_NavIcon.cshtml" model="activity.Icon" />
+                        </div>
+                        <div class="activity-content">
+                            <p class="activity-title">@activity.Title</p>
+                            <p class="activity-description">@activity.Description</p>
+                        </div>
+                        <span class="activity-time">@activity.TimeAgo</span>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">My Work Queue</h3>
+            <a asp-action="Index" asp-controller="JobOrders" class="btn btn-ghost btn-sm">View All</a>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.PendingJobOrders.Any())
+            {
+                <ul class="job-list">
+                    @foreach (var job in Model.PendingJobOrders)
+                    {
+                        <li class="job-item">
+                            <div class="job-info">
+                                <a asp-action="Details" asp-controller="JobOrders" asp-route-id="@job.Id" class="job-number">@job.OrderNumber</a>
+                                <p class="job-device">@job.DeviceType</p>
+                                <p class="job-customer">@job.CustomerName</p>
+                            </div>
+                            <span class="badge badge-@job.StatusBadgeClass">@job.Status</span>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <partial name="~/Views/Shared/_EmptyState.cshtml" model="@(new { Icon = "check-circle", Title = "All done!", Description = "No pending jobs in your queue" })" />
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: var(--space-6);
+    }
+    .page-title {
+        font-size: var(--text-2xl);
+        font-weight: 600;
+        color: var(--gray-900);
+        margin-bottom: var(--space-1);
+    }
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--space-4);
+        margin-bottom: var(--space-6);
+    }
+    .stat-card {
+        display: flex;
+        align-items: center;
+        gap: var(--space-4);
+        padding: var(--space-4);
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+    }
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .stat-label {
+        font-size: var(--text-sm);
+        color: var(--gray-500);
+        margin-bottom: var(--space-1);
+    }
+    .stat-value {
+        font-size: var(--text-2xl);
+        font-weight: 600;
+        color: var(--gray-900);
+    }
+    .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-6);
+    }
+    @@media (max-width: 1024px) {
+        .grid-2 { grid-template-columns: 1fr; }
+    }
+    .activity-list { list-style: none; padding: 0; margin: 0; }
+    .activity-item {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-3);
+        padding: var(--space-4);
+        border-bottom: 1px solid var(--gray-100);
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: var(--radius-full);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .activity-icon-success { background: var(--emerald-light); color: var(--emerald); }
+    .activity-icon-primary { background: var(--blue-light); color: var(--blue); }
+    .activity-icon-warning { background: var(--amber-light); color: var(--amber); }
+    .activity-content { flex: 1; min-width: 0; }
+    .activity-title { font-weight: 500; color: var(--gray-900); margin-bottom: 2px; }
+    .activity-description { font-size: var(--text-sm); color: var(--gray-500); }
+    .activity-time { font-size: var(--text-xs); color: var(--gray-400); white-space: nowrap; }
+    .job-list { list-style: none; padding: 0; margin: 0; }
+    .job-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--space-4);
+        border-bottom: 1px solid var(--gray-100);
+    }
+    .job-item:last-child { border-bottom: none; }
+    .job-number { font-weight: 500; color: var(--blue); text-decoration: none; }
+    .job-number:hover { text-decoration: underline; }
+    .job-device { font-size: var(--text-sm); color: var(--gray-700); margin-top: 2px; }
+    .job-customer { font-size: var(--text-sm); color: var(--gray-500); }
+</style>

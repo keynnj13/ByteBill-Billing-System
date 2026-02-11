@@ -1,0 +1,76 @@
+﻿@using ByteBill_BS.Services
+@using ByteBill_BS.Models.Enums
+@inject INavigationService NavigationService
+@{
+    var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
+    var userRole = UserRole.Billing; // Default, will be overridden by claims
+    var userName = "Demo User";
+    var userInitials = "DU";
+    
+    if (isAuthenticated && User.Claims.Any(c => c.Type == "Role"))
+    {
+        var roleClaim = User.Claims.FirstOrDefault(c => c.Type == "Role")?.Value;
+        if (Enum.TryParse<UserRole>(roleClaim, out var parsedRole))
+        {
+            userRole = parsedRole;
+        }
+        userName = User.Claims.FirstOrDefault(c => c.Type == "FullName")?.Value ?? "User";
+        userInitials = User.Claims.FirstOrDefault(c => c.Type == "Initials")?.Value ?? "U";
+    }
+    
+    var showNavigation = isAuthenticated && !ViewData.ContainsKey("HideNavigation");
+    var isAuditor = userRole == UserRole.Auditor;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ByteBill</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/design-system.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    @if (showNavigation)
+    {
+        <partial name="_TopNav" model="@(new { UserName = userName, UserInitials = userInitials, UserRole = userRole })" />
+        <partial name="_SideNav" model="@(new { UserRole = userRole, CurrentPath = Context.Request.Path.Value })" />
+    }
+    
+    <main class="@(showNavigation ? "main-content" : "")">
+        @if (isAuditor && showNavigation)
+        {
+            <div class="readonly-banner">
+                <svg class="readonly-banner-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                </svg>
+                <span>You are viewing in read-only mode (Auditor access)</span>
+            </div>
+        }
+        
+        @RenderBody()
+    </main>
+    
+    <div id="toast-container" class="toast-container"></div>
+    
+    @if (TempData["Success"] != null)
+    {
+        <div data-toast-success="@TempData["Success"]" style="display:none;"></div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div data-toast-error="@TempData["Error"]" style="display:none;"></div>
+    }
+    
+    <partial name="_Modal" />
+    
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

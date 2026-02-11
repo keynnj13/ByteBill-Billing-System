@@ -1,0 +1,36 @@
+@model dynamic
+@using ByteBill_BS.Services
+@using ByteBill_BS.Models.Enums
+@inject INavigationService NavigationService
+@{
+    UserRole userRole = Model.UserRole;
+    string currentPath = Model.CurrentPath ?? "";
+    var navigationSections = NavigationService.GetNavigationSections(userRole);
+}
+
+<aside class="side-nav" id="side-nav">
+    <div class="sidebar-brand">
+        <img src="/img/bytelogo.png" alt="ByteBill" class="sidebar-brand-logo" onerror="this.style.display='none'" />
+        <span class="sidebar-brand-text">ByteBill</span>
+    </div>
+    <nav class="sidebar-nav">
+        @foreach (var navSection in navigationSections)
+        {
+            <div class="nav-section">
+                <div class="nav-section-title">@navSection.Title</div>
+                @foreach (var item in navSection.Items)
+                {
+                    var isActive = currentPath.StartsWith(item.Url, StringComparison.OrdinalIgnoreCase);
+                    <a href="@item.Url" class="nav-item @(isActive ? "active" : "")">
+                        @await Html.PartialAsync("_NavIcon", item.Icon)
+                        <span>@item.Title</span>
+                        @if (!string.IsNullOrEmpty(item.Badge))
+                        {
+                            <span class="nav-item-badge">@item.Badge</span>
+                        }
+                    </a>
+                }
+            </div>
+        }
+    </nav>
+</aside>

@@ -1,0 +1,25 @@
+@model ByteBill_BS.ViewModels.Common.BreadcrumbViewModel
+
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+    @for (int i = 0; i < Model.Items.Count; i++)
+    {
+        var item = Model.Items[i];
+        if (i > 0)
+        {
+            <span class="breadcrumb-separator" aria-hidden="true">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </span>
+        }
+        
+        @if (item.IsActive || string.IsNullOrEmpty(item.Url))
+        {
+            <span class="breadcrumb-item active" aria-current="page">@item.Title</span>
+        }
+        else
+        {
+            <a href="@item.Url" class="breadcrumb-item">@item.Title</a>
+        }
+    }
+</nav>

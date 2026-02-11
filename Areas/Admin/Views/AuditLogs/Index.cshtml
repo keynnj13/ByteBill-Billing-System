@@ -1,0 +1,20 @@
+@{
+    ViewData["Title"] = "Audit Logs";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Audit Logs", IsActive = true } } })" />
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Audit Logs</h1>
+        <p class="text-muted">View audit trail and activity logs</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body text-center py-5">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <h3 class="text-muted">Coming Soon</h3>
+        <p class="text-muted">This module is currently under development.</p>
+    </div>
+</div>

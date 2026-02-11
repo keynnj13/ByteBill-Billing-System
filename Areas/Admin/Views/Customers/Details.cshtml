@@ -1,0 +1,158 @@
+@model CustomerDetailViewModel
+@{
+    ViewData["Title"] = Model.Name;
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Customers", Url = Url.Action("Index") }, new() { Label = Model.Name, IsActive = true } } })" />
+
+<div class="page-header">
+    <div class="customer-header">
+        <div class="avatar-lg">@Model.Name.Substring(0, 1)@(Model.Name.Contains(" ") ? Model.Name.Split(' ').Last().Substring(0, 1) : "")</div>
+        <div>
+            <h1 class="page-title">@Model.Name</h1>
+            <p class="page-subtitle">Customer since @Model.CreatedAt.ToString("MMMM yyyy")</p>
+        </div>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            Edit
+        </a>
+        <a asp-action="Create" asp-controller="JobOrders" asp-route-customerId="@Model.Id" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            New Job Order
+        </a>
+    </div>
+</div>
+
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon-box stat-icon-blue">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+        </div>
+        <div>
+            <p class="stat-label">Total Orders</p>
+            <p class="stat-value">@Model.TotalOrders</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon-box stat-icon-green">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        </div>
+        <div>
+            <p class="stat-label">Total Spent</p>
+            <p class="stat-value">@Model.TotalSpent.ToString("C")</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon-box @(Model.OutstandingBalance > 0 ? "stat-icon-red" : "stat-icon-green")">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+        </div>
+        <div>
+            <p class="stat-label">Outstanding Balance</p>
+            <p class="stat-value @(Model.OutstandingBalance > 0 ? "text-danger" : "")">@Model.OutstandingBalance.ToString("C")</p>
+        </div>
+    </div>
+</div>
+
+<div class="detail-grid">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Contact Information</h3>
+        </div>
+        <div class="card-body">
+            <dl class="detail-list">
+                <div class="detail-item">
+                    <dt>Email</dt>
+                    <dd><a href="mailto:@Model.Email" class="text-link">@Model.Email</a></dd>
+                </div>
+                <div class="detail-item">
+                    <dt>Phone</dt>
+                    <dd>@(Model.Phone ?? "Not provided")</dd>
+                </div>
+                <div class="detail-item">
+                    <dt>Address</dt>
+                    <dd>@(Model.Address ?? "Not provided")</dd>
+                </div>
+                @if (!string.IsNullOrEmpty(Model.Notes))
+                {
+                    <div class="detail-item">
+                        <dt>Notes</dt>
+                        <dd>@Model.Notes</dd>
+                    </div>
+                }
+            </dl>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Recent Orders</h3>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.RecentOrders.Any())
+            {
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Order</th>
+                                <th>Device</th>
+                                <th>Status</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var order in Model.RecentOrders)
+                            {
+                                <tr>
+                                    <td>
+                                        <a asp-action="Details" asp-controller="JobOrders" asp-route-id="@order.Id" class="text-link font-medium">@order.OrderNumber</a>
+                                        <span class="cell-sub">@order.CreatedAt.ToString("MMM d, yyyy")</span>
+                                    </td>
+                                    <td>@order.DeviceType</td>
+                                    <td><span class="badge badge-@order.StatusClass">@order.Status</span></td>
+                                    <td class="font-medium">@order.Total.ToString("C")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="empty-box">
+                    <p class="text-muted">No orders yet</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .customer-header { display: flex; align-items: center; gap: 16px; }
+    .avatar-lg { width: 56px; height: 56px; font-size: 18px; border-radius: 50%; background: rgba(59,130,246,0.1); color: #3b82f6; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+    .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: #6b7280; }
+    .page-actions { display: flex; gap: 10px; }
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px; }
+    .stat-card { display: flex; align-items: center; gap: 14px; padding: 20px; background: white; border-radius: 10px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .stat-icon-box { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .stat-icon-blue { background: rgba(59,130,246,0.1); color: #3b82f6; }
+    .stat-icon-green { background: rgba(16,185,129,0.1); color: #10b981; }
+    .stat-icon-red { background: rgba(239,68,68,0.1); color: #ef4444; }
+    .stat-label { font-size: 13px; color: #6b7280; margin-bottom: 2px; }
+    .stat-value { font-size: 22px; font-weight: 700; color: #1f2937; }
+    .text-danger { color: #ef4444 !important; }
+    .detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+    .detail-list { display: flex; flex-direction: column; gap: 16px; }
+    .detail-item dt { font-size: 12px; color: #9ca3af; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
+    .detail-item dd { color: #1f2937; font-size: 14px; }
+    .text-link { color: #3b82f6; text-decoration: none; }
+    .text-link:hover { text-decoration: underline; }
+    .font-medium { font-weight: 500; }
+    .cell-sub { display: block; font-size: 12px; color: #9ca3af; margin-top: 2px; }
+    .empty-box { padding: 40px; text-align: center; }
+    @@media (max-width: 1024px) { .detail-grid, .stats-row { grid-template-columns: 1fr; } .page-header { flex-direction: column; gap: 16px; } }
+</style>

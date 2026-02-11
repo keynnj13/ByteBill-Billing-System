@@ -1,0 +1,189 @@
+@model JobOrderCreateViewModel
+@{
+    ViewData["Title"] = "New Job Order";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Job Orders", Url = Url.Action("Index") }, new() { Label = "New Job Order", IsActive = true } } })" />
+
+<div class="page-header">
+    <h1 class="page-title">New Job Order</h1>
+</div>
+
+<form asp-action="Create" method="post">
+    <partial name="~/Views/Shared/_ValidationSummary.cshtml" />
+    
+    <div class="wizard">
+        <div class="wizard-steps">
+            <div class="wizard-step active" data-step="1">
+                <span class="step-number">1</span>
+                <span class="step-label">Customer</span>
+            </div>
+            <div class="wizard-step" data-step="2">
+                <span class="step-number">2</span>
+                <span class="step-label">Device</span>
+            </div>
+            <div class="wizard-step" data-step="3">
+                <span class="step-number">3</span>
+                <span class="step-label">Issue & Assignment</span>
+            </div>
+        </div>
+        
+        <div class="wizard-content">
+            <!-- Step 1: Customer -->
+            <div class="wizard-panel active" data-panel="1">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Select Customer</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label asp-for="CustomerId" class="form-label">Customer <span class="text-danger">*</span></label>
+                            <select asp-for="CustomerId" class="form-select">
+                                <option value="">Select a customer...</option>
+                                @foreach (var customer in Model.Customers)
+                                {
+                                    <option value="@customer.Id">@customer.Name (@customer.Email)</option>
+                                }
+                            </select>
+                            <span asp-validation-for="CustomerId" class="text-danger text-sm"></span>
+                        </div>
+                        <p class="text-sm text-muted mt-3">
+                            <a asp-action="Create" asp-controller="Customers" class="text-primary">+ Add new customer</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 2: Device -->
+            <div class="wizard-panel" data-panel="2">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Device Information</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label asp-for="DeviceType" class="form-label">Device Type <span class="text-danger">*</span></label>
+                                <input asp-for="DeviceType" class="form-input" placeholder="e.g., MacBook Pro 2021, iPhone 14, Dell XPS 15" />
+                                <span asp-validation-for="DeviceType" class="text-danger text-sm"></span>
+                            </div>
+                            <div class="form-group">
+                                <label asp-for="DeviceSerial" class="form-label">Serial Number</label>
+                                <input asp-for="DeviceSerial" class="form-input" placeholder="Device serial number" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="DeviceAccessories" class="form-label">Accessories</label>
+                            <input asp-for="DeviceAccessories" class="form-input" placeholder="e.g., Charger, Mouse, Laptop bag" />
+                            <span class="text-sm text-muted">List any accessories the customer is leaving with the device</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 3: Issue & Assignment -->
+            <div class="wizard-panel" data-panel="3">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Issue Details</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label asp-for="IssueDescription" class="form-label">Issue Description <span class="text-danger">*</span></label>
+                            <textarea asp-for="IssueDescription" class="form-input" rows="4" placeholder="Describe the issue or problem reported by the customer..."></textarea>
+                            <span asp-validation-for="IssueDescription" class="text-danger text-sm"></span>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label asp-for="Priority" class="form-label">Priority</label>
+                                <select asp-for="Priority" class="form-select">
+                                    <option value="Low">Low</option>
+                                    <option value="Normal" selected>Normal</option>
+                                    <option value="High">High</option>
+                                    <option value="Urgent">Urgent</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label asp-for="AssignedTechnicianId" class="form-label">Assign Technician</label>
+                                <select asp-for="AssignedTechnicianId" class="form-select">
+                                    <option value="">Unassigned</option>
+                                    @foreach (var tech in Model.Technicians)
+                                    {
+                                        <option value="@tech.Id">@tech.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="EstimatedCompletionDate" class="form-label">Estimated Completion</label>
+                            <input asp-for="EstimatedCompletionDate" type="date" class="form-input" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="wizard-actions">
+            <button type="button" class="btn btn-ghost wizard-prev" style="display: none;">Previous</button>
+            <div class="flex-grow"></div>
+            <a asp-action="Index" class="btn btn-ghost">Cancel</a>
+            <button type="button" class="btn btn-primary wizard-next">Next</button>
+            <button type="submit" class="btn btn-primary wizard-submit" style="display: none;">Create Job Order</button>
+        </div>
+    </div>
+</form>
+
+<style>
+    .page-header { margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: #1f2937; }
+    .wizard { max-width: 740px; }
+    .wizard-steps { display: flex; justify-content: space-between; margin-bottom: 28px; position: relative; }
+    .wizard-steps::before { content: ''; position: absolute; top: 16px; left: 50px; right: 50px; height: 2px; background: #e5e7eb; z-index: 0; }
+    .wizard-step { display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; }
+    .step-number { width: 34px; height: 34px; border-radius: 50%; background: #e5e7eb; color: #6b7280; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; margin-bottom: 8px; transition: all 0.2s; }
+    .wizard-step.active .step-number, .wizard-step.completed .step-number { background: #3b82f6; color: white; }
+    .wizard-step.completed .step-number { background: #10b981; }
+    .step-label { font-size: 13px; color: #6b7280; }
+    .wizard-step.active .step-label { color: #1f2937; font-weight: 600; }
+    .wizard-panel { display: none; }
+    .wizard-panel.active { display: block; }
+    .wizard-actions { display: flex; gap: 12px; margin-top: 24px; }
+    .flex-grow { flex: 1; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px; display: block; }
+    .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    @@media (max-width: 640px) { .form-row { grid-template-columns: 1fr; } }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const wizard = document.querySelector('.wizard');
+    const steps = wizard.querySelectorAll('.wizard-step');
+    const panels = wizard.querySelectorAll('.wizard-panel');
+    const prevBtn = wizard.querySelector('.wizard-prev');
+    const nextBtn = wizard.querySelector('.wizard-next');
+    const submitBtn = wizard.querySelector('.wizard-submit');
+    let currentStep = 1;
+
+    function updateWizard() {
+        steps.forEach((step, index) => {
+            step.classList.remove('active', 'completed');
+            if (index + 1 < currentStep) step.classList.add('completed');
+            if (index + 1 === currentStep) step.classList.add('active');
+        });
+        panels.forEach(panel => {
+            panel.classList.toggle('active', parseInt(panel.dataset.panel) === currentStep);
+        });
+        prevBtn.style.display = currentStep > 1 ? 'inline-flex' : 'none';
+        nextBtn.style.display = currentStep < 3 ? 'inline-flex' : 'none';
+        submitBtn.style.display = currentStep === 3 ? 'inline-flex' : 'none';
+    }
+
+    prevBtn.addEventListener('click', () => { if (currentStep > 1) { currentStep--; updateWizard(); } });
+    nextBtn.addEventListener('click', () => { if (currentStep < 3) { currentStep++; updateWizard(); } });
+});
+</script>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

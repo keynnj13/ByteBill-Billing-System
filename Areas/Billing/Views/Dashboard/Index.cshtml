@@ -1,0 +1,210 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Billing Dashboard";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", IsActive = true } } })" />
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Billing Dashboard</h1>
+        <p class="text-muted">Invoicing and payment overview</p>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Create" asp-controller="Invoices" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            New Invoice
+        </a>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: var(--emerald-light); color: var(--emerald);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        </div>
+        <div class="stat-content">
+            <p class="stat-label">Today's Revenue</p>
+            <p class="stat-value">@Model.TodayRevenue.ToString("C")</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: var(--amber-light); color: var(--amber);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        </div>
+        <div class="stat-content">
+            <p class="stat-label">Pending Invoices</p>
+            <p class="stat-value">@Model.PendingInvoices</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: var(--blue-light); color: var(--blue);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+        </div>
+        <div class="stat-content">
+            <p class="stat-label">Paid Today</p>
+            <p class="stat-value">@Model.PaidToday</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: var(--red-light); color: var(--red);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </div>
+        <div class="stat-content">
+            <p class="stat-label">Outstanding</p>
+            <p class="stat-value">@Model.OutstandingBalance.ToString("C")</p>
+        </div>
+    </div>
+</div>
+
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Recent Activity</h3>
+        </div>
+        <div class="card-body p-0">
+            <ul class="activity-list">
+                @foreach (var activity in Model.RecentActivity)
+                {
+                    <li class="activity-item">
+                        <div class="activity-icon activity-icon-@activity.IconColor">
+                            <partial name="~/Views/Shared/_NavIcon.cshtml" model="activity.Icon" />
+                        </div>
+                        <div class="activity-content">
+                            <p class="activity-title">@activity.Title</p>
+                            <p class="activity-description">@activity.Description</p>
+                        </div>
+                        <span class="activity-time">@activity.TimeAgo</span>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Ready for Invoicing</h3>
+            <a asp-action="Index" asp-controller="JobOrders" class="btn btn-ghost btn-sm">View All</a>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.PendingJobOrders.Any())
+            {
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Order</th>
+                                <th>Customer</th>
+                                <th>Device</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var job in Model.PendingJobOrders)
+                            {
+                                <tr>
+                                    <td><span class="text-primary">@job.OrderNumber</span></td>
+                                    <td>@job.CustomerName</td>
+                                    <td>@job.DeviceType</td>
+                                    <td>
+                                        <a asp-action="Create" asp-controller="Invoices" asp-route-jobOrderId="@job.Id" class="btn btn-sm btn-outline-primary">Create Invoice</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <partial name="~/Views/Shared/_EmptyState.cshtml" model="@(new { Icon = "check-circle", Title = "All caught up!", Description = "No jobs ready for invoicing" })" />
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: var(--space-6);
+    }
+    .page-title {
+        font-size: var(--text-2xl);
+        font-weight: 600;
+        color: var(--gray-900);
+        margin-bottom: var(--space-1);
+    }
+    .page-actions {
+        display: flex;
+        gap: var(--space-3);
+    }
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: var(--space-4);
+        margin-bottom: var(--space-6);
+    }
+    .stat-card {
+        display: flex;
+        align-items: center;
+        gap: var(--space-4);
+        padding: var(--space-4);
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+    }
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .stat-label {
+        font-size: var(--text-sm);
+        color: var(--gray-500);
+        margin-bottom: var(--space-1);
+    }
+    .stat-value {
+        font-size: var(--text-2xl);
+        font-weight: 600;
+        color: var(--gray-900);
+    }
+    .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-6);
+    }
+    @@media (max-width: 1024px) {
+        .grid-2 { grid-template-columns: 1fr; }
+        .page-header { flex-direction: column; gap: var(--space-4); }
+    }
+    .activity-list { list-style: none; padding: 0; margin: 0; }
+    .activity-item {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-3);
+        padding: var(--space-4);
+        border-bottom: 1px solid var(--gray-100);
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: var(--radius-full);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .activity-icon-success { background: var(--emerald-light); color: var(--emerald); }
+    .activity-icon-primary { background: var(--blue-light); color: var(--blue); }
+    .activity-icon-warning { background: var(--amber-light); color: var(--amber); }
+    .activity-content { flex: 1; min-width: 0; }
+    .activity-title { font-weight: 500; color: var(--gray-900); margin-bottom: 2px; }
+    .activity-description { font-size: var(--text-sm); color: var(--gray-500); }
+    .activity-time { font-size: var(--text-xs); color: var(--gray-400); white-space: nowrap; }
+</style>

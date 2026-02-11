@@ -1,0 +1,54 @@
+@model CustomerFormViewModel
+
+<form id="customerCreateForm" asp-action="Create" asp-controller="Customers" asp-area="Admin" method="post" data-ajax="true">
+    @Html.AntiForgeryToken()
+
+    <div class="modal-form-body">
+        <div class="form-section">
+            <h4 class="form-section-title">Personal Information</h4>
+            <div class="form-group">
+                <label asp-for="Name" class="form-label">Full Name <span class="required">*</span></label>
+                <input asp-for="Name" class="form-input" placeholder="Enter customer's full name" />
+                <span asp-validation-for="Name" class="field-error"></span>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h4 class="form-section-title">Contact Details</h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label asp-for="Email" class="form-label">Email Address <span class="required">*</span></label>
+                    <input asp-for="Email" type="email" class="form-input" placeholder="customer@email.com" />
+                    <span asp-validation-for="Email" class="field-error"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Phone" class="form-label">Phone Number</label>
+                    <input asp-for="Phone" type="tel" class="form-input" placeholder="(555) 123-4567" />
+                    <span asp-validation-for="Phone" class="field-error"></span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label asp-for="Address" class="form-label">Address</label>
+                <textarea asp-for="Address" class="form-input" rows="2" placeholder="Street address, city, state, zip"></textarea>
+                <span asp-validation-for="Address" class="field-error"></span>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h4 class="form-section-title">Additional Information</h4>
+            <div class="form-group">
+                <label asp-for="Notes" class="form-label">Notes</label>
+                <textarea asp-for="Notes" class="form-input" rows="3" placeholder="Any special notes about this customer..."></textarea>
+                <span asp-validation-for="Notes" class="field-error"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-form-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeAjaxModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            Create Customer
+        </button>
+    </div>
+</form>

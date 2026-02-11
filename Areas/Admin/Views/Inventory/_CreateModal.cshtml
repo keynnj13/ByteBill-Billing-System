@@ -1,0 +1,116 @@
+@model InventoryFormViewModel
+
+<form id="inventoryCreateForm" asp-action="Create" asp-controller="Inventory" asp-area="Admin" method="post" data-ajax="true">
+    @Html.AntiForgeryToken()
+
+    <div class="modal-form-body">
+        <!-- Item Details -->
+        <div class="form-section">
+            <h4 class="form-section-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                Item Details
+            </h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label asp-for="SKU" class="form-label">SKU <span class="required">*</span></label>
+                    <input asp-for="SKU" class="form-input" placeholder="e.g., SSD-500-SAM" />
+                    <span asp-validation-for="SKU" class="field-error"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Name" class="form-label">Item Name <span class="required">*</span></label>
+                    <input asp-for="Name" class="form-input" placeholder="e.g., Samsung 870 EVO 500GB SSD" />
+                    <span asp-validation-for="Name" class="field-error"></span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label asp-for="Description" class="form-label">Description</label>
+                <textarea asp-for="Description" class="form-input" rows="2" placeholder="Brief description of the item..."></textarea>
+                <span asp-validation-for="Description" class="field-error"></span>
+            </div>
+            <div class="form-row form-row-3">
+                <div class="form-group">
+                    <label asp-for="Category" class="form-label">Category</label>
+                    <select asp-for="Category" class="form-select">
+                        <option value="">Select category</option>
+                        @foreach (var cat in Model.ExistingCategories)
+                        {
+                            <option value="@cat">@cat</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Brand" class="form-label">Brand</label>
+                    <select asp-for="Brand" class="form-select">
+                        <option value="">Select brand</option>
+                        @foreach (var brand in Model.ExistingBrands)
+                        {
+                            <option value="@brand">@brand</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Unit" class="form-label">Unit <span class="required">*</span></label>
+                    <select asp-for="Unit" class="form-select">
+                        <option value="pcs">Pieces</option>
+                        <option value="m">Meters</option>
+                        <option value="kg">Kilograms</option>
+                        <option value="set">Sets</option>
+                        <option value="box">Boxes</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pricing & Stock -->
+        <div class="form-section">
+            <h4 class="form-section-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                Pricing & Stock
+            </h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label asp-for="CostPrice" class="form-label">Cost Price</label>
+                    <div class="input-prefix-wrap">
+                        <span class="input-prefix">&#8369;</span>
+                        <input asp-for="CostPrice" type="number" step="0.01" class="form-input input-with-prefix" placeholder="0.00" />
+                    </div>
+                    <span asp-validation-for="CostPrice" class="field-error"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="SellingPrice" class="form-label">Selling Price <span class="required">*</span></label>
+                    <div class="input-prefix-wrap">
+                        <span class="input-prefix">&#8369;</span>
+                        <input asp-for="SellingPrice" type="number" step="0.01" class="form-input input-with-prefix" placeholder="0.00" />
+                    </div>
+                    <span asp-validation-for="SellingPrice" class="field-error"></span>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label asp-for="QuantityInStock" class="form-label">Quantity in Stock <span class="required">*</span></label>
+                    <input asp-for="QuantityInStock" type="number" class="form-input" placeholder="0" />
+                    <span asp-validation-for="QuantityInStock" class="field-error"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="ReorderLevel" class="form-label">Reorder Level</label>
+                    <input asp-for="ReorderLevel" type="number" class="form-input" placeholder="5" />
+                    <span class="field-hint">Alert when stock falls below this level</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input asp-for="IsActive" type="checkbox" />
+                    <span>Active — item is available for use in job orders</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-form-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeAjaxModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            Create Item
+        </button>
+    </div>
+</form>

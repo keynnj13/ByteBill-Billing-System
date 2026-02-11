@@ -1,0 +1,33 @@
+<!-- Modal Container -->
+<div id="modal-backdrop" class="modal-backdrop"></div>
+<div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-header">
+        <h3 id="modal-title" class="modal-title"></h3>
+        <button type="button" class="modal-close" aria-label="Close modal" onclick="closeModal()">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    </div>
+    <div id="modal-body" class="modal-body"></div>
+    <div id="modal-footer" class="modal-footer"></div>
+</div>
+
+<!-- AJAX Modal Container -->
+<div id="ajax-modal-backdrop" class="ajax-modal-backdrop" onclick="closeAjaxModal()"></div>
+<div id="ajax-modal" class="ajax-modal" role="dialog" aria-modal="true" aria-labelledby="ajax-modal-title">
+    <div class="ajax-modal-header">
+        <h3 id="ajax-modal-title" class="ajax-modal-title"></h3>
+        <button type="button" class="modal-close" aria-label="Close modal" onclick="closeAjaxModal()">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    </div>
+    <div id="ajax-modal-content" class="ajax-modal-content">
+        <div class="ajax-modal-loading">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
+    </div>
+</div>

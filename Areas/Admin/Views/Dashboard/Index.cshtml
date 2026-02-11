@@ -1,0 +1,410 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Admin Dashboard";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", IsActive = true } } })" />
+
+<!-- ═══ Page Header ═══ -->
+<div class="dash-header">
+    <div>
+        <h1 class="dash-title">Welcome back, @Model.UserName</h1>
+        <p class="dash-subtitle">Here's what's happening at <strong>@Model.ShopName</strong> today.</p>
+    </div>
+
+</div>
+
+<!-- ═══ KPI Cards ═══ -->
+<div class="kpi-grid">
+    <!-- Today's Revenue -->
+    <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-green">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        </div>
+        <div class="kpi-body">
+            <span class="kpi-label">Today's Revenue</span>
+            <span class="kpi-value">@Model.TodayRevenue.ToString("C")</span>
+            <span class="kpi-sub">Week: @Model.WeekRevenue.ToString("C")</span>
+        </div>
+    </div>
+
+    <!-- Pending Job Orders -->
+    <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-blue">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+        </div>
+        <div class="kpi-body">
+            <span class="kpi-label">Pending Jobs</span>
+            <span class="kpi-value">@Model.PendingJobOrdersCount</span>
+            <span class="kpi-sub">In progress: @Model.InProgressJobOrders</span>
+        </div>
+    </div>
+
+    <!-- Outstanding Invoices -->
+    <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-amber">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <div class="kpi-body">
+            <span class="kpi-label">Unpaid Invoices</span>
+            <span class="kpi-value">@Model.PendingInvoices</span>
+            <span class="kpi-sub">@Model.OutstandingAmount.ToString("C") outstanding</span>
+        </div>
+    </div>
+
+    <!-- Low Stock Alert -->
+    <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-red">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="kpi-body">
+            <span class="kpi-label">Low Stock Items</span>
+            <span class="kpi-value">@Model.LowStockItems</span>
+            <span class="kpi-sub">Needs reorder</span>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Charts Row ═══ -->
+<div class="charts-row">
+    <!-- Monthly Revenue Chart -->
+    <div class="card chart-card">
+        <div class="card-header">
+            <h3 class="card-title">Monthly Revenue</h3>
+            <span class="card-badge">Last 6 months</span>
+        </div>
+        <div class="card-body">
+            <canvas id="revenueChart" height="260"></canvas>
+        </div>
+    </div>
+
+    <!-- Job Order Status Distribution -->
+    <div class="card chart-card chart-card-sm">
+        <div class="card-header">
+            <h3 class="card-title">Job Order Status</h3>
+        </div>
+        <div class="card-body" style="display: flex; align-items: center; justify-content: center;">
+            <canvas id="jobStatusChart" height="240"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Tables Row ═══ -->
+<div class="tables-row">
+    <!-- Recent Job Orders -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Recent Job Orders</h3>
+            <a asp-action="Index" asp-controller="JobOrders" class="btn btn-ghost btn-sm">View All</a>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.RecentJobOrders.Any())
+            {
+                <div class="table-container">
+                    <table class="table" style="table-layout: fixed;">
+                        <colgroup>
+                            <col style="width: 22%;" />
+                            <col style="width: 22%;" />
+                            <col style="width: 18%;" />
+                            <col style="width: 20%;" />
+                            <col style="width: 18%;" />
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Customer</th>
+                                <th>Device</th>
+                                <th>Technician</th>
+                                <th class="text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var job in Model.RecentJobOrders)
+                            {
+                                <tr>
+                                    <td>
+                                        <a asp-action="Details" asp-controller="JobOrders" asp-route-id="@job.Id" class="text-primary font-medium" style="font-weight:600;color:#3b82f6;text-decoration:none;font-size:13px;">@job.JobNumber</a>
+                                    </td>
+                                    <td style="font-size:13px;color:#374151;">@job.CustomerName</td>
+                                    <td style="font-size:13px;color:#374151;">@job.DeviceType</td>
+                                    <td style="font-size:13px;color:@(job.TechnicianName != null ? "#374151" : "#d1d5db");@(job.TechnicianName == null ? "font-style:italic;" : "")">@(job.TechnicianName ?? "Unassigned")</td>
+                                    <td class="text-center"><span class="badge badge-@job.StatusBadgeClass">@job.Status</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <partial name="~/Views/Shared/_EmptyState.cshtml" model="@(new { Icon = "clipboard", Title = "No job orders yet", Description = "Create your first job order" })" />
+            }
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Recent Activity</h3>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.RecentActivity.Any())
+            {
+                <ul class="activity-list">
+                    @foreach (var activity in Model.RecentActivity)
+                    {
+                        <li class="activity-item">
+                            <div class="activity-dot activity-dot-@activity.IconColor"></div>
+                            <div class="activity-content">
+                                <p class="activity-title">@activity.Title</p>
+                                <p class="activity-description">@activity.Description</p>
+                            </div>
+                            <span class="activity-time">@activity.TimeAgo</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Chart.js CDN ═══ -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Theme-aware colors
+        var colors = {
+            primary: '#3b82f6',
+            primaryLight: 'rgba(59,130,246,0.1)',
+            green: '#10b981',
+            amber: '#f59e0b',
+            red: '#ef4444',
+            purple: '#8b5cf6',
+            cyan: '#06b6d4',
+            gray: '#6b7280',
+            gridLine: 'rgba(0,0,0,0.04)',
+            text: '#374151'
+        };
+
+        Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+        Chart.defaults.color = colors.text;
+
+        // ── Revenue Bar Chart ──
+        var revenueLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RevenueChart.Select(c => c.Label)));
+        var revenueValues = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RevenueChart.Select(c => c.Value)));
+
+        new Chart(document.getElementById('revenueChart'), {
+            type: 'bar',
+            data: {
+                labels: revenueLabels,
+                datasets: [{
+                    label: 'Revenue',
+                    data: revenueValues,
+                    backgroundColor: colors.primary,
+                    borderRadius: 6,
+                    borderSkipped: false,
+                    barThickness: 32
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1f2937',
+                        padding: 12,
+                        cornerRadius: 8,
+                        titleFont: { weight: '600' },
+                        callbacks: {
+                            label: function (ctx) {
+                                return '₱' + ctx.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2 });
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 12 } }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: colors.gridLine },
+                        border: { display: false },
+                        ticks: {
+                            font: { size: 12 },
+                            callback: function (val) { return '₱' + (val / 1000).toFixed(0) + 'k'; }
+                        }
+                    }
+                }
+            }
+        });
+
+        // ── Job Status Doughnut Chart ──
+        var statusLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.JobOrderChart.Select(c => c.Label)));
+        var statusValues = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.JobOrderChart.Select(c => c.Value)));
+        var statusColors = [colors.amber, colors.primary, colors.cyan, colors.green, colors.red, colors.purple, colors.gray];
+
+        new Chart(document.getElementById('jobStatusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: statusLabels,
+                datasets: [{
+                    data: statusValues,
+                    backgroundColor: statusColors.slice(0, statusLabels.length),
+                    borderWidth: 0,
+                    spacing: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 16,
+                            usePointStyle: true,
+                            pointStyleWidth: 8,
+                            font: { size: 12 }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#1f2937',
+                        padding: 12,
+                        cornerRadius: 8
+                    }
+                }
+            }
+        });
+    });
+</script>
+
+<!-- ═══ Dashboard Styles ═══ -->
+<style>
+    /* Header */
+    .dash-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: var(--space-6);
+    }
+    .dash-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--gray-900, #1f2937);
+        margin-bottom: 4px;
+    }
+    .dash-subtitle {
+        font-size: 14px;
+        color: var(--muted);
+    }
+    .dash-subtitle strong { color: var(--gray-700, #374151); }
+    .dash-actions { display: flex; gap: 12px; }
+
+    /* KPI Grid */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-bottom: 28px;
+    }
+    .kpi-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        padding: 20px;
+        background: white;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-border);
+        box-shadow: var(--shadow-card);
+        transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .kpi-card:hover {
+        box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,0.08));
+        transform: translateY(-1px);
+    }
+    .kpi-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .kpi-icon-green  { background: rgba(16,185,129,0.1); color: #10b981; }
+    .kpi-icon-blue   { background: rgba(59,130,246,0.1);  color: #3b82f6; }
+    .kpi-icon-amber  { background: rgba(245,158,11,0.1);  color: #f59e0b; }
+    .kpi-icon-red    { background: rgba(239,68,68,0.1);   color: #ef4444; }
+    .kpi-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .kpi-label { font-size: 13px; color: var(--muted); font-weight: 500; }
+    .kpi-value { font-size: 24px; font-weight: 700; color: var(--gray-900, #1f2937); line-height: 1.2; }
+    .kpi-sub   { font-size: 12px; color: var(--gray-400, #9ca3af); margin-top: 2px; }
+
+    /* Charts */
+    .charts-row {
+        display: grid;
+        grid-template-columns: 1.6fr 1fr;
+        gap: 24px;
+        margin-bottom: 28px;
+    }
+    .chart-card .card-body { padding: 20px; }
+    .card-badge {
+        font-size: 11px;
+        padding: 3px 10px;
+        border-radius: var(--radius-full);
+        background: var(--gray-100, #f1f5f9);
+        color: var(--muted);
+        font-weight: 500;
+    }
+
+    /* Tables */
+    .tables-row {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 24px;
+    }
+    .font-medium { font-weight: 500; }
+
+    /* Activity (simplified) */
+    .activity-list { list-style: none; padding: 0; margin: 0; }
+    .activity-item {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-3);
+        padding: var(--space-3) var(--space-4);
+        border-bottom: 1px solid var(--gray-100);
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-top: 6px;
+        flex-shrink: 0;
+    }
+    .activity-dot-success { background: #10b981; }
+    .activity-dot-primary { background: #3b82f6; }
+    .activity-dot-warning { background: #f59e0b; }
+    .activity-dot-danger  { background: #ef4444; }
+    .activity-dot-info    { background: #06b6d4; }
+    .activity-content { flex: 1; min-width: 0; }
+    .activity-title { font-weight: 500; font-size: 13px; color: var(--gray-900); margin-bottom: 1px; }
+    .activity-description { font-size: 12px; color: var(--gray-500); }
+    .activity-time { font-size: 11px; color: var(--gray-400); white-space: nowrap; margin-top: 2px; }
+
+    /* Responsive */
+    @@media (max-width: 1280px) {
+        .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        .charts-row { grid-template-columns: 1fr; }
+        .tables-row { grid-template-columns: 1fr; }
+    }
+    @@media (max-width: 768px) {
+        .kpi-grid { grid-template-columns: 1fr; }
+        .dash-header { flex-direction: column; gap: var(--space-4); }
+    }
+</style>
