@@ -8,12 +8,7 @@
             <h3 class="modal-detail-name">@Model.Name</h3>
             <p class="modal-detail-sub">Customer since @Model.CreatedAt.ToString("MMMM yyyy")</p>
         </div>
-        <div class="modal-detail-actions">
-            <button type="button" class="btn btn-outline-primary btn-sm" onclick="openAjaxModal('@Url.Action("EditModal", "Customers", new { area = "Admin", id = Model.Id })', 'Edit Customer')">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                Edit
-            </button>
-        </div>
+
     </div>
 
     <!-- Stats -->
@@ -101,8 +96,4 @@
 
 <div class="modal-form-footer">
     <button type="button" class="btn btn-ghost" onclick="closeAjaxModal()">Close</button>
-    <a asp-action="Create" asp-controller="JobOrders" asp-area="Admin" asp-route-customerId="@Model.Id" class="btn btn-primary">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-        New Job Order
-    </a>
 </div>

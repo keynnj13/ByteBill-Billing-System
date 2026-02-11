@@ -5,51 +5,14 @@
 }
 
 <div class="login-page">
-    <!-- Left Panel - Branding -->
-    <div class="login-brand-panel">
-        <div class="login-brand-bg"></div>
-        <div class="login-brand-content">
-            <img src="~/img/bytelogo.png" alt="ByteBill" class="login-brand-logo" onerror="this.style.display='none'" />
-            <h1>Welcome to ByteBill</h1>
-            <p class="login-brand-subtitle">Streamline your computer repair shop operations with our comprehensive billing and management system.</p>
-            
-            <div class="login-features">
-                <div class="login-feature-item">
-                    <div class="login-feature-icon">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </div>
-                    <span>Manage job orders and track repairs</span>
-                </div>
-                <div class="login-feature-item">
-                    <div class="login-feature-icon">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </div>
-                    <span>Generate and track invoices</span>
-                </div>
-                <div class="login-feature-item">
-                    <div class="login-feature-icon">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </div>
-                    <span>Inventory & parts management</span>
-                </div>
-                <div class="login-feature-item">
-                    <div class="login-feature-icon">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </div>
-                    <span>Role-based access for your team</span>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Right Panel - Login Card -->
-    <div class="login-form-panel">
+    <!-- Single Centered Card -->
+    <div class="login-card-container">
         <div class="login-card">
-            <!-- Mobile logo -->
-            <div class="login-mobile-logo">
-                <img src="~/img/bytelogo.png" alt="ByteBill" onerror="this.parentElement.innerHTML='<h2 style=color:var(--navy);font-size:28px;font-weight:700>ByteBill</h2>'" />
+            <!-- Large Logo -->
+            <div class="login-card-logo">
+                <img src="~/img/bytelogo.png" alt="ByteBill" onerror="this.parentElement.innerHTML='<h2 style=color:var(--navy);font-size:32px;font-weight:700>ByteBill</h2>'" />
             </div>
-            
+
             <div class="login-card-header">
                 <h2>Sign in to your account</h2>
                 <p>Enter your credentials to access your dashboard</p>
@@ -137,134 +100,80 @@
     /* ── Login Page Layout ── */
     .login-page {
         display: flex;
+        align-items: center;
+        justify-content: center;
         min-height: 100vh;
-        background: var(--background);
-    }
-
-    /* ── Left Branding Panel ── */
-    .login-brand-panel {
-        display: none;
+        padding: 40px 20px;
+        background: linear-gradient(135deg, 
+            hsl(213, 54%, 22%) 0%,
+            hsl(213, 54%, 28%) 25%,
+            hsl(213, 54%, 32%) 50%,
+            hsl(213, 54%, 28%) 75%,
+            hsl(213, 54%, 24%) 100%);
         position: relative;
         overflow: hidden;
     }
-    @@media (min-width: 1024px) {
-        .login-brand-panel { 
-            display: flex; 
-            align-items: center; 
-            justify-content: center;
-            flex: 1;
-            max-width: 50%;
-        }
-    }
-    .login-brand-bg {
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(135deg, var(--navy) 0%, var(--navy-700) 50%, hsl(213, 54%, 28%) 100%);
-    }
-    .login-brand-bg::before {
+    .login-page::before {
         content: '';
         position: absolute;
         inset: 0;
-        background: radial-gradient(circle at 30% 80%, rgba(46, 204, 113, 0.12) 0%, transparent 60%),
-                    radial-gradient(circle at 70% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 40%);
+        background: 
+            radial-gradient(circle at 15% 20%, rgba(46, 204, 113, 0.15) 0%, transparent 35%),
+            radial-gradient(circle at 85% 80%, rgba(46, 204, 113, 0.12) 0%, transparent 40%),
+            radial-gradient(circle at 50% 50%, rgba(46, 204, 113, 0.08) 0%, transparent 50%);
+        animation: emerald-pulse 12s ease-in-out infinite alternate;
     }
-    .login-brand-content {
-        position: relative;
-        z-index: 1;
-        max-width: 500px;
-        padding: 40px;
-        color: white;
+    .login-page::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 60% 40%, rgba(255, 255, 255, 0.03) 0%, transparent 40%);
+        animation: subtle-shimmer 10s ease-in-out infinite alternate;
     }
-    .login-brand-logo {
-        max-width: 300px;
-        height: auto;
-        margin-bottom: 48px;
-        filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
+    @@keyframes emerald-pulse {
+        0% { opacity: 1; transform: scale(1); }
+        100% { opacity: 0.7; transform: scale(1.1); }
     }
-    .login-brand-content h1 {
-        font-size: 36px;
-        font-weight: 700;
-        color: white;
-        margin-bottom: 16px;
-        line-height: 1.15;
-        letter-spacing: -0.5px;
-    }
-    .login-brand-subtitle {
-        font-size: 16px;
-        opacity: 0.85;
-        line-height: 1.65;
-        margin-bottom: 8px;
-    }
-    .login-features {
-        margin-top: 48px;
-        display: flex;
-        flex-direction: column;
-        gap: 18px;
-    }
-    .login-feature-item {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        font-size: 15px;
-        color: rgba(255,255,255,0.9);
-    }
-    .login-feature-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 12px;
-        background: rgba(46, 204, 113, 0.2);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        color: var(--emerald);
-        box-shadow: 0 2px 8px rgba(46, 204, 113, 0.2);
+    @@keyframes subtle-shimmer {
+        0% { opacity: 0.5; }
+        100% { opacity: 1; }
     }
 
-    /* ── Right Form Panel ── */
-    .login-form-panel {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 24px;
-    }
-    @@media (min-width: 1024px) {
-        .login-form-panel {
-            flex: 1;
-            max-width: 50%;
-            background: var(--gray-50);
-        }
+    /* ── Single Centered Card Container ── */
+    .login-card-container {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 520px;
     }
 
     /* ── Login Card ── */
     .login-card {
-        width: 100%;
-        max-width: 440px;
         background: white;
-        border-radius: 16px;
-        padding: 40px 36px;
-        box-shadow: 0 4px 24px rgba(0,0,0,0.06);
-        border: 1px solid var(--gray-200);
+        border-radius: 24px;
+        padding: 48px 44px;
+        box-shadow: 0 20px 80px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.2);
+        border: 1px solid rgba(255,255,255,0.1);
     }
-    @@media (min-width: 1024px) {
+    @@media (max-width: 768px) {
         .login-card {
-            box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
-            border: 1px solid var(--gray-200);
+            padding: 40px 32px;
         }
     }
 
-    .login-mobile-logo {
+    /* ── Large Logo ── */
+    .login-card-logo {
         display: flex;
         justify-content: center;
-        margin-bottom: 28px;
+        margin-bottom: 32px;
     }
-    .login-mobile-logo img {
-        max-width: 160px;
+    .login-card-logo img {
+        max-width: 290px;
         height: auto;
+        filter: drop-shadow(0 2px 12px rgba(0,0,0,0.1));
     }
-    @@media (min-width: 1024px) {
-        .login-mobile-logo { display: none; }
+    @@media (max-width: 768px) {
+        .login-card-logo img { max-width: 240px; }
     }
 
     .login-card-header {
