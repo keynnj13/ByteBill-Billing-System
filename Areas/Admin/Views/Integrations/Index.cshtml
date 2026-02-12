@@ -1,3 +1,5 @@
+@model IntegrationIndexViewModel
+@using ByteBill_BS.ViewModels.Admin
 @{
     ViewData["Title"] = "Integrations";
 }
@@ -7,14 +9,167 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Integrations</h1>
-        <p class="text-muted">Manage third-party integrations</p>
+        <p class="page-subtitle">Manage third-party connections</p>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body text-center py-5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-        <h3 class="text-muted">Coming Soon</h3>
-        <p class="text-muted">This module is currently under development.</p>
+<!-- ═══════════════════════════════════════════════════════
+     XERO ACCOUNTING
+     ═══════════════════════════════════════════════════════ -->
+<div class="section-card" style="margin-bottom: 24px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+            </div>
+            <div>
+                <h3 style="margin: 0; font-size: 18px; font-weight: 600;">Xero Accounting</h3>
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                    @if (Model.XeroConnected)
+                    {
+                        <span class="badge badge-success">Connected</span>
+                        <span style="font-size: 12px; color: var(--text-muted);">
+                            Last sync: @(Model.XeroLastSyncAt?.ToString("MMM dd, h:mm tt") ?? "Never")
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge badge-muted">Not Connected</span>
+                    }
+                </div>
+            </div>
+        </div>
+        <form asp-action="SyncXero" method="post" style="margin: 0;">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-primary btn-sm" onclick="this.disabled=true; this.innerText='Syncing...'; this.form.submit();">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                Sync Now
+            </button>
+        </form>
+    </div>
+
+    <!-- Xero Stats -->
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
+        <div style="background: #f8fafc; border-radius: 8px; padding: 14px; text-align: center;">
+            <div style="font-size: 22px; font-weight: 700; color: var(--navy);">@Model.XeroSyncCount</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Total Syncs</div>
+        </div>
+        <div style="background: #ecfdf5; border-radius: 8px; padding: 14px; text-align: center;">
+            <div style="font-size: 22px; font-weight: 700; color: var(--emerald);">@(Model.XeroSyncCount - Model.XeroFailedCount)</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Successful</div>
+        </div>
+        <div style="background: #fef2f2; border-radius: 8px; padding: 14px; text-align: center;">
+            <div style="font-size: 22px; font-weight: 700; color: #dc2626;">@Model.XeroFailedCount</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Failed</div>
+        </div>
+    </div>
+
+    <!-- Xero Sync Log Table -->
+    <h4 style="margin: 0 0 12px; font-size: 14px; font-weight: 600;">Recent Sync Activity</h4>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Type</th>
+                    <th>Reference</th>
+                    <th>Status</th>
+                    <th>Xero ID</th>
+                    <th>Synced By</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var sync in Model.RecentXeroSyncs)
+                {
+                    <tr>
+                        <td class="text-muted" style="font-size: 12px; white-space: nowrap;">@sync.SyncedAt.ToString("MMM dd, h:mm tt")</td>
+                        <td><span class="badge badge-muted">@sync.SyncType</span></td>
+                        <td class="fw-medium">@(sync.EntityReference ?? "—")</td>
+                        <td><span class="badge @sync.StatusClass">@sync.Status</span></td>
+                        <td class="text-muted" style="font-size: 12px; font-family: monospace;">@(sync.XeroRecordId ?? "—")</td>
+                        <td class="text-muted" style="font-size: 13px;">@sync.SyncedByName</td>
+                        <td class="text-muted" style="font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@sync.Message">@(sync.Message ?? "—")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     PAYMONGO
+     ═══════════════════════════════════════════════════════ -->
+<div class="section-card">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: #ecfdf5; color: var(--emerald); display: flex; align-items: center; justify-content: center;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+            </div>
+            <div>
+                <h3 style="margin: 0; font-size: 18px; font-weight: 600;">PayMongo</h3>
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                    @if (Model.PayMongoEnabled)
+                    {
+                        <span class="badge badge-success">Enabled</span>
+                    }
+                    else
+                    {
+                        <span class="badge badge-muted">Disabled</span>
+                    }
+                </div>
+            </div>
+        </div>
+        <form asp-action="TestPayMongoConnection" method="post" style="margin: 0;">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-secondary btn-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                Test Connection
+            </button>
+        </form>
+    </div>
+
+    <!-- PayMongo Stats -->
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px;">
+        <div style="background: #f8fafc; border-radius: 8px; padding: 14px; text-align: center;">
+            <div style="font-size: 22px; font-weight: 700; color: var(--navy);">@Model.PayMongoTransactions</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Transactions</div>
+        </div>
+        <div style="background: #ecfdf5; border-radius: 8px; padding: 14px; text-align: center;">
+            <div style="font-size: 22px; font-weight: 700; color: var(--emerald);">&#8369;@Model.PayMongoTotalAmount.ToString("N2")</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Total Processed</div>
+        </div>
+    </div>
+
+    <!-- PayMongo Transaction Table -->
+    <h4 style="margin: 0 0 12px; font-size: 14px; font-weight: 600;">Recent Transactions</h4>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>PayMongo ID</th>
+                    <th>Type</th>
+                    <th>Customer</th>
+                    <th>Invoice</th>
+                    <th style="text-align: right;">Amount</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var txn in Model.RecentPayMongoTxns)
+                {
+                    <tr>
+                        <td class="text-muted" style="font-size: 12px; white-space: nowrap;">@txn.CreatedAt.ToString("MMM dd, h:mm tt")</td>
+                        <td style="font-size: 12px; font-family: monospace; color: var(--text-muted);">@txn.PayMongoId</td>
+                        <td><span class="badge badge-muted">@txn.Type</span></td>
+                        <td class="fw-medium">@(txn.CustomerName ?? "—")</td>
+                        <td class="text-muted">@(txn.InvoiceNo ?? "—")</td>
+                        <td style="text-align: right; font-weight: 500;">&#8369;@txn.Amount.ToString("N2")</td>
+                        <td><span class="badge @txn.StatusClass">@txn.Status</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
 </div>

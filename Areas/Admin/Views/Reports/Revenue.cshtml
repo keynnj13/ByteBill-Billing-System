@@ -1,0 +1,151 @@
+@model RevenueReportViewModel
+@using ByteBill_BS.ViewModels.Admin
+@{
+    ViewData["Title"] = "Revenue Report";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Reports", Url = Url.Action("Index", "Reports") }, new() { Label = "Revenue", IsActive = true } } })" />
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Revenue Report</h1>
+        <p class="page-subtitle">@Model.DateFrom.ToString("MMM dd, yyyy") — @Model.DateTo.ToString("MMM dd, yyyy")</p>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Index" class="btn btn-ghost">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            Back to Reports
+        </a>
+    </div>
+</div>
+
+<!-- Date Range Filter -->
+<div class="section-card" style="margin-bottom: 20px;">
+    <form method="get" asp-action="Revenue" class="filter-bar">
+        <div style="min-width: 160px;">
+            <label style="font-size: 12px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 4px;">From</label>
+            <input type="date" name="from" value="@Model.DateFrom.ToString("yyyy-MM-dd")" class="form-input" />
+        </div>
+        <div style="min-width: 160px;">
+            <label style="font-size: 12px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 4px;">To</label>
+            <input type="date" name="to" value="@Model.DateTo.ToString("yyyy-MM-dd")" class="form-input" />
+        </div>
+        <div style="padding-top: 18px;">
+            <button type="submit" class="btn btn-primary">Apply</button>
+        </div>
+    </form>
+</div>
+
+<!-- Summary Stats -->
+<div class="svc-stats">
+    <div class="svc-stat-card">
+        <div>
+            <span class="svc-stat-label">Total Invoiced</span>
+            <span class="svc-stat-value" style="color: var(--navy);">&#8369;@Model.TotalRevenue.ToString("N2")</span>
+        </div>
+    </div>
+    <div class="svc-stat-card">
+        <div>
+            <span class="svc-stat-label">Total Collected</span>
+            <span class="svc-stat-value" style="color: var(--emerald);">&#8369;@Model.TotalCollected.ToString("N2")</span>
+        </div>
+    </div>
+    <div class="svc-stat-card">
+        <div>
+            <span class="svc-stat-label">Outstanding</span>
+            <span class="svc-stat-value" style="color: #dc2626;">&#8369;@Model.TotalOutstanding.ToString("N2")</span>
+        </div>
+    </div>
+    <div class="svc-stat-card">
+        <div>
+            <span class="svc-stat-label">Avg. Invoice</span>
+            <span class="svc-stat-value">&#8369;@Model.AverageInvoice.ToString("N2")</span>
+        </div>
+    </div>
+</div>
+
+<!-- Monthly Breakdown -->
+<div class="section-card" style="margin-bottom: 20px;">
+    <h3 style="margin: 0 0 16px; font-size: 15px; font-weight: 600;">Monthly Breakdown</h3>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th style="text-align: right;">Invoiced</th>
+                    <th style="text-align: right;">Collected</th>
+                    <th style="text-align: right;">Outstanding</th>
+                    <th style="text-align: center;">Invoices</th>
+                    <th style="text-align: right;">Collection Rate</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var m in Model.MonthlyBreakdown)
+                {
+                    var outstanding = m.Invoiced - m.Collected;
+                    var rate = m.Invoiced > 0 ? (m.Collected / m.Invoiced * 100) : 0;
+                    <tr>
+                        <td class="fw-medium">@m.Month</td>
+                        <td style="text-align: right;">&#8369;@m.Invoiced.ToString("N2")</td>
+                        <td style="text-align: right; color: var(--emerald);">&#8369;@m.Collected.ToString("N2")</td>
+                        <td style="text-align: right; color: @(outstanding > 0 ? "#dc2626" : "var(--text-muted)");">&#8369;@outstanding.ToString("N2")</td>
+                        <td style="text-align: center;">@m.Count</td>
+                        <td style="text-align: right;">
+                            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
+                                <div style="width: 60px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
+                                    <div style="height: 100%; width: @rate%; background: var(--emerald); border-radius: 3px;"></div>
+                                </div>
+                                <span style="font-size: 13px; min-width: 42px;">@rate.ToString("N1")%</span>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr style="font-weight: 600; border-top: 2px solid var(--border);">
+                    <td>Total</td>
+                    <td style="text-align: right;">&#8369;@Model.TotalRevenue.ToString("N2")</td>
+                    <td style="text-align: right; color: var(--emerald);">&#8369;@Model.TotalCollected.ToString("N2")</td>
+                    <td style="text-align: right; color: #dc2626;">&#8369;@Model.TotalOutstanding.ToString("N2")</td>
+                    <td style="text-align: center;">@Model.InvoiceCount</td>
+                    <td style="text-align: right;">@((Model.TotalRevenue > 0 ? Model.TotalCollected / Model.TotalRevenue * 100 : 0).ToString("N1"))%</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- Revenue by Category -->
+<div class="section-card">
+    <h3 style="margin: 0 0 16px; font-size: 15px; font-weight: 600;">Revenue by Service Category</h3>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th style="text-align: right;">Revenue</th>
+                    <th style="text-align: center;">Invoices</th>
+                    <th style="text-align: right;">Share</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in Model.CategoryBreakdown)
+                {
+                    <tr>
+                        <td class="fw-medium">@c.Category</td>
+                        <td style="text-align: right;">&#8369;@c.Amount.ToString("N2")</td>
+                        <td style="text-align: center;">@c.Count</td>
+                        <td style="text-align: right;">
+                            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
+                                <div style="width: 80px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
+                                    <div style="height: 100%; width: @c.Percentage%; background: var(--navy); border-radius: 3px;"></div>
+                                </div>
+                                <span style="font-size: 13px; min-width: 42px;">@c.Percentage.ToString("N1")%</span>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

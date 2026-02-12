@@ -1,0 +1,93 @@
+@model UserFormViewModel
+@using ByteBill_BS.ViewModels.Admin
+@using ByteBill_BS.Models.Enums
+
+<form asp-action="Edit" asp-controller="Users" asp-area="Admin" method="post"
+      data-ajax="true" data-ajax-method="POST" id="editUserForm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+
+    <div class="modal-form-body">
+        <!-- Personal Information -->
+        <div class="form-section">
+            <h4 class="form-section-title">Personal Information</h4>
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="FirstName" class="form-label">First Name <span class="required">*</span></label>
+                    <input asp-for="FirstName" class="form-input" placeholder="Enter first name" />
+                    <span asp-validation-for="FirstName" class="field-validation-error"></span>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="MiddleName" class="form-label">Middle Name</label>
+                    <input asp-for="MiddleName" class="form-input" placeholder="Enter middle name" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="LastName" class="form-label">Last Name <span class="required">*</span></label>
+                    <input asp-for="LastName" class="form-input" placeholder="Enter last name" />
+                    <span asp-validation-for="LastName" class="field-validation-error"></span>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="Phone" class="form-label">Phone</label>
+                    <input asp-for="Phone" class="form-input" placeholder="09XX-XXX-XXXX" />
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Information -->
+        <div class="form-section">
+            <h4 class="form-section-title">Account Information</h4>
+            <div class="form-group">
+                <label asp-for="Email" class="form-label">Email Address <span class="required">*</span></label>
+                <input asp-for="Email" class="form-input" type="email" placeholder="user@company.com" />
+                <span asp-validation-for="Email" class="field-validation-error"></span>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="Role" class="form-label">Role <span class="required">*</span></label>
+                    <select asp-for="Role" class="form-input">
+                        <option value="">Select a role</option>
+                        @foreach (var r in Enum.GetValues<UserRole>())
+                        {
+                            if (r != UserRole.SuperAdmin)
+                            {
+                                <option value="@r">@r</option>
+                            }
+                        }
+                    </select>
+                    <span asp-validation-for="Role" class="field-validation-error"></span>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label class="form-label">&nbsp;</label>
+                    <label class="toggle-label" style="display: flex; align-items: center; gap: 8px; padding-top: 8px;">
+                        <input type="checkbox" asp-for="IsActive" style="width: auto;" />
+                        <span>Active Account</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Change Password (optional on edit) -->
+        <div class="form-section">
+            <h4 class="form-section-title">Change Password <span style="font-weight: 400; font-size: 12px; color: var(--text-muted);">(leave blank to keep current)</span></h4>
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="Password" class="form-label">New Password</label>
+                    <input asp-for="Password" class="form-input" type="password" placeholder="New password" />
+                    <span asp-validation-for="Password" class="field-validation-error"></span>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="ConfirmPassword" class="form-label">Confirm Password</label>
+                    <input asp-for="ConfirmPassword" class="form-input" type="password" placeholder="Confirm new password" />
+                    <span asp-validation-for="ConfirmPassword" class="field-validation-error"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-form-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeAjaxModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" onclick="submitAjaxForm(event, 'editUserForm')">Save Changes</button>
+    </div>
+</form>

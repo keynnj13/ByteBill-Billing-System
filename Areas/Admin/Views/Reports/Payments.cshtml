@@ -1,0 +1,153 @@
+@model PaymentReportViewModel
+@using ByteBill_BS.ViewModels.Admin
+@{
+    ViewData["Title"] = "Payment Report";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Reports", Url = Url.Action("Index", "Reports") }, new() { Label = "Payments", IsActive = true } } })" />
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Payment Report</h1>
+        <p class="page-subtitle">@Model.DateFrom.ToString("MMM dd, yyyy") — @Model.DateTo.ToString("MMM dd, yyyy")</p>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Index" class="btn btn-ghost">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            Back to Reports
+        </a>
+    </div>
+</div>
+
+<!-- Date Range Filter -->
+<div class="section-card" style="margin-bottom: 20px;">
+    <form method="get" asp-action="Payments" class="filter-bar">
+        <div style="min-width: 160px;">
+            <label style="font-size: 12px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 4px;">From</label>
+            <input type="date" name="from" value="@Model.DateFrom.ToString("yyyy-MM-dd")" class="form-input" />
+        </div>
+        <div style="min-width: 160px;">
+            <label style="font-size: 12px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 4px;">To</label>
+            <input type="date" name="to" value="@Model.DateTo.ToString("yyyy-MM-dd")" class="form-input" />
+        </div>
+        <div style="padding-top: 18px;">
+            <button type="submit" class="btn btn-primary">Apply</button>
+        </div>
+    </form>
+</div>
+
+<!-- Summary Stats -->
+<div class="svc-stats">
+    <div class="svc-stat-card">
+        <div>
+            <span class="svc-stat-label">Total Received</span>
+            <span class="svc-stat-value" style="color: var(--emerald);">&#8369;@Model.TotalReceived.ToString("N2")</span>
+        </div>
+    </div>
+    <div class="svc-stat-card">
+        <div>
+            <span class="svc-stat-label">Transactions</span>
+            <span class="svc-stat-value">@Model.TransactionCount</span>
+        </div>
+    </div>
+    <div class="svc-stat-card">
+        <div>
+            <span class="svc-stat-label">Average Payment</span>
+            <span class="svc-stat-value">&#8369;@Model.AveragePayment.ToString("N2")</span>
+        </div>
+    </div>
+</div>
+
+<!-- Payment by Method -->
+<div class="section-card" style="margin-bottom: 20px;">
+    <h3 style="margin: 0 0 16px; font-size: 15px; font-weight: 600;">Breakdown by Payment Method</h3>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Method</th>
+                    <th style="text-align: right;">Amount</th>
+                    <th style="text-align: center;">Transactions</th>
+                    <th style="text-align: right;">Share</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{
+                    var methodColors = new Dictionary<string, string>
+                    {
+                        ["Cash"] = "#059669",
+                        ["GCash"] = "#0284c7",
+                        ["Card"] = "#7c3aed",
+                        ["PayMongo"] = "#d97706"
+                    };
+                }
+                @foreach (var m in Model.MethodBreakdown)
+                {
+                    var color = methodColors.GetValueOrDefault(m.Method, "#64748b");
+                    <tr>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="width: 10px; height: 10px; border-radius: 3px; background: @color;"></div>
+                                <span class="fw-medium">@m.Method</span>
+                            </div>
+                        </td>
+                        <td style="text-align: right;">&#8369;@m.Amount.ToString("N2")</td>
+                        <td style="text-align: center;">@m.Count</td>
+                        <td style="text-align: right;">
+                            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
+                                <div style="width: 80px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
+                                    <div style="height: 100%; width: @m.Percentage%; background: @color; border-radius: 3px;"></div>
+                                </div>
+                                <span style="font-size: 13px; min-width: 42px;">@m.Percentage.ToString("N1")%</span>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr style="font-weight: 600; border-top: 2px solid var(--border);">
+                    <td>Total</td>
+                    <td style="text-align: right;">&#8369;@Model.TotalReceived.ToString("N2")</td>
+                    <td style="text-align: center;">@Model.TransactionCount</td>
+                    <td style="text-align: right;">100.0%</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- Daily Trend -->
+<div class="section-card">
+    <h3 style="margin: 0 0 16px; font-size: 15px; font-weight: 600;">Daily Payment Trend (Last 14 Days)</h3>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th style="text-align: right;">Amount</th>
+                    <th style="text-align: center;">Transactions</th>
+                    <th>Volume</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{
+                    var maxDaily = Model.DailyTrend.Any() ? Model.DailyTrend.Max(d => d.Total) : 1;
+                }
+                @foreach (var d in Model.DailyTrend)
+                {
+                    var widthPct = maxDaily > 0 ? (d.Total / maxDaily * 100) : 0;
+                    <tr>
+                        <td class="fw-medium">@d.Date.ToString("MMM dd (ddd)")</td>
+                        <td style="text-align: right;">&#8369;@d.Total.ToString("N2")</td>
+                        <td style="text-align: center;">@d.Count</td>
+                        <td>
+                            <div style="width: 100%; max-width: 200px; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                                <div style="height: 100%; width: @widthPct%; background: var(--navy); border-radius: 4px; transition: width 0.3s;"></div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

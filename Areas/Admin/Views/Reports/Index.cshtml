@@ -1,3 +1,5 @@
+@model ReportIndexViewModel
+@using ByteBill_BS.ViewModels.Admin
 @{
     ViewData["Title"] = "Reports";
 }
@@ -7,14 +9,153 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Reports</h1>
-        <p class="text-muted">View and generate reports</p>
+        <p class="page-subtitle">Analytics and business insights</p>
     </div>
 </div>
 
+<!-- Summary Stats -->
+<div class="rpt-stats">
+    @{ var cards = new[] { Model.Revenue, Model.Payments, Model.Services, Model.Inventory }; }
+    @{
+        var icons = new[] { "emerald", "sky", "purple", "amber" };
+        var svgs = new[] {
+            "<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><line x1='12' y1='1' x2='12' y2='23'></line><path d='M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'></path></svg>",
+            "<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='1' y='4' width='22' height='16' rx='2' ry='2'></rect><line x1='1' y1='10' x2='23' y2='10'></line></svg>",
+            "<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='22 12 18 12 15 21 9 3 6 12 2 12'></polyline></svg>",
+            "<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z'></path></svg>"
+        };
+    }
+    @for (int i = 0; i < cards.Length; i++)
+    {
+        var card = cards[i];
+        <div class="rpt-stat-card">
+            <div class="rpt-stat-icon rpt-icon-@icons[i]">
+                @Html.Raw(svgs[i])
+            </div>
+            <div class="rpt-stat-content">
+                <span class="rpt-stat-label">@card.Title</span>
+                <span class="rpt-stat-value">@card.Value</span>
+                <div class="rpt-stat-trend">
+                    <span class="rpt-trend-badge @(card.IsPositive ? "rpt-trend-up" : "rpt-trend-down")">@card.Trend</span>
+                    <span class="rpt-trend-text">@card.SubText</span>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Report Navigation Cards -->
+<div class="rpt-links">
+    <a asp-action="Revenue" class="rpt-link-card">
+        <div class="rpt-link-icon rpt-icon-emerald">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        </div>
+        <div class="rpt-link-body">
+            <h3 class="rpt-link-title">Revenue Report</h3>
+            <p class="rpt-link-desc">Invoice totals, collections, and outstanding balances</p>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="rpt-link-arrow"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </a>
+
+    <a asp-action="Payments" class="rpt-link-card">
+        <div class="rpt-link-icon rpt-icon-sky">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+        </div>
+        <div class="rpt-link-body">
+            <h3 class="rpt-link-title">Payment Report</h3>
+            <p class="rpt-link-desc">Payment methods, trends, and transaction analysis</p>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="rpt-link-arrow"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </a>
+
+    <a asp-action="ServicePerformance" class="rpt-link-card">
+        <div class="rpt-link-icon rpt-icon-purple">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        </div>
+        <div class="rpt-link-body">
+            <h3 class="rpt-link-title">Service Performance</h3>
+            <p class="rpt-link-desc">Service usage, revenue per service, and category analysis</p>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="rpt-link-arrow"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </a>
+
+    <a asp-action="Inventory" class="rpt-link-card">
+        <div class="rpt-link-icon rpt-icon-amber">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+        </div>
+        <div class="rpt-link-body">
+            <h3 class="rpt-link-title">Inventory Report</h3>
+            <p class="rpt-link-desc">Stock levels, valuation, and reorder alerts</p>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="rpt-link-arrow"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </a>
+</div>
+
+<!-- Recent Activity -->
 <div class="card">
-    <div class="card-body text-center py-5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-        <h3 class="text-muted">Coming Soon</h3>
-        <p class="text-muted">This module is currently under development.</p>
+    <div class="card-header" style="border-bottom: 1px solid #f1f5f9;">
+        <h3 style="margin: 0; font-size: 15px; font-weight: 600; color: #1f2937;">Recent Report Activity</h3>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        @foreach (var item in Model.RecentActivity)
+        {
+            <div class="rpt-activity-item">
+                <div class="rpt-activity-dot"></div>
+                <div class="rpt-activity-text">@item.Description</div>
+                <span class="rpt-activity-time">@item.Date.ToString("MMM dd, h:mm tt")</span>
+            </div>
+        }
     </div>
 </div>
+
+<style>
+    /* ── Page Header ── */
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: #6b7280; }
+
+    /* ── Stats Grid ── */
+    .rpt-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .rpt-stat-card { display: flex; align-items: flex-start; gap: 14px; padding: 18px 20px; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: box-shadow 0.2s, border-color 0.2s; }
+    .rpt-stat-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.07); border-color: #d1d5db; }
+    .rpt-stat-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .rpt-icon-emerald { background: rgba(5,150,105,0.10); color: #059669; }
+    .rpt-icon-sky     { background: rgba(2,132,199,0.10); color: #0284c7; }
+    .rpt-icon-purple  { background: rgba(124,58,237,0.10); color: #7c3aed; }
+    .rpt-icon-amber   { background: rgba(217,119,6,0.10); color: #d97706; }
+    .rpt-stat-content { display: flex; flex-direction: column; min-width: 0; }
+    .rpt-stat-label { font-size: 12px; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .rpt-stat-value { font-size: 22px; font-weight: 700; color: #1f2937; line-height: 1.3; margin: 2px 0 4px; }
+    .rpt-stat-trend { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .rpt-trend-badge { font-size: 12px; font-weight: 600; padding: 1px 6px; border-radius: 4px; }
+    .rpt-trend-up   { color: #059669; background: rgba(5,150,105,0.08); }
+    .rpt-trend-down  { color: #dc2626; background: rgba(220,38,38,0.08); }
+    .rpt-trend-text  { font-size: 12px; color: #9ca3af; }
+
+    /* ── Report Link Cards ── */
+    .rpt-links { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .rpt-link-card { display: flex; align-items: center; gap: 16px; padding: 20px; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; text-decoration: none; color: inherit; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; }
+    .rpt-link-card:hover { border-color: var(--navy, #1e3a8a); box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-1px); }
+    .rpt-link-card:hover .rpt-link-arrow { stroke: var(--navy, #1e3a8a); }
+    .rpt-link-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .rpt-link-body { flex: 1; min-width: 0; }
+    .rpt-link-title { margin: 0; font-size: 15px; font-weight: 600; color: #1f2937; }
+    .rpt-link-desc { margin: 4px 0 0; font-size: 13px; color: #9ca3af; line-height: 1.4; }
+    .rpt-link-arrow { flex-shrink: 0; transition: stroke 0.2s; }
+
+    /* ── Recent Activity ── */
+    .rpt-activity-item { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid #f1f5f9; }
+    .rpt-activity-item:last-child { border-bottom: none; }
+    .rpt-activity-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--navy, #1e3a8a); flex-shrink: 0; }
+    .rpt-activity-text { flex: 1; font-size: 13px; color: #374151; }
+    .rpt-activity-time { font-size: 12px; color: #9ca3af; white-space: nowrap; }
+
+    @@media (max-width: 1200px) {
+        .rpt-stats { grid-template-columns: repeat(2, 1fr); }
+        .rpt-links { grid-template-columns: repeat(2, 1fr); }
+    }
+    @@media (max-width: 640px) {
+        .rpt-stats { grid-template-columns: 1fr; }
+        .rpt-links { grid-template-columns: 1fr; }
+    }
+</style>

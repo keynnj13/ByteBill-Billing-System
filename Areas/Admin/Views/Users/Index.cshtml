@@ -1,3 +1,6 @@
+@model UserListViewModel
+@using ByteBill_BS.ViewModels.Admin
+@using ByteBill_BS.Models.Enums
 @{
     ViewData["Title"] = "Users & Roles";
 }
@@ -6,15 +9,207 @@
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">Users & Roles</h1>
-        <p class="text-muted">Manage users and their roles</p>
+        <h1 class="page-title">Users &amp; Roles</h1>
+        <p class="page-subtitle">@Model.TotalCount team members</p>
+    </div>
+    <div class="page-actions">
+        <button type="button" class="btn btn-primary" onclick="openAjaxModal('@Url.Action("CreateModal", "Users", new { area = "Admin" })', 'New User')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Add User
+        </button>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body text-center py-5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-        <h3 class="text-muted">Coming Soon</h3>
-        <p class="text-muted">This module is currently under development.</p>
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success" style="margin-bottom: 20px; padding: 12px 16px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; color: #065f46; font-size: 14px;">
+        @TempData["Success"]
+    </div>
+}
+
+<!-- Quick Stats -->
+<div class="usr-stats">
+    <div class="usr-stat-card">
+        <div class="usr-stat-icon usr-icon-navy">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        </div>
+        <div class="usr-stat-content">
+            <span class="usr-stat-value">@Model.TotalCount</span>
+            <span class="usr-stat-label">Total Users</span>
+        </div>
+    </div>
+    <div class="usr-stat-card">
+        <div class="usr-stat-icon usr-icon-emerald">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        </div>
+        <div class="usr-stat-content">
+            <span class="usr-stat-value">@Model.ActiveCount</span>
+            <span class="usr-stat-label">Active</span>
+        </div>
+    </div>
+    <div class="usr-stat-card">
+        <div class="usr-stat-icon usr-icon-purple">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        </div>
+        <div class="usr-stat-content">
+            <span class="usr-stat-value">@Model.AdminCount</span>
+            <span class="usr-stat-label">Admins</span>
+        </div>
+    </div>
+    <div class="usr-stat-card">
+        <div class="usr-stat-icon usr-icon-sky">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+        </div>
+        <div class="usr-stat-content">
+            <span class="usr-stat-value">@Model.TechnicianCount</span>
+            <span class="usr-stat-label">Technicians</span>
+        </div>
     </div>
 </div>
+
+<!-- Users Table Card -->
+<div class="card">
+    <div class="card-header">
+        <form method="get" asp-action="Index" class="usr-filter-form">
+            <div class="usr-search-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="usr-search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" name="search" value="@Model.SearchTerm" placeholder="Search by name or email..." class="form-input usr-search-input" />
+            </div>
+            <select name="role" class="form-select" onchange="this.form.submit()">
+                <option value="">All Roles</option>
+                @foreach (var r in Enum.GetValues<UserRole>())
+                {
+                    <option value="@r" selected="@(Model.RoleFilter == r)">@r</option>
+                }
+            </select>
+            <button type="submit" class="btn btn-outline-primary">Search</button>
+            @if (!string.IsNullOrEmpty(Model.SearchTerm) || Model.RoleFilter.HasValue)
+            {
+                <a asp-action="Index" class="btn btn-ghost">Clear</a>
+            }
+        </form>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Users.Any())
+        {
+            <div class="table-container">
+                <table class="table" style="table-layout: fixed;">
+                    <colgroup>
+                        <col style="width: 20%;" />
+                        <col style="width: 18%;" />
+                        <col style="width: 14%;" />
+                        <col style="width: 10%;" />
+                        <col style="width: 9%;" />
+                        <col style="width: 18%;" />
+                        <col style="width: 11%;" />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th class="text-center">Role</th>
+                            <th class="text-center">Status</th>
+                            <th>Last Login</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in Model.Users)
+                        {
+                            <tr class="clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "Users", new { area = "Admin", id = user.Id })', '@user.FullName')">
+                                <td>
+                                    <div class="usr-user-cell">
+                                        <div class="usr-avatar">@user.Initials</div>
+                                        <span class="usr-user-name">@user.FullName</span>
+                                    </div>
+                                </td>
+                                <td><span class="usr-email">@user.Email</span></td>
+                                <td class="text-muted">@user.Phone</td>
+                                <td class="text-center"><span class="badge @user.RoleClass">@user.RoleName</span></td>
+                                <td class="text-center">
+                                    @if (user.IsActive)
+                                    {
+                                        <span class="badge badge-success">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-muted">Inactive</span>
+                                    }
+                                </td>
+                                <td class="text-muted" style="font-size: 13px;">
+                                    @if (user.LastLoginAt.HasValue)
+                                    {
+                                        @user.LastLoginAt.Value.ToString("MMM dd, yyyy h:mm tt")
+                                    }
+                                    else
+                                    {
+                                        <span style="color: #cbd5e1;">Never</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button type="button" class="btn-action" title="Edit" onclick="event.stopPropagation(); openAjaxModal('@Url.Action("EditModal", "Users", new { area = "Admin", id = user.Id })', 'Edit User')">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div style="padding: 60px 0; text-align: center;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+                <p style="margin-top: 12px; color: #9ca3af; font-size: 14px;">No users found</p>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    /* ── Page Header ── */
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: #6b7280; }
+
+    /* ── Stats Grid ── */
+    .usr-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .usr-stat-card { display: flex; align-items: center; gap: 14px; padding: 18px 20px; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: box-shadow 0.2s, border-color 0.2s; }
+    .usr-stat-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.07); border-color: #d1d5db; }
+    .usr-stat-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .usr-icon-navy    { background: rgba(30,58,138,0.08); color: #1e3a8a; }
+    .usr-icon-emerald { background: rgba(16,185,129,0.10); color: #059669; }
+    .usr-icon-purple  { background: rgba(139,92,246,0.10); color: #7c3aed; }
+    .usr-icon-sky     { background: rgba(2,132,199,0.10); color: #0284c7; }
+    .usr-stat-content { display: flex; flex-direction: column; }
+    .usr-stat-value { font-size: 22px; font-weight: 700; color: #1f2937; line-height: 1.2; }
+    .usr-stat-label { font-size: 12px; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+    /* ── Filter Form ── */
+    .usr-filter-form { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; width: 100%; }
+    .usr-search-wrapper { position: relative; flex: 1; min-width: 220px; }
+    .usr-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; }
+    .usr-search-input { padding-left: 40px !important; width: 100%; }
+
+    /* ── Table Cells ── */
+    .usr-user-cell { display: flex; align-items: center; gap: 10px; }
+    .usr-avatar { width: 34px; height: 34px; border-radius: 50%; background: rgba(30,58,138,0.08); color: #1e3a8a; font-weight: 600; font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .usr-user-name { font-weight: 500; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .usr-email { font-size: 13px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+    .action-buttons { display: flex; gap: 4px; justify-content: flex-end; }
+    .btn-action { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: #6b7280; transition: all 0.15s; border: none; background: none; cursor: pointer; }
+    .btn-action:hover { background: #f3f4f6; color: #3b82f6; }
+    .clickable-row { cursor: pointer; transition: background-color 0.15s ease; }
+    .clickable-row:hover { background-color: #f0f7ff; }
+
+    @@media (max-width: 1200px) { .usr-stats { grid-template-columns: repeat(2, 1fr); } }
+    @@media (max-width: 640px) {
+        .usr-stats { grid-template-columns: 1fr; }
+        .page-header { flex-direction: column; gap: 12px; }
+        .usr-filter-form { flex-direction: column; }
+    }
+</style>

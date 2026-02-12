@@ -1,3 +1,5 @@
+@model AuditLogListViewModel
+@using ByteBill_BS.ViewModels.Admin
 @{
     ViewData["Title"] = "Audit Logs";
 }
@@ -7,14 +9,193 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Audit Logs</h1>
-        <p class="text-muted">View audit trail and activity logs</p>
+        <p class="page-subtitle">@Model.TotalCount recorded events</p>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body text-center py-5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-        <h3 class="text-muted">Coming Soon</h3>
-        <p class="text-muted">This module is currently under development.</p>
+<!-- Quick Stats -->
+<div class="aud-stats">
+    <div class="aud-stat-card">
+        <div class="aud-stat-icon aud-icon-navy">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+        </div>
+        <div class="aud-stat-content">
+            <span class="aud-stat-value">@Model.TotalCount</span>
+            <span class="aud-stat-label">Total Events</span>
+        </div>
+    </div>
+    <div class="aud-stat-card">
+        <div class="aud-stat-icon aud-icon-emerald">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </div>
+        <div class="aud-stat-content">
+            <span class="aud-stat-value">@Model.TodayCount</span>
+            <span class="aud-stat-label">Today</span>
+        </div>
+    </div>
+    <div class="aud-stat-card">
+        <div class="aud-stat-icon aud-icon-sky">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        </div>
+        <div class="aud-stat-content">
+            <span class="aud-stat-value">@Model.ThisWeekCount</span>
+            <span class="aud-stat-label">This Week</span>
+        </div>
     </div>
 </div>
+
+<!-- Audit Log Table Card -->
+<div class="card">
+    <div class="card-header">
+        <form method="get" asp-action="Index" class="aud-filter-form">
+            <div class="aud-search-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="aud-search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" name="search" value="@Model.SearchTerm" placeholder="Search logs..." class="form-input aud-search-input" />
+            </div>
+            <select name="entity" class="form-select" onchange="this.form.submit()">
+                <option value="">All Entities</option>
+                @foreach (var e in Model.EntityNames)
+                {
+                    <option value="@e" selected="@(Model.EntityFilter == e)">@e</option>
+                }
+            </select>
+            <select name="action" class="form-select" onchange="this.form.submit()">
+                <option value="">All Actions</option>
+                @foreach (var a in Model.ActionTypes)
+                {
+                    <option value="@a" selected="@(Model.ActionFilter == a)">@a</option>
+                }
+            </select>
+            <input type="date" name="dateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" class="form-input aud-date-input" title="From date" />
+            <input type="date" name="dateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" class="form-input aud-date-input" title="To date" />
+            <button type="submit" class="btn btn-outline-primary">Filter</button>
+            @if (!string.IsNullOrEmpty(Model.SearchTerm) || !string.IsNullOrEmpty(Model.EntityFilter) || !string.IsNullOrEmpty(Model.ActionFilter) || Model.DateFrom.HasValue || Model.DateTo.HasValue)
+            {
+                <a asp-action="Index" class="btn btn-ghost">Clear</a>
+            }
+        </form>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Logs.Any())
+        {
+            <div class="table-container">
+                <table class="table" style="table-layout: fixed;">
+                    <colgroup>
+                        <col style="width: 14%;" />
+                        <col style="width: 10%;" />
+                        <col style="width: 12%;" />
+                        <col style="width: 42%;" />
+                        <col style="width: 22%;" />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th class="text-center">Action</th>
+                            <th>Entity</th>
+                            <th>Details</th>
+                            <th>User</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var log in Model.Logs)
+                        {
+                            <tr class="clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "AuditLogs", new { area = "Admin", id = log.Id })', 'Audit Log Detail')">
+                                <td class="text-muted" style="font-size: 13px;">
+                                    <div>@log.CreatedAt.ToString("MMM dd, yyyy")</div>
+                                    <div style="font-size: 12px; color: #b0b8c4; margin-top: 1px;">@log.CreatedAt.ToString("h:mm:ss tt")</div>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge @log.ActionClass">@log.Action</span>
+                                </td>
+                                <td>
+                                    <span class="fw-medium">@log.EntityName</span>
+                                    @if (log.EntityId.HasValue)
+                                    {
+                                        <span class="text-muted" style="font-size: 12px;"> #@log.EntityId</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="aud-details-text">@(log.Details ?? "—")</span>
+                                </td>
+                                <td>
+                                    <div class="aud-user-cell">
+                                        <div class="aud-avatar">@log.UserInitials</div>
+                                        <span style="font-size: 13px; color: #374151;">@log.UserName</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <div class="aud-pagination">
+                    @for (int i = 1; i <= Model.TotalPages; i++)
+                    {
+                        <a asp-action="Index"
+                           asp-route-search="@Model.SearchTerm"
+                           asp-route-entity="@Model.EntityFilter"
+                           asp-route-action="@Model.ActionFilter"
+                           asp-route-page="@i"
+                           class="btn @(i == Model.CurrentPage ? "btn-primary" : "btn-ghost") aud-page-btn">
+                            @i
+                        </a>
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            <div style="padding: 60px 0; text-align: center;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                <p style="margin-top: 12px; color: #9ca3af; font-size: 14px;">No audit logs found</p>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    /* ── Page Header ── */
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: #6b7280; }
+
+    /* ── Stats Grid ── */
+    .aud-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .aud-stat-card { display: flex; align-items: center; gap: 14px; padding: 18px 20px; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: box-shadow 0.2s, border-color 0.2s; }
+    .aud-stat-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.07); border-color: #d1d5db; }
+    .aud-stat-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .aud-icon-navy    { background: rgba(30,58,138,0.08); color: #1e3a8a; }
+    .aud-icon-emerald { background: rgba(5,150,105,0.10); color: #059669; }
+    .aud-icon-sky     { background: rgba(2,132,199,0.10); color: #0284c7; }
+    .aud-stat-content { display: flex; flex-direction: column; }
+    .aud-stat-value { font-size: 22px; font-weight: 700; color: #1f2937; line-height: 1.2; }
+    .aud-stat-label { font-size: 12px; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+    /* ── Filter Form ── */
+    .aud-filter-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; width: 100%; }
+    .aud-search-wrapper { position: relative; flex: 1; min-width: 180px; }
+    .aud-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; }
+    .aud-search-input { padding-left: 40px !important; width: 100%; }
+    .aud-date-input { width: 140px; }
+
+    /* ── Table ── */
+    .aud-details-text { font-size: 13px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+    .aud-user-cell { display: flex; align-items: center; gap: 8px; }
+    .aud-avatar { width: 28px; height: 28px; border-radius: 50%; background: rgba(30,58,138,0.08); color: #1e3a8a; font-weight: 600; font-size: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .clickable-row { cursor: pointer; transition: background-color 0.15s ease; }
+    .clickable-row:hover { background-color: #f0f7ff; }
+
+    /* ── Pagination ── */
+    .aud-pagination { display: flex; justify-content: center; padding: 16px 0; gap: 4px; }
+    .aud-page-btn { min-width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+
+    @@media (max-width: 1200px) { .aud-stats { grid-template-columns: repeat(3, 1fr); } }
+    @@media (max-width: 768px) {
+        .aud-stats { grid-template-columns: 1fr; }
+        .aud-filter-form { flex-direction: column; }
+        .aud-date-input { width: 100%; }
+    }
+</style>
