@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using ByteBill_BS.Models;
+using ByteBill_BS.Models.Enums;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ByteBill_BS.Controllers
@@ -15,7 +16,30 @@ namespace ByteBill_BS.Controllers
 
         public IActionResult Index()
         {
-            return View();
+            // Redirect authenticated users to their role-specific dashboard
+            if (User.Identity?.IsAuthenticated ?? false)
+            {
+                return RedirectToRoleDashboard();
+            }
+            
+            // Redirect unauthenticated users to login
+            return RedirectToAction("Login", "Auth");
+        }
+
+        private IActionResult RedirectToRoleDashboard()
+        {
+            var roleClaim = User.Claims.FirstOrDefault(c => c.Type == "Role")?.Value;
+            var userRole = Enum.TryParse<UserRole>(roleClaim, out var role) ? role : UserRole.Billing;
+            
+            return userRole switch
+            {
+                UserRole.SuperAdmin => RedirectToAction("Index", "Dashboard", new { area = "SuperAdmin" }),
+                UserRole.Admin => RedirectToAction("Index", "Dashboard", new { area = "Admin" }),
+                UserRole.Billing => RedirectToAction("Index", "Dashboard", new { area = "Billing" }),
+                UserRole.Technician => RedirectToAction("Index", "Dashboard", new { area = "Technician" }),
+                UserRole.Auditor => RedirectToAction("Index", "Dashboard", new { area = "Auditor" }),
+                _ => RedirectToAction("Login", "Auth")
+            };
         }
 
         public IActionResult Privacy()

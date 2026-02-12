@@ -449,27 +449,33 @@ a:hover {
    ========================================================= */
 
 .form-group {
-    margin-bottom: var(--space-2);
+    margin-bottom: 20px;
 }
 
 .form-label {
     display: block;
-    margin-bottom: 6px;
-    font-size: var(--font-size-sm);
-    font-weight: 500;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 600;
     color: var(--foreground);
+    letter-spacing: -0.01em;
+}
+
+.form-label .required {
+    color: var(--destructive);
+    margin-left: 2px;
 }
 
 .form-input,
 .form-select,
 .form-textarea {
     width: 100%;
-    height: 48px;
-    padding: 12px var(--space-2);
-    border: 1px solid var(--gray-border);
-    border-radius: var(--radius-sm);
+    height: 44px;
+    padding: 10px 14px;
+    border: 1.5px solid var(--gray-border);
+    border-radius: 8px;
     font-family: inherit;
-    font-size: var(--font-size-base);
+    font-size: 14px;
     color: var(--foreground);
     background: var(--card);
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -828,24 +834,30 @@ a:hover {
 .sidebar-brand {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 16px 20px;
-    height: var(--nav-height);
+    justify-content: center;
+    padding: 16px 12px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     flex-shrink: 0;
 }
 
-.sidebar-brand-logo {
-    max-height: 36px;
-    width: auto;
-    object-fit: contain;
+.sidebar-brand-container {
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 0;
 }
 
-.sidebar-brand-text {
-    font-size: var(--font-size-lg);
-    font-weight: 700;
-    color: white;
-    letter-spacing: -0.3px;
+.sidebar-brand-logo {
+    max-height: 120px;
+    max-width: 100%;
+    width: 100%;
+    object-fit: contain;
+    display: block;
+    filter: brightness(0) invert(1);
 }
 
 .sidebar-nav {
@@ -1089,16 +1101,55 @@ a:hover {
     left: 50%;
     transform: translate(-50%, -50%) scale(0.95);
     width: 90%;
-    max-width: 500px;
+    max-width: 600px;
     max-height: 90vh;
     background: var(--card);
-    border-radius: var(--radius-lg);
+    border-radius: 12px;
     box-shadow: var(--shadow-modal);
     z-index: calc(var(--z-modal) + 1);
     opacity: 0;
     visibility: hidden;
     transition: all 0.3s ease;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Responsive modal sizing */
+@media (min-width: 768px) {
+    .modal {
+        max-width: 650px;
+    }
+}
+
+@media (min-width: 1024px) {
+    .modal {
+        max-width: 700px;
+    }
+}
+
+/* Modal size variants */
+.modal-sm {
+    max-width: 400px !important;
+}
+
+.modal-md {
+    max-width: 600px !important;
+}
+
+.modal-lg {
+    max-width: 800px !important;
+}
+
+.modal-xl {
+    max-width: 1000px !important;
+}
+
+@media (max-width: 640px) {
+    .modal {
+        width: 95%;
+        max-height: 95vh;
+    }
 }
 
 .modal.open {
@@ -1111,13 +1162,17 @@ a:hover {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-3);
+    padding: 24px 32px;
     border-bottom: 1px solid var(--gray-border);
+    background: #fafafa;
+    flex-shrink: 0;
 }
 
 .modal-title {
-    font-size: var(--font-size-lg);
-    font-weight: 600;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--foreground);
+    letter-spacing: -0.02em;
 }
 
 .modal-close {
@@ -1244,18 +1299,38 @@ a:hover {
 
 /* Modal form body (scrollable content area) */
 .modal-form-body {
-    padding: 20px 24px;
+    padding: 28px 32px;
+    max-height: calc(85vh - 160px);
+    overflow-y: auto;
+}
+
+/* Form section with proper spacing and dividers */
+.form-section {
+    margin-bottom: 32px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.form-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
 }
 
 /* Modal form footer (sticky at bottom) */
 .modal-form-footer {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
     gap: 12px;
-    padding: 16px 24px;
+    padding: 20px 32px;
     border-top: 1px solid var(--gray-border);
-    background: var(--card);
+    background: #fafafa;
     flex-shrink: 0;
+}
+
+.modal-form-footer .btn {
+    min-width: 120px;
 }
 
 /* Modal detail styles */
@@ -1466,11 +1541,40 @@ a:hover {
 .form-section-title {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--foreground);
+    margin-bottom: 20px;
+    letter-spacing: -0.02em;
 }
 
 .form-section-title svg {
-    color: #6b7280;
+    color: #3b82f6;
+    width: 18px;
+    height: 18px;
+}
+
+/* Form row for side-by-side fields */
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.form-row-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 640px) {
+    .form-row,
+    .form-row-3 {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* ── Modal Wizard Styles ── */

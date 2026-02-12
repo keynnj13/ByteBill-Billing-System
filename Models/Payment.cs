@@ -12,7 +12,7 @@ public class Payment
     public PaymentMethod Method { get; set; } = PaymentMethod.Cash;
     public string? ReferenceNo { get; set; }
     public long ReceivedByUserId { get; set; }
-    public PaymentStatus Status { get; set; } = PaymentStatus.Confirmed;
+    public PaymentStatus Status { get; set; } = (PaymentStatus)(-1);
 
     // Navigation properties
     public Shop? Shop { get; set; }

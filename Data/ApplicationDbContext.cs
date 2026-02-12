@@ -493,7 +493,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ReferenceNo).HasMaxLength(60);
             entity.Property(e => e.ReceivedByUserId).HasColumnName("ReceivedByUserID");
             entity.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue(PaymentStatus.Confirmed)
-                  .HasConversion<string>();
+                  .HasConversion<string>()
+                  .HasSentinel((PaymentStatus)(-1));
             entity.HasIndex(e => e.ShopId);
             entity.HasIndex(e => e.CustomerId);
             entity.HasIndex(e => e.ReceivedByUserId);

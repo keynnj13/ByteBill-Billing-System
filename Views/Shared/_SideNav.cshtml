@@ -6,12 +6,58 @@
     UserRole userRole = Model.UserRole;
     string currentPath = Model.CurrentPath ?? "";
     var navigationSections = NavigationService.GetNavigationSections(userRole);
+    
+    // Normalize path for comparison (remove trailing slashes and make case-insensitive)
+    currentPath = currentPath.TrimEnd('/');
+    
+    // If path is empty or root, get user's role to determine default dashboard path
+    if (string.IsNullOrEmpty(currentPath) || currentPath == "/")
+    {
+        currentPath = userRole switch
+        {
+            UserRole.SuperAdmin => "/SuperAdmin/Dashboard",
+            UserRole.Admin => "/Admin/Dashboard",
+            UserRole.Billing => "/Billing/Dashboard",
+            UserRole.Technician => "/Technician/Dashboard",
+            UserRole.Auditor => "/Auditor/Dashboard",
+            _ => currentPath
+        };
+    }
+    
+    // If at root dashboard (e.g., /Admin/Dashboard or /Admin/Dashboard/Index), ensure it matches
+    bool IsDashboardActive(string itemUrl)
+    {
+        var normalizedItemUrl = itemUrl.TrimEnd('/');
+        var normalizedPath = currentPath.TrimEnd('/');
+        
+        // Exact match or starts with the item URL
+        if (normalizedPath.Equals(normalizedItemUrl, StringComparison.OrdinalIgnoreCase))
+            return true;
+            
+        // Check if path is dashboard with Index action (e.g., /Admin/Dashboard/Index)
+        if (normalizedPath.Equals($"{normalizedItemUrl}/Index", StringComparison.OrdinalIgnoreCase))
+            return true;
+        
+        // Check if we're at the area root and this is the Dashboard item
+        // (e.g., /Admin should highlight /Admin/Dashboard)
+        if (itemUrl.Contains("/Dashboard") && normalizedPath.Split('/').Length == 2)
+        {
+            var pathArea = normalizedPath.Split('/')[1];
+            var itemArea = normalizedItemUrl.Split('/')[1];
+            if (pathArea.Equals(itemArea, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+            
+        // Standard StartsWith check for nested pages
+        return normalizedPath.StartsWith(normalizedItemUrl + "/", StringComparison.OrdinalIgnoreCase);
+    }
 }
 
 <aside class="side-nav" id="side-nav">
     <div class="sidebar-brand">
-        <img src="/img/bytelogo.png" alt="ByteBill" class="sidebar-brand-logo" onerror="this.style.display='none'" />
-        <span class="sidebar-brand-text">ByteBill</span>
+        <div class="sidebar-brand-container">
+            <img src="/img/bytelogo.png" alt="ByteBill" class="sidebar-brand-logo" onerror="this.style.display='none'" />
+        </div>
     </div>
     <nav class="sidebar-nav">
         @foreach (var navSection in navigationSections)
@@ -20,7 +66,7 @@
                 <div class="nav-section-title">@navSection.Title</div>
                 @foreach (var item in navSection.Items)
                 {
-                    var isActive = currentPath.StartsWith(item.Url, StringComparison.OrdinalIgnoreCase);
+                    var isActive = IsDashboardActive(item.Url);
                     <a href="@item.Url" class="nav-item @(isActive ? "active" : "")">
                         @await Html.PartialAsync("_NavIcon", item.Icon)
                         <span>@item.Title</span>
