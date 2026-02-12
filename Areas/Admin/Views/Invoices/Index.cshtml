@@ -1,3 +1,4 @@
+@model InvoiceListViewModel
 @{
     ViewData["Title"] = "Invoices";
 }
@@ -7,14 +8,178 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Invoices</h1>
-        <p class="text-muted">Manage customer invoices</p>
+        <p class="page-subtitle">@Model.TotalCount total invoices</p>
+    </div>
+    <div class="page-actions">
+        <button type="button" class="btn btn-primary" onclick="openAjaxModal('@Url.Action("CreateModal", "Invoices", new { area = "Admin" })', 'New Invoice')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            New Invoice
+        </button>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success" style="margin-bottom: 20px; padding: 12px 16px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; color: #065f46; font-size: 14px;">
+        @TempData["Success"]
+    </div>
+}
+
+<!-- Quick Stats -->
+<div class="inv-stats">
+    <div class="inv-stat-card">
+        <div class="inv-stat-icon inv-stat-blue">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+        </div>
+        <div>
+            <span class="inv-stat-label">Total Invoices</span>
+            <span class="inv-stat-value">@Model.TotalCount</span>
+        </div>
+    </div>
+    <div class="inv-stat-card">
+        <div class="inv-stat-icon inv-stat-amber">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        </div>
+        <div>
+            <span class="inv-stat-label">Outstanding</span>
+            <span class="inv-stat-value">@Model.TotalOutstanding.ToString("C")</span>
+        </div>
+    </div>
+    <div class="inv-stat-card">
+        <div class="inv-stat-icon inv-stat-red">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        </div>
+        <div>
+            <span class="inv-stat-label">Overdue</span>
+            <span class="inv-stat-value">@Model.OverdueCount</span>
+        </div>
     </div>
 </div>
 
 <div class="card">
-    <div class="card-body text-center py-5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-        <h3 class="text-muted">Coming Soon</h3>
-        <p class="text-muted">This module is currently under development.</p>
+    <div class="card-header">
+        <form method="get" class="filter-form">
+            <div class="search-input-wrapper">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" name="search" value="@Model.SearchTerm" placeholder="Search by invoice #, customer..." class="form-input search-input" />
+            </div>
+            <select name="status" class="form-select" onchange="this.form.submit()">
+                <option value="">All Statuses</option>
+                <option value="Unpaid" selected="@(Model.StatusFilter == InvoiceStatus.Unpaid)">Unpaid</option>
+                <option value="Partial" selected="@(Model.StatusFilter == InvoiceStatus.Partial)">Partial</option>
+                <option value="Paid" selected="@(Model.StatusFilter == InvoiceStatus.Paid)">Paid</option>
+                <option value="Void" selected="@(Model.StatusFilter == InvoiceStatus.Void)">Void</option>
+            </select>
+            <button type="submit" class="btn btn-outline-primary">Filter</button>
+        </form>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Invoices.Any())
+        {
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Invoice</th>
+                            <th>Customer</th>
+                            <th class="text-center">Job #</th>
+                            <th class="text-right">Total</th>
+                            <th class="text-right">Paid</th>
+                            <th class="text-right">Balance</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Due Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var inv in Model.Invoices)
+                        {
+                            <tr class="clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "Invoices", new { area = "Admin", id = inv.Id })', 'Invoice @inv.InvoiceNumber')">
+                                <td>
+                                    <div class="inv-cell">
+                                        <span class="inv-number">@inv.InvoiceNumber</span>
+                                        <span class="inv-date">@inv.CreatedAt.ToString("MMM d, yyyy")</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="customer-cell">
+                                        <div class="avatar-sm">@inv.CustomerInitials</div>
+                                        <span class="customer-name">@inv.CustomerName</span>
+                                    </div>
+                                </td>
+                                <td class="text-center"><span class="job-link">@(inv.JobNumber ?? "—")</span></td>
+                                <td class="text-right font-medium">@inv.Total.ToString("C")</td>
+                                <td class="text-right">@inv.AmountPaid.ToString("C")</td>
+                                <td class="text-right">
+                                    <span class="@(inv.Balance > 0 ? "text-danger font-medium" : "")">@inv.Balance.ToString("C")</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge @inv.StatusClass">@inv.StatusDisplay</span>
+                                </td>
+                                <td class="text-center">
+                                    @if (inv.DueDate.HasValue)
+                                    {
+                                        <span class="@(inv.IsOverdue ? "text-danger font-medium" : "")">
+                                            @inv.DueDate.Value.ToString("MMM d, yyyy")
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel { CurrentPage = Model.CurrentPage, TotalPages = Model.TotalPages, BaseUrl = Url.Action("Index") })" />
+            }
+        }
+        else
+        {
+            <partial name="~/Views/Shared/_EmptyState.cshtml" model="@(new { Icon = "file-text", Title = "No invoices found", Description = Model.SearchTerm != null ? "Try a different search term" : "Create your first invoice to get started" })" />
+        }
     </div>
 </div>
+
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: #6b7280; }
+    .inv-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .inv-stat-card { display: flex; align-items: center; gap: 14px; padding: 16px 20px; background: white; border-radius: 10px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .inv-stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .inv-stat-blue { background: rgba(59,130,246,0.1); color: #3b82f6; }
+    .inv-stat-amber { background: rgba(245,158,11,0.1); color: #f59e0b; }
+    .inv-stat-red { background: rgba(239,68,68,0.1); color: #ef4444; }
+    .inv-stat-label { display: block; font-size: 12px; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .inv-stat-value { display: block; font-size: 22px; font-weight: 700; color: #1f2937; line-height: 1.2; }
+    .filter-form { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .search-input-wrapper { position: relative; flex: 1; min-width: 200px; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
+    .search-input { padding-left: 40px; min-width: 240px; }
+    .inv-cell { display: flex; flex-direction: column; gap: 2px; }
+    .inv-number { font-weight: 500; color: #1f2937; font-size: 13px; }
+    .inv-date { font-size: 12px; color: #9ca3af; }
+    .customer-cell { display: flex; align-items: center; gap: 10px; }
+    .avatar-sm { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+    .customer-name { font-weight: 500; color: #1f2937; font-size: 13px; }
+    .job-link { font-size: 12px; color: #6b7280; font-weight: 500; }
+    .text-danger { color: #dc2626; }
+    .font-medium { font-weight: 500; }
+    .clickable-row { cursor: pointer; transition: background-color 0.15s ease; }
+    .clickable-row:hover { background-color: #f0f7ff; }
+    .badge-pending { background: #fef3c7; color: #92400e; }
+    .badge-partial { background: #dbeafe; color: #1e40af; }
+    .badge-paid { background: #d1fae5; color: #065f46; }
+    .badge-void { background: #f3f4f6; color: #6b7280; }
+    @@media (max-width: 1024px) { .inv-stats { grid-template-columns: 1fr; } }
+    @@media (max-width: 768px) {
+        .page-header { flex-direction: column; gap: 12px; }
+        .filter-form { flex-direction: column; width: 100%; }
+        .search-input { min-width: 100%; }
+    }
+</style>

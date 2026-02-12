@@ -1,0 +1,72 @@
+@model ServiceFormViewModel
+
+<form id="serviceEditForm" asp-action="Edit" asp-controller="Services" asp-area="Admin" method="post" data-ajax="true">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+
+    <div class="modal-form-body">
+        <div class="form-section">
+            <h4 class="form-section-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                Service Details
+            </h4>
+            <div class="form-group">
+                <label asp-for="Name" class="form-label">Service Name <span class="required">*</span></label>
+                <input asp-for="Name" class="form-input" placeholder="e.g., Virus/Malware Removal" />
+                <span asp-validation-for="Name" class="field-error"></span>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label asp-for="Category" class="form-label">Category <span class="required">*</span></label>
+                    <select asp-for="Category" class="form-select">
+                        <option value="">Select category</option>
+                        @foreach (var cat in Model.ExistingCategories)
+                        {
+                            <option value="@cat">@cat</option>
+                        }
+                    </select>
+                    <span asp-validation-for="Category" class="field-error"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="EstimatedDuration" class="form-label">Duration (minutes)</label>
+                    <input asp-for="EstimatedDuration" type="number" class="form-input" placeholder="e.g., 60" min="0" />
+                    <span class="field-hint">Estimated service time in minutes</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label asp-for="Description" class="form-label">Description</label>
+                <textarea asp-for="Description" class="form-input" rows="3" placeholder="Describe what this service includes..."></textarea>
+                <span asp-validation-for="Description" class="field-error"></span>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h4 class="form-section-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                Pricing
+            </h4>
+            <div class="form-group">
+                <label asp-for="Price" class="form-label">Base Price <span class="required">*</span></label>
+                <div class="input-prefix-wrap">
+                    <span class="input-prefix">&#8369;</span>
+                    <input asp-for="Price" type="number" step="0.01" class="form-input input-with-prefix" placeholder="0.00" />
+                </div>
+                <span asp-validation-for="Price" class="field-error"></span>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input asp-for="IsActive" type="checkbox" />
+                    <span>Active — service is available for job orders</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-form-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeAjaxModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            Update Service
+        </button>
+    </div>
+</form>

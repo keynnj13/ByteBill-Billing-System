@@ -1,0 +1,86 @@
+@model PaymentCreateViewModel
+
+<form id="paymentCreateForm" asp-action="Create" asp-controller="Payments" asp-area="Admin" method="post" data-ajax="true">
+    @Html.AntiForgeryToken()
+
+    <div class="modal-form-body">
+        <!-- Invoice Reference -->
+        <div class="form-section">
+            <h4 class="form-section-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                Invoice Reference
+            </h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Invoice</label>
+                    <input type="text" class="form-input" value="@Model.InvoiceNumber" readonly style="background: #f9fafb;" />
+                    <input type="hidden" asp-for="InvoiceId" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Customer</label>
+                    <input type="text" class="form-input" value="@Model.CustomerName" readonly style="background: #f9fafb;" />
+                </div>
+            </div>
+            <div class="invoice-balance-box">
+                <span class="balance-label">Invoice Balance</span>
+                <span class="balance-amount">@Model.InvoiceBalance.ToString("C")</span>
+            </div>
+        </div>
+
+        <!-- Payment Details -->
+        <div class="form-section">
+            <h4 class="form-section-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                Payment Details
+            </h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label asp-for="Amount" class="form-label">Amount <span class="required">*</span></label>
+                    <div class="input-prefix-wrap">
+                        <span class="input-prefix">&#8369;</span>
+                        <input asp-for="Amount" type="number" step="0.01" class="form-input input-with-prefix" placeholder="0.00" />
+                    </div>
+                    <span asp-validation-for="Amount" class="field-error"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Method" class="form-label">Payment Method <span class="required">*</span></label>
+                    <select asp-for="Method" class="form-select">
+                        <option value="Cash">Cash</option>
+                        <option value="GCash">GCash</option>
+                        <option value="Card">Card</option>
+                        <option value="PayMongo">PayMongo</option>
+                    </select>
+                    <span asp-validation-for="Method" class="field-error"></span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label asp-for="ReferenceNumber" class="form-label">Reference Number</label>
+                <input asp-for="ReferenceNumber" class="form-input" placeholder="Transaction ID, check number, etc." />
+                <span class="field-hint">Optional — for non-cash payments</span>
+            </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="form-section">
+            <h4 class="form-section-title">Additional</h4>
+            <div class="form-group">
+                <label asp-for="Notes" class="form-label">Notes</label>
+                <textarea asp-for="Notes" class="form-input" rows="2" placeholder="Any payment notes..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-form-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeAjaxModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            Record Payment
+        </button>
+    </div>
+</form>
+
+<style>
+    .invoice-balance-box { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #fef3c7; border-radius: 8px; border: 1px solid #fde68a; margin-top: 4px; }
+    .balance-label { font-size: 13px; color: #92400e; font-weight: 500; }
+    .balance-amount { font-size: 18px; font-weight: 700; color: #92400e; }
+</style>

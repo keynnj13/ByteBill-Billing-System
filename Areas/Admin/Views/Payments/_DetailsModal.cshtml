@@ -1,0 +1,131 @@
+@model PaymentDetailViewModel
+
+<div class="modal-detail-body">
+    <!-- Payment Header -->
+    <div class="modal-detail-header" style="justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+            <div class="detail-icon-lg detail-icon-emerald">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+            </div>
+            <div>
+                <h3 class="modal-detail-name">@Model.PaymentNumber</h3>
+                <p class="modal-detail-sub">@Model.PaidAt.ToString("MMMM d, yyyy 'at' h:mm tt")</p>
+            </div>
+        </div>
+        @if (Model.IsVoid)
+        {
+            <span class="badge badge-void" style="font-size: 13px; padding: 6px 14px;">Void</span>
+        }
+        else
+        {
+            <span class="badge badge-success" style="font-size: 13px; padding: 6px 14px;">Confirmed</span>
+        }
+    </div>
+
+    <!-- Amount Display -->
+    <div class="payment-amount-display">
+        <span class="payment-amount-label">Payment Amount</span>
+        <span class="payment-amount-value @(Model.IsVoid ? "text-line-through" : "")">@Model.Amount.ToString("C")</span>
+    </div>
+
+    <!-- Payment Information -->
+    <div class="modal-detail-section">
+        <h4 class="modal-section-title">Payment Details</h4>
+        <dl class="modal-detail-list">
+            <div class="modal-detail-item">
+                <dt>Method</dt>
+                <dd>
+                    <span class="badge @GetMethodBadge(Model.Method)">@Model.Method.ToString()</span>
+                </dd>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.ReferenceNumber))
+            {
+                <div class="modal-detail-item">
+                    <dt>Reference #</dt>
+                    <dd class="font-medium">@Model.ReferenceNumber</dd>
+                </div>
+            }
+            <div class="modal-detail-item">
+                <dt>Received By</dt>
+                <dd>@(Model.ReceivedByName ?? "—")</dd>
+            </div>
+            <div class="modal-detail-item">
+                <dt>Date & Time</dt>
+                <dd>@Model.PaidAt.ToString("MMMM d, yyyy 'at' h:mm tt")</dd>
+            </div>
+        </dl>
+    </div>
+
+    <!-- Customer & Invoice -->
+    <div class="modal-detail-section">
+        <h4 class="modal-section-title">Customer & Invoice</h4>
+        <dl class="modal-detail-list">
+            <div class="modal-detail-item">
+                <dt>Customer</dt>
+                <dd>@Model.CustomerName</dd>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.CustomerEmail))
+            {
+                <div class="modal-detail-item">
+                    <dt>Email</dt>
+                    <dd><a href="mailto:@Model.CustomerEmail" class="text-link">@Model.CustomerEmail</a></dd>
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(Model.CustomerPhone))
+            {
+                <div class="modal-detail-item">
+                    <dt>Phone</dt>
+                    <dd>@Model.CustomerPhone</dd>
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(Model.InvoiceNumber))
+            {
+                <div class="modal-detail-item">
+                    <dt>Invoice</dt>
+                    <dd class="font-medium">@Model.InvoiceNumber</dd>
+                </div>
+            }
+        </dl>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.Notes))
+    {
+        <div class="modal-detail-section">
+            <h4 class="modal-section-title">Notes</h4>
+            <p style="font-size: 13px; color: #6b7280; line-height: 1.6;">@Model.Notes</p>
+        </div>
+    }
+</div>
+
+<div class="modal-form-footer">
+    <button type="button" class="btn btn-ghost" onclick="closeAjaxModal()">Close</button>
+</div>
+
+@functions {
+    string GetMethodBadge(PaymentMethod method)
+    {
+        return method switch
+        {
+            PaymentMethod.Cash => "badge-success",
+            PaymentMethod.GCash => "badge-primary",
+            PaymentMethod.Card => "badge-info",
+            PaymentMethod.PayMongo => "badge-purple",
+            _ => "badge-muted"
+        };
+    }
+}
+
+<style>
+    .detail-icon-lg { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .detail-icon-emerald { background: rgba(16,185,129,0.1); color: #10b981; }
+    .payment-amount-display { text-align: center; padding: 20px; background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-radius: 10px; margin-bottom: 20px; }
+    .payment-amount-label { display: block; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .payment-amount-value { font-size: 28px; font-weight: 700; color: #065f46; }
+    .text-line-through { text-decoration: line-through; color: #9ca3af; }
+    .font-medium { font-weight: 500; }
+    .badge-success { background: #d1fae5; color: #065f46; }
+    .badge-primary { background: #dbeafe; color: #1e40af; }
+    .badge-info { background: #e0f2fe; color: #075985; }
+    .badge-purple { background: #ede9fe; color: #5b21b6; }
+    .badge-void { background: #f3f4f6; color: #6b7280; }
+</style>

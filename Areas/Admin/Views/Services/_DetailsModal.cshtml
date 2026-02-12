@@ -1,0 +1,99 @@
+@model ServiceDetailViewModel
+
+<div class="modal-detail-body">
+    <!-- Service Header -->
+    <div class="modal-detail-header">
+        <div class="detail-icon-lg detail-icon-blue">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+        </div>
+        <div>
+            <h3 class="modal-detail-name">@Model.Name</h3>
+            <p class="modal-detail-sub">
+                <span class="category-badge">@Model.Category</span>
+                <span class="badge @(Model.IsActive ? "badge-success" : "badge-muted")" style="margin-left: 6px;">@(Model.IsActive ? "Active" : "Inactive")</span>
+            </p>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="modal-stats-row">
+        <div class="modal-stat">
+            <span class="modal-stat-label">Base Price</span>
+            <span class="modal-stat-value">@Model.Price.ToString("C")</span>
+        </div>
+        <div class="modal-stat">
+            <span class="modal-stat-label">Times Used</span>
+            <span class="modal-stat-value">@Model.UsageCount</span>
+        </div>
+        <div class="modal-stat">
+            <span class="modal-stat-label">Total Revenue</span>
+            <span class="modal-stat-value">@Model.TotalRevenue.ToString("C")</span>
+        </div>
+    </div>
+
+    <!-- Service Information -->
+    <div class="modal-detail-section">
+        <h4 class="modal-section-title">Service Information</h4>
+        <dl class="modal-detail-list">
+            <div class="modal-detail-item">
+                <dt>Service Name</dt>
+                <dd>@Model.Name</dd>
+            </div>
+            <div class="modal-detail-item">
+                <dt>Category</dt>
+                <dd>@Model.Category</dd>
+            </div>
+            <div class="modal-detail-item">
+                <dt>Description</dt>
+                <dd>@(Model.Description ?? "No description provided")</dd>
+            </div>
+            <div class="modal-detail-item">
+                <dt>Price</dt>
+                <dd class="font-medium">@Model.Price.ToString("C")</dd>
+            </div>
+            <div class="modal-detail-item">
+                <dt>Status</dt>
+                <dd>
+                    <span class="badge @(Model.IsActive ? "badge-success" : "badge-muted")">
+                        @(Model.IsActive ? "Active" : "Inactive")
+                    </span>
+                </dd>
+            </div>
+        </dl>
+    </div>
+
+    <!-- Performance -->
+    <div class="modal-detail-section">
+        <h4 class="modal-section-title">Performance</h4>
+        <dl class="modal-detail-list">
+            <div class="modal-detail-item">
+                <dt>Total Usage</dt>
+                <dd>@Model.UsageCount job orders</dd>
+            </div>
+            <div class="modal-detail-item">
+                <dt>Total Revenue</dt>
+                <dd class="font-medium">@Model.TotalRevenue.ToString("C")</dd>
+            </div>
+            @if (Model.AverageRating > 0)
+            {
+                <div class="modal-detail-item">
+                    <dt>Average Rating</dt>
+                    <dd>@Model.AverageRating.ToString("F1") / 5.0</dd>
+                </div>
+            }
+        </dl>
+    </div>
+</div>
+
+<div class="modal-form-footer">
+    <button type="button" class="btn btn-ghost" onclick="closeAjaxModal()">Close</button>
+    <button type="button" class="btn btn-primary" onclick="closeAjaxModal(); openAjaxModal('@Url.Action("EditModal", "Services", new { area = "Admin", id = Model.Id })', 'Edit Service')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        Edit
+    </button>
+</div>
+
+<style>
+    .detail-icon-lg { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .detail-icon-blue { background: rgba(59,130,246,0.1); color: #3b82f6; }
+</style>

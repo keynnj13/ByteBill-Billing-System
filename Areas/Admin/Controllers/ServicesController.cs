@@ -52,6 +52,17 @@ public class ServicesController : Controller
         });
     }
 
+    [HttpGet]
+    public IActionResult CreateModal()
+    {
+        if (!IsAuthorized()) return Forbid();
+        
+        return PartialView("_CreateModal", new ServiceFormViewModel
+        {
+            ExistingCategories = new List<string> { "Diagnosis", "Repair", "Installation", "Maintenance", "Data Recovery" }
+        });
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public IActionResult Create(ServiceFormViewModel model)
@@ -61,10 +72,14 @@ public class ServicesController : Controller
         if (!ModelState.IsValid)
         {
             model.ExistingCategories = new List<string> { "Diagnosis", "Repair", "Installation", "Maintenance", "Data Recovery" };
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView("_CreateModal", model);
             return View(model);
         }
         
         TempData["Success"] = "Service created successfully!";
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            return Json(new { success = true, message = "Service created successfully!" });
         return RedirectToAction(nameof(Index));
     }
 
@@ -73,7 +88,22 @@ public class ServicesController : Controller
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
         
-        var model = new ServiceFormViewModel
+        var model = GetServiceEditModel(id);
+        return View(model);
+    }
+
+    [HttpGet]
+    public IActionResult EditModal(long id)
+    {
+        if (!IsAuthorized()) return Forbid();
+        
+        var model = GetServiceEditModel(id);
+        return PartialView("_EditModal", model);
+    }
+
+    private ServiceFormViewModel GetServiceEditModel(long id)
+    {
+        return new ServiceFormViewModel
         {
             Id = id,
             Name = "Virus/Malware Removal",
@@ -84,8 +114,6 @@ public class ServicesController : Controller
             IsActive = true,
             ExistingCategories = new List<string> { "Diagnosis", "Repair", "Installation", "Maintenance", "Data Recovery" }
         };
-        
-        return View(model);
     }
 
     [HttpPost]
@@ -97,10 +125,48 @@ public class ServicesController : Controller
         if (!ModelState.IsValid)
         {
             model.ExistingCategories = new List<string> { "Diagnosis", "Repair", "Installation", "Maintenance", "Data Recovery" };
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView("_EditModal", model);
             return View(model);
         }
         
         TempData["Success"] = "Service updated successfully!";
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            return Json(new { success = true, message = "Service updated successfully!" });
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    public IActionResult Details(long id)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+        
+        var model = GetServiceDetail(id);
+        return View(model);
+    }
+
+    [HttpGet]
+    public IActionResult DetailsModal(long id)
+    {
+        if (!IsAuthorized()) return Forbid();
+        
+        var model = GetServiceDetail(id);
+        return PartialView("_DetailsModal", model);
+    }
+
+    private ServiceDetailViewModel GetServiceDetail(long id)
+    {
+        return new ServiceDetailViewModel
+        {
+            Id = id,
+            Name = "Virus/Malware Removal",
+            Description = "Complete malware scan and removal with system cleanup",
+            Category = "Repair",
+            Price = 75.00m,
+            IsActive = true,
+            UsageCount = 34,
+            TotalRevenue = 2550.00m,
+            AverageRating = 4.7m
+        };
     }
 }

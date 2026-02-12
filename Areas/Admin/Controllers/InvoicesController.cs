@@ -70,10 +70,40 @@ public class InvoicesController : Controller
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
         
-        if (!ModelState.IsValid) return View(model);
+        if (!ModelState.IsValid)
+        {
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView("_CreateModal", model);
+            return View(model);
+        }
         
         TempData["Success"] = "Invoice created successfully!";
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            return Json(new { success = true, message = "Invoice created successfully!" });
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    public IActionResult CreateModal(long jobOrderId = 0)
+    {
+        if (!IsAuthorized()) return Forbid();
+        
+        var model = new InvoiceCreateViewModel
+        {
+            JobOrderId = jobOrderId,
+            JobNumber = "JO-2024-0088",
+            CustomerName = "Bob Martinez",
+            TaxRate = 8.5m,
+            DueDate = DateTime.Now.AddDays(14),
+            LineItems = new List<InvoiceLineItemFormViewModel>
+            {
+                new() { Description = "System Diagnosis", Quantity = 1, UnitPrice = 50.00m },
+                new() { Description = "Malware Removal", Quantity = 1, UnitPrice = 75.00m },
+                new() { Description = "500GB SSD", Quantity = 1, UnitPrice = 65.00m }
+            }
+        };
+        
+        return PartialView("_CreateModal", model);
     }
 
     [HttpGet]
@@ -81,7 +111,22 @@ public class InvoicesController : Controller
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
         
-        var model = new InvoiceDetailViewModel
+        var model = GetInvoiceDetail(id);
+        return View(model);
+    }
+
+    [HttpGet]
+    public IActionResult DetailsModal(long id)
+    {
+        if (!IsAuthorized()) return Forbid();
+        
+        var model = GetInvoiceDetail(id);
+        return PartialView("_DetailsModal", model);
+    }
+
+    private InvoiceDetailViewModel GetInvoiceDetail(long id)
+    {
+        return new InvoiceDetailViewModel
         {
             Id = id,
             InvoiceNumber = "INV-2024-0143",
@@ -121,7 +166,5 @@ public class InvoicesController : Controller
                 new() { Id = 2, PaymentNumber = "PAY-2024-0102", Amount = 150.00m, Method = PaymentMethod.Cash, PaidAt = DateTime.Now.AddDays(-2), IsVoid = false }
             }
         };
-        
-        return View(model);
     }
 }

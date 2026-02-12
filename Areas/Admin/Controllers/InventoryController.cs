@@ -146,4 +146,47 @@ public class InventoryController : Controller
             return Json(new { success = true, message = "Inventory item updated successfully!" });
         return RedirectToAction(nameof(Index));
     }
+
+    [HttpGet]
+    public IActionResult Details(long id)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+        
+        var model = GetInventoryDetail(id);
+        return View(model);
+    }
+
+    [HttpGet]
+    public IActionResult DetailsModal(long id)
+    {
+        if (!IsAuthorized()) return Forbid();
+        
+        var model = GetInventoryDetail(id);
+        return PartialView("_DetailsModal", model);
+    }
+
+    private InventoryDetailViewModel GetInventoryDetail(long id)
+    {
+        return new InventoryDetailViewModel
+        {
+            Id = id,
+            SKU = "SSD-500-SAM",
+            Name = "Samsung 870 EVO 500GB SSD",
+            Category = "Storage",
+            Brand = "Samsung",
+            Unit = "pcs",
+            UnitCost = 45.00m,
+            UnitPrice = 65.00m,
+            QtyOnHand = 12,
+            ReorderLevel = 5,
+            IsActive = true,
+            RecentTransactions = new List<InventoryTxnItemViewModel>
+            {
+                new() { Id = 1, TxnType = "In", Quantity = 10, Remarks = "Purchase Order #PO-2024-015", CreatedAt = DateTime.Now.AddDays(-14) },
+                new() { Id = 2, TxnType = "Out", Quantity = 2, Remarks = "Job Order JO-2024-0079", CreatedAt = DateTime.Now.AddDays(-7) },
+                new() { Id = 3, TxnType = "In", Quantity = 5, Remarks = "Purchase Order #PO-2024-018", CreatedAt = DateTime.Now.AddDays(-3) },
+                new() { Id = 4, TxnType = "Out", Quantity = 1, Remarks = "Job Order JO-2024-0085", CreatedAt = DateTime.Now.AddDays(-1) }
+            }
+        };
+    }
 }

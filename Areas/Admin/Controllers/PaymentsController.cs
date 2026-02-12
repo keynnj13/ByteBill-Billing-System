@@ -65,10 +65,35 @@ public class PaymentsController : Controller
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
         
-        if (!ModelState.IsValid) return View(model);
+        if (!ModelState.IsValid)
+        {
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView("_CreateModal", model);
+            return View(model);
+        }
         
         TempData["Success"] = "Payment recorded successfully!";
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            return Json(new { success = true, message = "Payment recorded successfully!" });
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    public IActionResult CreateModal(long invoiceId = 0)
+    {
+        if (!IsAuthorized()) return Forbid();
+        
+        var model = new PaymentCreateViewModel
+        {
+            InvoiceId = invoiceId,
+            InvoiceNumber = "INV-2024-0143",
+            CustomerName = "Alice Thompson",
+            InvoiceBalance = 280.00m,
+            Amount = 280.00m,
+            Method = PaymentMethod.Cash
+        };
+        
+        return PartialView("_CreateModal", model);
     }
 
     [HttpGet]
@@ -76,7 +101,22 @@ public class PaymentsController : Controller
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
         
-        var model = new PaymentDetailViewModel
+        var model = GetPaymentDetail(id);
+        return View(model);
+    }
+
+    [HttpGet]
+    public IActionResult DetailsModal(long id)
+    {
+        if (!IsAuthorized()) return Forbid();
+        
+        var model = GetPaymentDetail(id);
+        return PartialView("_DetailsModal", model);
+    }
+
+    private PaymentDetailViewModel GetPaymentDetail(long id)
+    {
+        return new PaymentDetailViewModel
         {
             Id = id,
             PaymentNumber = "PAY-2024-0142",
@@ -93,7 +133,5 @@ public class PaymentsController : Controller
             ReceivedByName = "Emily Brown",
             IsVoid = false
         };
-        
-        return View(model);
     }
 }

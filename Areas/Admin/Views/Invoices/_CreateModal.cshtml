@@ -1,0 +1,91 @@
+@model InvoiceCreateViewModel
+
+<form id="invoiceCreateForm" asp-action="Create" asp-controller="Invoices" asp-area="Admin" method="post" data-ajax="true">
+    @Html.AntiForgeryToken()
+
+    <div class="modal-form-body">
+        <!-- Invoice Info -->
+        <div class="form-section">
+            <h4 class="form-section-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                Invoice Details
+            </h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Job Order</label>
+                    <input type="text" class="form-input" value="@Model.JobNumber" readonly style="background: #f9fafb;" />
+                    <input type="hidden" asp-for="JobOrderId" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Customer</label>
+                    <input type="text" class="form-input" value="@Model.CustomerName" readonly style="background: #f9fafb;" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label asp-for="DueDate" class="form-label">Due Date</label>
+                    <input asp-for="DueDate" type="date" class="form-input" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="TaxRate" class="form-label">Tax Rate (%)</label>
+                    <input asp-for="TaxRate" type="number" step="0.01" class="form-input" placeholder="0.00" />
+                </div>
+            </div>
+        </div>
+
+        <!-- Line Items -->
+        <div class="form-section">
+            <h4 class="form-section-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                Line Items
+            </h4>
+            <div id="lineItemsContainer">
+                @for (int i = 0; i < Model.LineItems.Count; i++)
+                {
+                    <div class="line-item-row">
+                        <div class="form-row form-row-3">
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label class="form-label">Description</label>
+                                <input name="LineItems[@i].Description" value="@Model.LineItems[i].Description" class="form-input" placeholder="Service or item description" />
+                            </div>
+                            <div class="form-group">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Qty</label>
+                                        <input name="LineItems[@i].Quantity" value="@Model.LineItems[i].Quantity" type="number" min="1" class="form-input" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Unit Price</label>
+                                        <input name="LineItems[@i].UnitPrice" value="@Model.LineItems[i].UnitPrice" type="number" step="0.01" class="form-input" placeholder="0.00" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="form-section">
+            <h4 class="form-section-title">Additional</h4>
+            <div class="form-group">
+                <label asp-for="Notes" class="form-label">Notes</label>
+                <textarea asp-for="Notes" class="form-input" rows="2" placeholder="Payment terms, special instructions..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-form-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeAjaxModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            Create Invoice
+        </button>
+    </div>
+</form>
+
+<style>
+    .line-item-row { padding: 12px 0; border-bottom: 1px solid #f3f4f6; }
+    .line-item-row:last-child { border-bottom: none; }
+</style>

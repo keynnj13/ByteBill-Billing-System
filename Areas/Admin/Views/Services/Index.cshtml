@@ -1,3 +1,4 @@
+@model ServiceListViewModel
 @{
     ViewData["Title"] = "Services";
 }
@@ -7,14 +8,176 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Services</h1>
-        <p class="text-muted">Manage service offerings</p>
+        <p class="page-subtitle">@Model.TotalCount service offerings</p>
+    </div>
+    <div class="page-actions">
+        <button type="button" class="btn btn-primary" onclick="openAjaxModal('@Url.Action("CreateModal", "Services", new { area = "Admin" })', 'New Service')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Add Service
+        </button>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success" style="margin-bottom: 20px; padding: 12px 16px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; color: #065f46; font-size: 14px;">
+        @TempData["Success"]
+    </div>
+}
+
+<!-- Quick Stats -->
+<div class="svc-stats">
+    <div class="svc-stat-card">
+        <div class="svc-stat-icon svc-stat-blue">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+        </div>
+        <div>
+            <span class="svc-stat-label">Total Services</span>
+            <span class="svc-stat-value">@Model.TotalCount</span>
+        </div>
+    </div>
+    <div class="svc-stat-card">
+        <div class="svc-stat-icon svc-stat-emerald">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        </div>
+        <div>
+            <span class="svc-stat-label">Active</span>
+            <span class="svc-stat-value">@Model.Services.Count(s => s.IsActive)</span>
+        </div>
+    </div>
+    <div class="svc-stat-card">
+        <div class="svc-stat-icon svc-stat-purple">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+        </div>
+        <div>
+            <span class="svc-stat-label">Categories</span>
+            <span class="svc-stat-value">@Model.Categories.Count</span>
+        </div>
     </div>
 </div>
 
 <div class="card">
-    <div class="card-body text-center py-5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-        <h3 class="text-muted">Coming Soon</h3>
-        <p class="text-muted">This module is currently under development.</p>
+    <div class="card-header">
+        <form method="get" class="filter-form">
+            <div class="search-input-wrapper">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" name="search" value="@Model.SearchTerm" placeholder="Search services by name or description..." class="form-input search-input" />
+            </div>
+            <select name="category" class="form-select" onchange="this.form.submit()">
+                <option value="">All Categories</option>
+                @foreach (var cat in Model.Categories)
+                {
+                    <option value="@cat" selected="@(Model.CategoryFilter == cat)">@cat</option>
+                }
+            </select>
+            <button type="submit" class="btn btn-outline-primary">Filter</button>
+        </form>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Services.Any())
+        {
+            <div class="table-container">
+                <table class="table" style="table-layout: fixed;">
+                    <colgroup>
+                        <col style="width: 25%;" />
+                        <col style="width: 15%;" />
+                        <col style="width: 25%;" />
+                        <col style="width: 12%;" />
+                        <col style="width: 11%;" />
+                        <col style="width: 12%;" />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th class="text-center">Category</th>
+                            <th>Description</th>
+                            <th class="text-right">Price</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var service in Model.Services)
+                        {
+                            <tr class="clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "Services", new { area = "Admin", id = service.Id })', '@service.Name')">
+                                <td>
+                                    <div class="svc-cell">
+                                        <span class="svc-name">@service.Name</span>
+                                        @if (!string.IsNullOrEmpty(service.EstimatedDuration))
+                                        {
+                                            <span class="svc-duration">
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                                @service.EstimatedDuration
+                                            </span>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="text-center"><span class="category-badge">@service.Category</span></td>
+                                <td><span class="svc-desc">@(service.Description ?? "—")</span></td>
+                                <td class="text-right"><span class="price-text price-bold">@service.Price.ToString("C")</span></td>
+                                <td class="text-center">
+                                    <span class="badge @(service.IsActive ? "badge-success" : "badge-muted")">
+                                        @(service.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button type="button" class="btn-action" title="Edit" onclick="event.stopPropagation(); openAjaxModal('@Url.Action("EditModal", "Services", new { area = "Admin", id = service.Id })', 'Edit Service')">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel { CurrentPage = Model.CurrentPage, TotalPages = Model.TotalPages, BaseUrl = Url.Action("Index") })" />
+            }
+        }
+        else
+        {
+            <partial name="~/Views/Shared/_EmptyState.cshtml" model="@(new { Icon = "wrench", Title = "No services found", Description = Model.SearchTerm != null ? "Try a different search term" : "Add your first service to get started" })" />
+        }
     </div>
 </div>
+
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: #6b7280; }
+    .svc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .svc-stat-card { display: flex; align-items: center; gap: 14px; padding: 16px 20px; background: white; border-radius: 10px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .svc-stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .svc-stat-blue { background: rgba(59,130,246,0.1); color: #3b82f6; }
+    .svc-stat-emerald { background: rgba(16,185,129,0.1); color: #10b981; }
+    .svc-stat-purple { background: rgba(139,92,246,0.1); color: #8b5cf6; }
+    .svc-stat-label { display: block; font-size: 12px; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .svc-stat-value { display: block; font-size: 22px; font-weight: 700; color: #1f2937; line-height: 1.2; }
+    .filter-form { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .search-input-wrapper { position: relative; flex: 1; min-width: 200px; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
+    .search-input { padding-left: 40px; min-width: 240px; }
+    .svc-cell { display: flex; flex-direction: column; gap: 4px; }
+    .svc-name { font-weight: 500; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .svc-duration { font-size: 12px; color: #9ca3af; display: flex; align-items: center; gap: 4px; }
+    .svc-desc { font-size: 13px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+    .category-badge { font-size: 11px; padding: 3px 10px; border-radius: 99px; background: #f3f4f6; color: #374151; font-weight: 500; display: inline-block; }
+    .price-text { font-size: 13px; color: #374151; white-space: nowrap; }
+    .price-bold { font-weight: 600; }
+    .action-buttons { display: flex; gap: 4px; justify-content: flex-end; }
+    .btn-action { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: #6b7280; transition: all 0.15s; border: none; background: none; cursor: pointer; text-decoration: none; }
+    .btn-action:hover { background: #f3f4f6; color: #3b82f6; }
+    .clickable-row { cursor: pointer; transition: background-color 0.15s ease; }
+    .clickable-row:hover { background-color: #f0f7ff; }
+    @@media (max-width: 1024px) { .svc-stats { grid-template-columns: 1fr; } }
+    @@media (max-width: 768px) {
+        .page-header { flex-direction: column; gap: 12px; }
+        .filter-form { flex-direction: column; width: 100%; }
+        .search-input { min-width: 100%; }
+        .table { table-layout: auto !important; }
+    }
+</style>
