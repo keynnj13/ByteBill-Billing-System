@@ -6,131 +6,181 @@
 
 <partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Reports", Url = Url.Action("Index", "Reports") }, new() { Label = "Service Performance", IsActive = true } } })" />
 
-<div class="page-header">
+<div class="sp-page-header">
     <div>
-        <h1 class="page-title">Service Performance</h1>
-        <p class="page-subtitle">@Model.DateFrom.ToString("MMM dd, yyyy") — @Model.DateTo.ToString("MMM dd, yyyy")</p>
+        <h1 class="sp-title">Service Performance</h1>
+        <p class="sp-subtitle">@Model.DateFrom.ToString("MMM dd, yyyy") — @Model.DateTo.ToString("MMM dd, yyyy")</p>
     </div>
-    <div class="page-actions">
-        <a asp-action="Index" class="btn btn-ghost">
+    <div class="sp-header-actions">
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="window.print()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            Print
+        </button>
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="exportPDF('Service Performance Report')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export PDF
+        </button>
+        <a asp-action="Index" class="btn btn-ghost btn-sm">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-            Back to Reports
+            Back
         </a>
     </div>
 </div>
 
-<!-- Date Range -->
-<div class="section-card" style="margin-bottom: 20px;">
-    <form method="get" asp-action="ServicePerformance" class="filter-bar">
-        <div style="min-width: 160px;">
-            <label style="font-size: 12px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 4px;">From</label>
-            <input type="date" name="from" value="@Model.DateFrom.ToString("yyyy-MM-dd")" class="form-input" />
-        </div>
-        <div style="min-width: 160px;">
-            <label style="font-size: 12px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 4px;">To</label>
-            <input type="date" name="to" value="@Model.DateTo.ToString("yyyy-MM-dd")" class="form-input" />
-        </div>
-        <div style="padding-top: 18px;">
-            <button type="submit" class="btn btn-primary">Apply</button>
-        </div>
+<!-- Date Filter -->
+<div class="sp-controls no-print">
+    <form method="get" asp-action="ServicePerformance" class="sp-date-form">
+        <label class="sp-date-label">From</label>
+        <input type="date" name="from" value="@Model.DateFrom.ToString("yyyy-MM-dd")" class="form-input sp-date-input" />
+        <label class="sp-date-label">To</label>
+        <input type="date" name="to" value="@Model.DateTo.ToString("yyyy-MM-dd")" class="form-input sp-date-input" />
+        <button type="submit" class="btn btn-primary btn-sm">Apply</button>
     </form>
 </div>
 
-<!-- Summary -->
-<div class="svc-stats">
-    <div class="svc-stat-card">
-        <div>
-            <span class="svc-stat-label">Total Job Orders</span>
-            <span class="svc-stat-value" style="color: var(--navy);">@Model.TotalJobOrders</span>
+<!-- Stats -->
+<div class="sp-stats">
+    <div class="sp-stat-card">
+        <div class="sp-stat-icon sp-icon-navy">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+        </div>
+        <div class="sp-stat-content">
+            <span class="sp-stat-label">Total Job Orders</span>
+            <span class="sp-stat-value" style="color: #1e3a8a;">@Model.TotalJobOrders</span>
         </div>
     </div>
-    <div class="svc-stat-card">
-        <div>
-            <span class="svc-stat-label">Avg. Completion</span>
-            <span class="svc-stat-value">@Model.AverageCompletionDays.ToString("N1") days</span>
+    <div class="sp-stat-card">
+        <div class="sp-stat-icon sp-icon-amber">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </div>
+        <div class="sp-stat-content">
+            <span class="sp-stat-label">Avg. Completion</span>
+            <span class="sp-stat-value">@Model.AverageCompletionDays.ToString("N1") days</span>
         </div>
     </div>
-    <div class="svc-stat-card">
-        <div>
-            <span class="svc-stat-label">Service Revenue</span>
-            <span class="svc-stat-value" style="color: var(--emerald);">&#8369;@Model.TotalServiceRevenue.ToString("N2")</span>
+    <div class="sp-stat-card">
+        <div class="sp-stat-icon sp-icon-emerald">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        </div>
+        <div class="sp-stat-content">
+            <span class="sp-stat-label">Service Revenue</span>
+            <span class="sp-stat-value" style="color: #059669;">&#8369;@Model.TotalServiceRevenue.ToString("N2")</span>
         </div>
     </div>
 </div>
 
 <!-- Top Services -->
-<div class="section-card" style="margin-bottom: 20px;">
-    <h3 style="margin: 0 0 16px; font-size: 15px; font-weight: 600;">Top Services by Usage</h3>
-    <div class="table-container">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Service</th>
-                    <th>Category</th>
-                    <th style="text-align: center;">Usage</th>
-                    <th style="text-align: right;">Revenue</th>
-                    <th style="text-align: right;">Avg. Price</th>
-                </tr>
-            </thead>
-            <tbody>
-                @{ int rank = 0; }
-                @foreach (var s in Model.Services)
-                {
-                    rank++;
+<div class="card" style="margin-bottom: 20px;">
+    <div class="card-header"><h3 class="sp-section-title">Top Services by Usage</h3></div>
+    <div class="card-body p-0">
+        <div class="table-container">
+            <table class="table">
+                <thead>
                     <tr>
-                        <td>
-                            <span style="display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; font-size: 11px; font-weight: 600;
-                                background: @(rank <= 3 ? "var(--navy)" : "#f1f5f9");
-                                color: @(rank <= 3 ? "white" : "var(--text-muted)");">
-                                @rank
-                            </span>
-                        </td>
-                        <td class="fw-medium">@s.ServiceName</td>
-                        <td><span class="badge badge-muted">@s.Category</span></td>
-                        <td style="text-align: center;">@s.UsageCount</td>
-                        <td style="text-align: right;">&#8369;@s.Revenue.ToString("N2")</td>
-                        <td style="text-align: right;">&#8369;@s.AveragePrice.ToString("N2")</td>
+                        <th style="width:40px;">#</th>
+                        <th>Service</th>
+                        <th>Category</th>
+                        <th class="text-center">Usage</th>
+                        <th class="text-right">Revenue</th>
+                        <th class="text-right">Avg. Price</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @{ int rank = 0; }
+                    @foreach (var s in Model.Services)
+                    {
+                        rank++;
+                        <tr>
+                            <td>
+                                <span class="sp-rank @(rank <= 3 ? "sp-rank-top" : "")">@rank</span>
+                            </td>
+                            <td class="fw-medium">@s.ServiceName</td>
+                            <td><span class="badge badge-muted">@s.Category</span></td>
+                            <td class="text-center">@s.UsageCount</td>
+                            <td class="text-right">&#8369;@s.Revenue.ToString("N2")</td>
+                            <td class="text-right">&#8369;@s.AveragePrice.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 <!-- Category Performance -->
-<div class="section-card">
-    <h3 style="margin: 0 0 16px; font-size: 15px; font-weight: 600;">Performance by Category</h3>
-    <div class="table-container">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Category</th>
-                    <th style="text-align: center;">Services</th>
-                    <th style="text-align: center;">Total Usage</th>
-                    <th style="text-align: right;">Revenue</th>
-                    <th style="text-align: right;">Share</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var c in Model.Categories)
-                {
+<div class="card">
+    <div class="card-header"><h3 class="sp-section-title">Performance by Category</h3></div>
+    <div class="card-body p-0">
+        <div class="table-container">
+            <table class="table">
+                <thead>
                     <tr>
-                        <td class="fw-medium">@c.Category</td>
-                        <td style="text-align: center;">@c.ServiceCount</td>
-                        <td style="text-align: center;">@c.UsageCount</td>
-                        <td style="text-align: right;">&#8369;@c.Revenue.ToString("N2")</td>
-                        <td style="text-align: right;">
-                            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
-                                <div style="width: 80px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
-                                    <div style="height: 100%; width: @c.Percentage%; background: #7c3aed; border-radius: 3px;"></div>
-                                </div>
-                                <span style="font-size: 13px; min-width: 42px;">@c.Percentage.ToString("N1")%</span>
-                            </div>
-                        </td>
+                        <th>Category</th>
+                        <th class="text-center">Services</th>
+                        <th class="text-center">Total Usage</th>
+                        <th class="text-right">Revenue</th>
+                        <th class="text-right">Share</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model.Categories)
+                    {
+                        <tr>
+                            <td class="fw-medium">@c.Category</td>
+                            <td class="text-center">@c.ServiceCount</td>
+                            <td class="text-center">@c.UsageCount</td>
+                            <td class="text-right">&#8369;@c.Revenue.ToString("N2")</td>
+                            <td class="text-right">
+                                <div class="sp-bar-cell">
+                                    <div class="sp-bar-track"><div class="sp-bar-fill" style="width: @c.Percentage%;"></div></div>
+                                    <span class="sp-bar-text">@c.Percentage.ToString("N1")%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
+
+<script>
+function exportPDF(title) {
+    var printWin = window.open('', '_blank');
+    var content = document.querySelector('.sp-stats').outerHTML;
+    document.querySelectorAll('.card').forEach(c => content += c.outerHTML);
+    var styles = document.querySelector('style').outerHTML;
+    printWin.document.write('<html><head><title>' + title + '<\/title>' + styles + '<link rel="stylesheet" href="/css/design-system.css" \/><\/head><body style="padding:24px;font-family:system-ui,-apple-system,sans-serif;">' + '<h1 style="font-size:20px;margin-bottom:4px;">' + title + '<\/h1><p style="color:#6b7280;font-size:13px;margin-bottom:20px;">Generated on ' + new Date().toLocaleDateString() + '<\/p>' + content + '<\/body><\/html>');
+    printWin.document.close();
+    setTimeout(function(){ printWin.print(); }, 500);
+}
+</script>
+
+<style>
+    .sp-page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .sp-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .sp-subtitle { font-size: 14px; color: #6b7280; }
+    .sp-header-actions { display: flex; gap: 8px; align-items: center; }
+    .sp-controls { margin-bottom: 20px; }
+    .sp-date-form { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .sp-date-label { font-size: 13px; font-weight: 500; color: #6b7280; }
+    .sp-date-input { width: 160px; }
+    .sp-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .sp-stat-card { display: flex; align-items: center; gap: 14px; padding: 18px 20px; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .sp-stat-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .sp-icon-navy    { background: rgba(30,58,138,0.08); color: #1e3a8a; }
+    .sp-icon-amber   { background: rgba(217,119,6,0.10); color: #d97706; }
+    .sp-icon-emerald { background: rgba(5,150,105,0.10); color: #059669; }
+    .sp-stat-content { display: flex; flex-direction: column; }
+    .sp-stat-value { font-size: 20px; font-weight: 700; color: #1f2937; line-height: 1.2; }
+    .sp-stat-label { font-size: 12px; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+    .sp-section-title { margin: 0; font-size: 15px; font-weight: 600; color: #1f2937; }
+    .sp-rank { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; font-size: 11px; font-weight: 600; background: #f1f5f9; color: #94a3b8; }
+    .sp-rank-top { background: #1e3a8a; color: #fff; }
+    .sp-bar-cell { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+    .sp-bar-track { width: 80px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+    .sp-bar-fill { height: 100%; background: #7c3aed; border-radius: 3px; }
+    .sp-bar-text { font-size: 13px; min-width: 42px; text-align: right; }
+    @@media print { .no-print, .sp-header-actions { display: none !important; } }
+    @@media (max-width: 768px) { .sp-stats { grid-template-columns: 1fr; } .sp-page-header { flex-direction: column; gap: 12px; } }
+</style>

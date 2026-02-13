@@ -39,6 +39,7 @@ public class UsersController : Controller
             TotalCount = allUsers.Count,
             ActiveCount = allUsers.Count(u => u.IsActive),
             AdminCount = allUsers.Count(u => u.Role == UserRole.Admin),
+            BillingCount = allUsers.Count(u => u.Role == UserRole.Billing),
             TechnicianCount = allUsers.Count(u => u.Role == UserRole.Technician),
             Users = allUsers.Skip((page - 1) * 10).Take(10).ToList()
         };
@@ -152,13 +153,13 @@ public class UsersController : Controller
 
     private static List<UserItemViewModel> GetDemoUsers() => new()
     {
-        new() { Id = 1, FullName = "John Anderson",   Initials = "JA", Email = "john@techfixpro.com",   Phone = "0917-123-4567", Role = UserRole.Admin,      RoleName = "Admin",      IsActive = true,  LastLoginAt = DateTime.Now.AddHours(-2),    CreatedAt = DateTime.Now.AddMonths(-6) },
-        new() { Id = 2, FullName = "Emily Brown",     Initials = "EB", Email = "emily@techfixpro.com",  Phone = "0918-234-5678", Role = UserRole.Billing,    RoleName = "Billing",    IsActive = true,  LastLoginAt = DateTime.Now.AddHours(-1),    CreatedAt = DateTime.Now.AddMonths(-5) },
-        new() { Id = 3, FullName = "David Lee",       Initials = "DL", Email = "david@techfixpro.com",  Phone = "0919-345-6789", Role = UserRole.Technician, RoleName = "Technician", IsActive = true,  LastLoginAt = DateTime.Now.AddMinutes(-30), CreatedAt = DateTime.Now.AddMonths(-4) },
-        new() { Id = 4, FullName = "Emily Chen",      Initials = "EC", Email = "echen@techfixpro.com",  Phone = "0920-456-7890", Role = UserRole.Technician, RoleName = "Technician", IsActive = true,  LastLoginAt = DateTime.Now.AddDays(-1),     CreatedAt = DateTime.Now.AddMonths(-3) },
-        new() { Id = 5, FullName = "Robert Taylor",   Initials = "RT", Email = "robert@techfixpro.com", Phone = "0921-567-8901", Role = UserRole.Auditor,    RoleName = "Auditor",    IsActive = true,  LastLoginAt = DateTime.Now.AddDays(-3),     CreatedAt = DateTime.Now.AddMonths(-2) },
-        new() { Id = 6, FullName = "Maria Santos",    Initials = "MS", Email = "maria@techfixpro.com",  Phone = "0922-678-9012", Role = UserRole.Billing,    RoleName = "Billing",    IsActive = false, LastLoginAt = DateTime.Now.AddDays(-14),    CreatedAt = DateTime.Now.AddMonths(-8) },
-        new() { Id = 7, FullName = "James Rodriguez", Initials = "JR", Email = "james@techfixpro.com",  Phone = "0923-789-0123", Role = UserRole.Technician, RoleName = "Technician", IsActive = true,  LastLoginAt = DateTime.Now.AddHours(-5),    CreatedAt = DateTime.Now.AddMonths(-1) },
+        new() { Id = 1, FullName = "John Anderson",   Initials = "JA", Email = "john@techfixpro.com",   Phone = "0917-123-4567", Role = UserRole.Admin,      RoleName = "Admin",         IsActive = true,  LastLoginAt = DateTime.Now.AddHours(-2),    CreatedAt = DateTime.Now.AddMonths(-6) },
+        new() { Id = 2, FullName = "Emily Brown",     Initials = "EB", Email = "emily@techfixpro.com",  Phone = "0918-234-5678", Role = UserRole.Billing,    RoleName = "Billing Staff", IsActive = true,  LastLoginAt = DateTime.Now.AddHours(-1),    CreatedAt = DateTime.Now.AddMonths(-5) },
+        new() { Id = 3, FullName = "David Lee",       Initials = "DL", Email = "david@techfixpro.com",  Phone = "0919-345-6789", Role = UserRole.Technician, RoleName = "Technician",    IsActive = true,  LastLoginAt = DateTime.Now.AddMinutes(-30), CreatedAt = DateTime.Now.AddMonths(-4) },
+        new() { Id = 4, FullName = "Emily Chen",      Initials = "EC", Email = "echen@techfixpro.com",  Phone = "0920-456-7890", Role = UserRole.Technician, RoleName = "Technician",    IsActive = true,  LastLoginAt = DateTime.Now.AddDays(-1),     CreatedAt = DateTime.Now.AddMonths(-3) },
+        new() { Id = 5, FullName = "Robert Taylor",   Initials = "RT", Email = "robert@techfixpro.com", Phone = "0921-567-8901", Role = UserRole.Auditor,    RoleName = "Auditor",       IsActive = true,  LastLoginAt = DateTime.Now.AddDays(-3),     CreatedAt = DateTime.Now.AddMonths(-2) },
+        new() { Id = 6, FullName = "Maria Santos",    Initials = "MS", Email = "maria@techfixpro.com",  Phone = "0922-678-9012", Role = UserRole.Billing,    RoleName = "Billing Staff", IsActive = false, LastLoginAt = DateTime.Now.AddDays(-14),    CreatedAt = DateTime.Now.AddMonths(-8) },
+        new() { Id = 7, FullName = "James Rodriguez", Initials = "JR", Email = "james@techfixpro.com",  Phone = "0923-789-0123", Role = UserRole.Technician, RoleName = "Technician",    IsActive = true,  LastLoginAt = DateTime.Now.AddHours(-5),    CreatedAt = DateTime.Now.AddMonths(-1) },
     };
 
     private UserFormViewModel GetEditModel(long id) => new()
@@ -172,7 +173,7 @@ public class UsersController : Controller
     {
         Id = id, FullName = "Emily Brown", Initials = "EB",
         Email = "emily@techfixpro.com", Phone = "0918-234-5678",
-        Role = UserRole.Billing, RoleName = "Billing",
+        Role = UserRole.Billing, RoleName = "Billing Staff",
         IsActive = true, CreatedAt = DateTime.Now.AddMonths(-5),
         LastLoginAt = DateTime.Now.AddHours(-1),
         JobOrdersHandled = 0, PaymentsProcessed = 47,

@@ -6,146 +6,204 @@
 
 <partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Reports", Url = Url.Action("Index", "Reports") }, new() { Label = "Revenue", IsActive = true } } })" />
 
-<div class="page-header">
+<div class="rr-page-header">
     <div>
-        <h1 class="page-title">Revenue Report</h1>
-        <p class="page-subtitle">@Model.DateFrom.ToString("MMM dd, yyyy") — @Model.DateTo.ToString("MMM dd, yyyy")</p>
+        <h1 class="rr-title">Revenue Report</h1>
+        <p class="rr-subtitle">@Model.DateFrom.ToString("MMM dd, yyyy") — @Model.DateTo.ToString("MMM dd, yyyy")</p>
     </div>
-    <div class="page-actions">
-        <a asp-action="Index" class="btn btn-ghost">
+    <div class="rr-header-actions">
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="window.print()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            Print
+        </button>
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="exportPDF('Revenue Report')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export PDF
+        </button>
+        <a asp-action="Index" class="btn btn-ghost btn-sm">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-            Back to Reports
+            Back
         </a>
     </div>
 </div>
 
-<!-- Date Range Filter -->
-<div class="section-card" style="margin-bottom: 20px;">
-    <form method="get" asp-action="Revenue" class="filter-bar">
-        <div style="min-width: 160px;">
-            <label style="font-size: 12px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 4px;">From</label>
-            <input type="date" name="from" value="@Model.DateFrom.ToString("yyyy-MM-dd")" class="form-input" />
-        </div>
-        <div style="min-width: 160px;">
-            <label style="font-size: 12px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 4px;">To</label>
-            <input type="date" name="to" value="@Model.DateTo.ToString("yyyy-MM-dd")" class="form-input" />
-        </div>
-        <div style="padding-top: 18px;">
-            <button type="submit" class="btn btn-primary">Apply</button>
-        </div>
+<!-- Date Filter + Stats Row -->
+<div class="rr-controls no-print">
+    <form method="get" asp-action="Revenue" class="rr-date-form">
+        <label class="rr-date-label">From</label>
+        <input type="date" name="from" value="@Model.DateFrom.ToString("yyyy-MM-dd")" class="form-input rr-date-input" />
+        <label class="rr-date-label">To</label>
+        <input type="date" name="to" value="@Model.DateTo.ToString("yyyy-MM-dd")" class="form-input rr-date-input" />
+        <button type="submit" class="btn btn-primary btn-sm">Apply</button>
     </form>
 </div>
 
-<!-- Summary Stats -->
-<div class="svc-stats">
-    <div class="svc-stat-card">
-        <div>
-            <span class="svc-stat-label">Total Invoiced</span>
-            <span class="svc-stat-value" style="color: var(--navy);">&#8369;@Model.TotalRevenue.ToString("N2")</span>
+<div class="rr-stats">
+    <div class="rr-stat-card">
+        <div class="rr-stat-icon rr-icon-navy">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+        </div>
+        <div class="rr-stat-content">
+            <span class="rr-stat-label">Total Invoiced</span>
+            <span class="rr-stat-value" style="color: #1e3a8a;">&#8369;@Model.TotalRevenue.ToString("N2")</span>
         </div>
     </div>
-    <div class="svc-stat-card">
-        <div>
-            <span class="svc-stat-label">Total Collected</span>
-            <span class="svc-stat-value" style="color: var(--emerald);">&#8369;@Model.TotalCollected.ToString("N2")</span>
+    <div class="rr-stat-card">
+        <div class="rr-stat-icon rr-icon-emerald">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        </div>
+        <div class="rr-stat-content">
+            <span class="rr-stat-label">Total Collected</span>
+            <span class="rr-stat-value" style="color: #059669;">&#8369;@Model.TotalCollected.ToString("N2")</span>
         </div>
     </div>
-    <div class="svc-stat-card">
-        <div>
-            <span class="svc-stat-label">Outstanding</span>
-            <span class="svc-stat-value" style="color: #dc2626;">&#8369;@Model.TotalOutstanding.ToString("N2")</span>
+    <div class="rr-stat-card">
+        <div class="rr-stat-icon rr-icon-red">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        </div>
+        <div class="rr-stat-content">
+            <span class="rr-stat-label">Outstanding</span>
+            <span class="rr-stat-value" style="color: #dc2626;">&#8369;@Model.TotalOutstanding.ToString("N2")</span>
         </div>
     </div>
-    <div class="svc-stat-card">
-        <div>
-            <span class="svc-stat-label">Avg. Invoice</span>
-            <span class="svc-stat-value">&#8369;@Model.AverageInvoice.ToString("N2")</span>
+    <div class="rr-stat-card">
+        <div class="rr-stat-icon rr-icon-slate">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        </div>
+        <div class="rr-stat-content">
+            <span class="rr-stat-label">Avg. Invoice</span>
+            <span class="rr-stat-value">&#8369;@Model.AverageInvoice.ToString("N2")</span>
         </div>
     </div>
 </div>
 
 <!-- Monthly Breakdown -->
-<div class="section-card" style="margin-bottom: 20px;">
-    <h3 style="margin: 0 0 16px; font-size: 15px; font-weight: 600;">Monthly Breakdown</h3>
-    <div class="table-container">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Month</th>
-                    <th style="text-align: right;">Invoiced</th>
-                    <th style="text-align: right;">Collected</th>
-                    <th style="text-align: right;">Outstanding</th>
-                    <th style="text-align: center;">Invoices</th>
-                    <th style="text-align: right;">Collection Rate</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var m in Model.MonthlyBreakdown)
-                {
-                    var outstanding = m.Invoiced - m.Collected;
-                    var rate = m.Invoiced > 0 ? (m.Collected / m.Invoiced * 100) : 0;
+<div class="card" style="margin-bottom: 20px;">
+    <div class="card-header"><h3 class="rr-section-title">Monthly Breakdown</h3></div>
+    <div class="card-body p-0">
+        <div class="table-container">
+            <table class="table">
+                <thead>
                     <tr>
-                        <td class="fw-medium">@m.Month</td>
-                        <td style="text-align: right;">&#8369;@m.Invoiced.ToString("N2")</td>
-                        <td style="text-align: right; color: var(--emerald);">&#8369;@m.Collected.ToString("N2")</td>
-                        <td style="text-align: right; color: @(outstanding > 0 ? "#dc2626" : "var(--text-muted)");">&#8369;@outstanding.ToString("N2")</td>
-                        <td style="text-align: center;">@m.Count</td>
-                        <td style="text-align: right;">
-                            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
-                                <div style="width: 60px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
-                                    <div style="height: 100%; width: @rate%; background: var(--emerald); border-radius: 3px;"></div>
-                                </div>
-                                <span style="font-size: 13px; min-width: 42px;">@rate.ToString("N1")%</span>
-                            </div>
-                        </td>
+                        <th>Month</th>
+                        <th class="text-right">Invoiced</th>
+                        <th class="text-right">Collected</th>
+                        <th class="text-right">Outstanding</th>
+                        <th class="text-center">Invoices</th>
+                        <th class="text-right">Collection Rate</th>
                     </tr>
-                }
-            </tbody>
-            <tfoot>
-                <tr style="font-weight: 600; border-top: 2px solid var(--border);">
-                    <td>Total</td>
-                    <td style="text-align: right;">&#8369;@Model.TotalRevenue.ToString("N2")</td>
-                    <td style="text-align: right; color: var(--emerald);">&#8369;@Model.TotalCollected.ToString("N2")</td>
-                    <td style="text-align: right; color: #dc2626;">&#8369;@Model.TotalOutstanding.ToString("N2")</td>
-                    <td style="text-align: center;">@Model.InvoiceCount</td>
-                    <td style="text-align: right;">@((Model.TotalRevenue > 0 ? Model.TotalCollected / Model.TotalRevenue * 100 : 0).ToString("N1"))%</td>
-                </tr>
-            </tfoot>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var m in Model.MonthlyBreakdown)
+                    {
+                        var outstanding = m.Invoiced - m.Collected;
+                        var rate = m.Invoiced > 0 ? (m.Collected / m.Invoiced * 100) : 0;
+                        <tr>
+                            <td class="fw-medium">@m.Month</td>
+                            <td class="text-right">&#8369;@m.Invoiced.ToString("N2")</td>
+                            <td class="text-right" style="color: #059669;">&#8369;@m.Collected.ToString("N2")</td>
+                            <td class="text-right" style="color: @(outstanding > 0 ? "#dc2626" : "#9ca3af");">&#8369;@outstanding.ToString("N2")</td>
+                            <td class="text-center">@m.Count</td>
+                            <td class="text-right">
+                                <div class="rr-bar-cell">
+                                    <div class="rr-bar-track"><div class="rr-bar-fill rr-bar-emerald" style="width: @rate%;"></div></div>
+                                    <span class="rr-bar-text">@rate.ToString("N1")%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="rr-tfoot">
+                        <td class="fw-medium">Total</td>
+                        <td class="text-right">&#8369;@Model.TotalRevenue.ToString("N2")</td>
+                        <td class="text-right" style="color: #059669;">&#8369;@Model.TotalCollected.ToString("N2")</td>
+                        <td class="text-right" style="color: #dc2626;">&#8369;@Model.TotalOutstanding.ToString("N2")</td>
+                        <td class="text-center">@Model.InvoiceCount</td>
+                        <td class="text-right">@((Model.TotalRevenue > 0 ? Model.TotalCollected / Model.TotalRevenue * 100 : 0).ToString("N1"))%</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
     </div>
 </div>
 
 <!-- Revenue by Category -->
-<div class="section-card">
-    <h3 style="margin: 0 0 16px; font-size: 15px; font-weight: 600;">Revenue by Service Category</h3>
-    <div class="table-container">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Category</th>
-                    <th style="text-align: right;">Revenue</th>
-                    <th style="text-align: center;">Invoices</th>
-                    <th style="text-align: right;">Share</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var c in Model.CategoryBreakdown)
-                {
+<div class="card">
+    <div class="card-header"><h3 class="rr-section-title">Revenue by Service Category</h3></div>
+    <div class="card-body p-0">
+        <div class="table-container">
+            <table class="table">
+                <thead>
                     <tr>
-                        <td class="fw-medium">@c.Category</td>
-                        <td style="text-align: right;">&#8369;@c.Amount.ToString("N2")</td>
-                        <td style="text-align: center;">@c.Count</td>
-                        <td style="text-align: right;">
-                            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
-                                <div style="width: 80px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
-                                    <div style="height: 100%; width: @c.Percentage%; background: var(--navy); border-radius: 3px;"></div>
-                                </div>
-                                <span style="font-size: 13px; min-width: 42px;">@c.Percentage.ToString("N1")%</span>
-                            </div>
-                        </td>
+                        <th>Category</th>
+                        <th class="text-right">Revenue</th>
+                        <th class="text-center">Invoices</th>
+                        <th class="text-right">Share</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model.CategoryBreakdown)
+                    {
+                        <tr>
+                            <td class="fw-medium">@c.Category</td>
+                            <td class="text-right">&#8369;@c.Amount.ToString("N2")</td>
+                            <td class="text-center">@c.Count</td>
+                            <td class="text-right">
+                                <div class="rr-bar-cell">
+                                    <div class="rr-bar-track rr-bar-wide"><div class="rr-bar-fill rr-bar-navy" style="width: @c.Percentage%;"></div></div>
+                                    <span class="rr-bar-text">@c.Percentage.ToString("N1")%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
+
+<script>
+function exportPDF(title) {
+    var printWin = window.open('', '_blank');
+    var content = document.querySelector('.rr-stats').outerHTML;
+    document.querySelectorAll('.card').forEach(c => content += c.outerHTML);
+    var styles = document.querySelector('style').outerHTML;
+    printWin.document.write('<html><head><title>' + title + '<\/title>' + styles + '<link rel="stylesheet" href="/css/design-system.css" \/><\/head><body style="padding:24px;font-family:system-ui,-apple-system,sans-serif;">' + '<h1 style="font-size:20px;margin-bottom:4px;">' + title + '<\/h1><p style="color:#6b7280;font-size:13px;margin-bottom:20px;">Generated on ' + new Date().toLocaleDateString() + '<\/p>' + content + '<\/body><\/html>');
+    printWin.document.close();
+    setTimeout(function(){ printWin.print(); }, 500);
+}
+</script>
+
+<style>
+    .rr-page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .rr-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .rr-subtitle { font-size: 14px; color: #6b7280; }
+    .rr-header-actions { display: flex; gap: 8px; align-items: center; }
+    .rr-controls { margin-bottom: 20px; }
+    .rr-date-form { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .rr-date-label { font-size: 13px; font-weight: 500; color: #6b7280; }
+    .rr-date-input { width: 160px; }
+    .rr-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .rr-stat-card { display: flex; align-items: center; gap: 14px; padding: 18px 20px; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .rr-stat-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .rr-icon-navy    { background: rgba(30,58,138,0.08); color: #1e3a8a; }
+    .rr-icon-emerald { background: rgba(5,150,105,0.10); color: #059669; }
+    .rr-icon-red     { background: rgba(220,38,38,0.08); color: #dc2626; }
+    .rr-icon-slate   { background: rgba(100,116,139,0.10); color: #475569; }
+    .rr-stat-content { display: flex; flex-direction: column; }
+    .rr-stat-value { font-size: 20px; font-weight: 700; color: #1f2937; line-height: 1.2; }
+    .rr-stat-label { font-size: 12px; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+    .rr-section-title { margin: 0; font-size: 15px; font-weight: 600; color: #1f2937; }
+    .rr-bar-cell { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+    .rr-bar-track { width: 60px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+    .rr-bar-wide { width: 80px; }
+    .rr-bar-fill { height: 100%; border-radius: 3px; }
+    .rr-bar-emerald { background: #059669; }
+    .rr-bar-navy { background: #1e3a8a; }
+    .rr-bar-text { font-size: 13px; min-width: 42px; text-align: right; }
+    .rr-tfoot td { font-weight: 600; border-top: 2px solid #e5e7eb; }
+    @@media print { .no-print, .rr-header-actions { display: none !important; } }
+    @@media (max-width: 1024px) { .rr-stats { grid-template-columns: repeat(2, 1fr); } }
+    @@media (max-width: 640px) { .rr-stats { grid-template-columns: 1fr; } .rr-page-header { flex-direction: column; gap: 12px; } }
+</style>

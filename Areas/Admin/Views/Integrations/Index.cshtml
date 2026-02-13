@@ -6,170 +6,287 @@
 
 <partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Integrations", IsActive = true } } })" />
 
-<div class="page-header">
+<div class="ig-page-header">
     <div>
-        <h1 class="page-title">Integrations</h1>
-        <p class="page-subtitle">Manage third-party connections</p>
+        <h1 class="ig-title">Integrations</h1>
+        <p class="ig-subtitle">Manage third-party connections</p>
     </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════
-     XERO ACCOUNTING
-     ═══════════════════════════════════════════════════════ -->
-<div class="section-card" style="margin-bottom: 24px;">
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
-        <div style="display: flex; align-items: center; gap: 14px;">
-            <div style="width: 48px; height: 48px; border-radius: 12px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
-            </div>
-            <div>
-                <h3 style="margin: 0; font-size: 18px; font-weight: 600;">Xero Accounting</h3>
-                <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-                    @if (Model.XeroConnected)
-                    {
-                        <span class="badge badge-success">Connected</span>
-                        <span style="font-size: 12px; color: var(--text-muted);">
-                            Last sync: @(Model.XeroLastSyncAt?.ToString("MMM dd, h:mm tt") ?? "Never")
-                        </span>
-                    }
-                    else
-                    {
-                        <span class="badge badge-muted">Not Connected</span>
-                    }
+<!-- Tab Navigation -->
+<div class="ig-tabs no-print">
+    <button class="ig-tab ig-tab-active" data-tab="xero" onclick="switchTab('xero')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+        Xero Accounting
+        @if (Model.XeroConnected) { <span class="ig-tab-badge ig-badge-green">Connected</span> }
+    </button>
+    <button class="ig-tab" data-tab="paymongo" onclick="switchTab('paymongo')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+        PayMongo
+        @if (Model.PayMongoEnabled) { <span class="ig-tab-badge ig-badge-green">Enabled</span> }
+    </button>
+</div>
+
+<!-- ═══════ XERO TAB ═══════ -->
+<div class="ig-tab-panel ig-tab-panel-active" id="tab-xero">
+    <!-- Xero Header -->
+    <div class="card" style="margin-bottom: 20px;">
+        <div class="card-body">
+            <div class="ig-integration-header">
+                <div class="ig-integration-info">
+                    <div class="ig-icon ig-icon-blue">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                    </div>
+                    <div>
+                        <h3 class="ig-integration-name">Xero Accounting</h3>
+                        <div class="ig-integration-meta">
+                            @if (Model.XeroConnected)
+                            {
+                                <span class="badge badge-success">Connected</span>
+                                <span class="ig-meta-text">Last sync: @(Model.XeroLastSyncAt?.ToString("MMM dd, h:mm tt") ?? "Never")</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-muted">Not Connected</span>
+                            }
+                        </div>
+                    </div>
                 </div>
+                <form asp-action="SyncXero" method="post" style="margin: 0;">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-primary btn-sm" onclick="this.disabled=true; this.innerText='Syncing...'; this.form.submit();">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                        Sync Now
+                    </button>
+                </form>
             </div>
         </div>
-        <form asp-action="SyncXero" method="post" style="margin: 0;">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-primary btn-sm" onclick="this.disabled=true; this.innerText='Syncing...'; this.form.submit();">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
-                Sync Now
-            </button>
-        </form>
     </div>
 
     <!-- Xero Stats -->
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
-        <div style="background: #f8fafc; border-radius: 8px; padding: 14px; text-align: center;">
-            <div style="font-size: 22px; font-weight: 700; color: var(--navy);">@Model.XeroSyncCount</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Total Syncs</div>
+    <div class="ig-stats ig-stats-3">
+        <div class="ig-stat-card">
+            <div class="ig-stat-icon ig-stat-navy">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+            </div>
+            <div class="ig-stat-content">
+                <span class="ig-stat-label">Total Syncs</span>
+                <span class="ig-stat-value" style="color: #1e3a8a;">@Model.XeroSyncCount</span>
+            </div>
         </div>
-        <div style="background: #ecfdf5; border-radius: 8px; padding: 14px; text-align: center;">
-            <div style="font-size: 22px; font-weight: 700; color: var(--emerald);">@(Model.XeroSyncCount - Model.XeroFailedCount)</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Successful</div>
+        <div class="ig-stat-card">
+            <div class="ig-stat-icon ig-stat-emerald">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            </div>
+            <div class="ig-stat-content">
+                <span class="ig-stat-label">Successful</span>
+                <span class="ig-stat-value" style="color: #059669;">@(Model.XeroSyncCount - Model.XeroFailedCount)</span>
+            </div>
         </div>
-        <div style="background: #fef2f2; border-radius: 8px; padding: 14px; text-align: center;">
-            <div style="font-size: 22px; font-weight: 700; color: #dc2626;">@Model.XeroFailedCount</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Failed</div>
+        <div class="ig-stat-card">
+            <div class="ig-stat-icon ig-stat-red">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+            </div>
+            <div class="ig-stat-content">
+                <span class="ig-stat-label">Failed</span>
+                <span class="ig-stat-value" style="color: #dc2626;">@Model.XeroFailedCount</span>
+            </div>
         </div>
     </div>
 
     <!-- Xero Sync Log Table -->
-    <h4 style="margin: 0 0 12px; font-size: 14px; font-weight: 600;">Recent Sync Activity</h4>
-    <div class="table-container">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Timestamp</th>
-                    <th>Type</th>
-                    <th>Reference</th>
-                    <th>Status</th>
-                    <th>Xero ID</th>
-                    <th>Synced By</th>
-                    <th>Message</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var sync in Model.RecentXeroSyncs)
-                {
-                    <tr>
-                        <td class="text-muted" style="font-size: 12px; white-space: nowrap;">@sync.SyncedAt.ToString("MMM dd, h:mm tt")</td>
-                        <td><span class="badge badge-muted">@sync.SyncType</span></td>
-                        <td class="fw-medium">@(sync.EntityReference ?? "—")</td>
-                        <td><span class="badge @sync.StatusClass">@sync.Status</span></td>
-                        <td class="text-muted" style="font-size: 12px; font-family: monospace;">@(sync.XeroRecordId ?? "—")</td>
-                        <td class="text-muted" style="font-size: 13px;">@sync.SyncedByName</td>
-                        <td class="text-muted" style="font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@sync.Message">@(sync.Message ?? "—")</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+    <div class="card">
+        <div class="card-header"><h3 class="ig-section-title">Recent Sync Activity</h3></div>
+        <div class="card-body p-0">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Type</th>
+                            <th>Reference</th>
+                            <th>Status</th>
+                            <th>Xero ID</th>
+                            <th>Synced By</th>
+                            <th>Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var sync in Model.RecentXeroSyncs)
+                        {
+                            <tr>
+                                <td class="ig-ts">@sync.SyncedAt.ToString("MMM dd, h:mm tt")</td>
+                                <td><span class="badge badge-muted">@sync.SyncType</span></td>
+                                <td class="fw-medium">@(sync.EntityReference ?? "—")</td>
+                                <td><span class="badge @sync.StatusClass">@sync.Status</span></td>
+                                <td class="ig-mono">@(sync.XeroRecordId ?? "—")</td>
+                                <td class="text-muted" style="font-size: 13px;">@sync.SyncedByName</td>
+                                <td class="ig-msg" title="@sync.Message">@(sync.Message ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════
-     PAYMONGO
-     ═══════════════════════════════════════════════════════ -->
-<div class="section-card">
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
-        <div style="display: flex; align-items: center; gap: 14px;">
-            <div style="width: 48px; height: 48px; border-radius: 12px; background: #ecfdf5; color: var(--emerald); display: flex; align-items: center; justify-content: center;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-            </div>
-            <div>
-                <h3 style="margin: 0; font-size: 18px; font-weight: 600;">PayMongo</h3>
-                <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-                    @if (Model.PayMongoEnabled)
-                    {
-                        <span class="badge badge-success">Enabled</span>
-                    }
-                    else
-                    {
-                        <span class="badge badge-muted">Disabled</span>
-                    }
+<!-- ═══════ PAYMONGO TAB ═══════ -->
+<div class="ig-tab-panel" id="tab-paymongo">
+    <!-- PayMongo Header -->
+    <div class="card" style="margin-bottom: 20px;">
+        <div class="card-body">
+            <div class="ig-integration-header">
+                <div class="ig-integration-info">
+                    <div class="ig-icon ig-icon-green">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                    </div>
+                    <div>
+                        <h3 class="ig-integration-name">PayMongo</h3>
+                        <div class="ig-integration-meta">
+                            @if (Model.PayMongoEnabled)
+                            {
+                                <span class="badge badge-success">Enabled</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-muted">Disabled</span>
+                            }
+                        </div>
+                    </div>
                 </div>
+                <form asp-action="TestPayMongoConnection" method="post" style="margin: 0;">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-secondary btn-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        Test Connection
+                    </button>
+                </form>
             </div>
         </div>
-        <form asp-action="TestPayMongoConnection" method="post" style="margin: 0;">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-secondary btn-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                Test Connection
-            </button>
-        </form>
     </div>
 
     <!-- PayMongo Stats -->
-    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px;">
-        <div style="background: #f8fafc; border-radius: 8px; padding: 14px; text-align: center;">
-            <div style="font-size: 22px; font-weight: 700; color: var(--navy);">@Model.PayMongoTransactions</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Transactions</div>
+    <div class="ig-stats ig-stats-2">
+        <div class="ig-stat-card">
+            <div class="ig-stat-icon ig-stat-navy">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+            </div>
+            <div class="ig-stat-content">
+                <span class="ig-stat-label">Transactions</span>
+                <span class="ig-stat-value" style="color: #1e3a8a;">@Model.PayMongoTransactions</span>
+            </div>
         </div>
-        <div style="background: #ecfdf5; border-radius: 8px; padding: 14px; text-align: center;">
-            <div style="font-size: 22px; font-weight: 700; color: var(--emerald);">&#8369;@Model.PayMongoTotalAmount.ToString("N2")</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Total Processed</div>
+        <div class="ig-stat-card">
+            <div class="ig-stat-icon ig-stat-emerald">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            </div>
+            <div class="ig-stat-content">
+                <span class="ig-stat-label">Total Processed</span>
+                <span class="ig-stat-value" style="color: #059669;">&#8369;@Model.PayMongoTotalAmount.ToString("N2")</span>
+            </div>
         </div>
     </div>
 
     <!-- PayMongo Transaction Table -->
-    <h4 style="margin: 0 0 12px; font-size: 14px; font-weight: 600;">Recent Transactions</h4>
-    <div class="table-container">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>PayMongo ID</th>
-                    <th>Type</th>
-                    <th>Customer</th>
-                    <th>Invoice</th>
-                    <th style="text-align: right;">Amount</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var txn in Model.RecentPayMongoTxns)
-                {
-                    <tr>
-                        <td class="text-muted" style="font-size: 12px; white-space: nowrap;">@txn.CreatedAt.ToString("MMM dd, h:mm tt")</td>
-                        <td style="font-size: 12px; font-family: monospace; color: var(--text-muted);">@txn.PayMongoId</td>
-                        <td><span class="badge badge-muted">@txn.Type</span></td>
-                        <td class="fw-medium">@(txn.CustomerName ?? "—")</td>
-                        <td class="text-muted">@(txn.InvoiceNo ?? "—")</td>
-                        <td style="text-align: right; font-weight: 500;">&#8369;@txn.Amount.ToString("N2")</td>
-                        <td><span class="badge @txn.StatusClass">@txn.Status</span></td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+    <div class="card">
+        <div class="card-header"><h3 class="ig-section-title">Recent Transactions</h3></div>
+        <div class="card-body p-0">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>PayMongo ID</th>
+                            <th>Type</th>
+                            <th>Customer</th>
+                            <th>Invoice</th>
+                            <th class="text-right">Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var txn in Model.RecentPayMongoTxns)
+                        {
+                            <tr>
+                                <td class="ig-ts">@txn.CreatedAt.ToString("MMM dd, h:mm tt")</td>
+                                <td class="ig-mono">@txn.PayMongoId</td>
+                                <td><span class="badge badge-muted">@txn.Type</span></td>
+                                <td class="fw-medium">@(txn.CustomerName ?? "—")</td>
+                                <td class="text-muted">@(txn.InvoiceNo ?? "—")</td>
+                                <td class="text-right fw-medium">&#8369;@txn.Amount.ToString("N2")</td>
+                                <td><span class="badge @txn.StatusClass">@txn.Status</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
+
+<script>
+function switchTab(tab) {
+    // Toggle tab buttons
+    document.querySelectorAll('.ig-tab').forEach(t => t.classList.remove('ig-tab-active'));
+    document.querySelector('[data-tab="' + tab + '"]').classList.add('ig-tab-active');
+    // Toggle panels
+    document.querySelectorAll('.ig-tab-panel').forEach(p => p.classList.remove('ig-tab-panel-active'));
+    document.getElementById('tab-' + tab).classList.add('ig-tab-panel-active');
+}
+</script>
+
+<style>
+    .ig-page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .ig-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .ig-subtitle { font-size: 14px; color: #6b7280; }
+
+    /* Tabs */
+    .ig-tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 2px solid #e5e7eb; padding-bottom: 0; }
+    .ig-tab { display: flex; align-items: center; gap: 8px; padding: 12px 20px; font-size: 14px; font-weight: 500; color: #6b7280; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; cursor: pointer; transition: all 0.15s; border-radius: 8px 8px 0 0; }
+    .ig-tab:hover { color: #1f2937; background: #f9fafb; }
+    .ig-tab-active { color: #1e3a8a; border-bottom-color: #1e3a8a; background: #f0f4ff; }
+    .ig-tab-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+    .ig-badge-green { background: #dcfce7; color: #16a34a; }
+
+    /* Tab Panels */
+    .ig-tab-panel { display: none; }
+    .ig-tab-panel-active { display: block; }
+
+    /* Integration header */
+    .ig-integration-header { display: flex; align-items: center; justify-content: space-between; }
+    .ig-integration-info { display: flex; align-items: center; gap: 14px; }
+    .ig-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .ig-icon-blue { background: #e0f2fe; color: #0284c7; }
+    .ig-icon-green { background: #ecfdf5; color: #059669; }
+    .ig-integration-name { margin: 0; font-size: 18px; font-weight: 600; color: #1f2937; }
+    .ig-integration-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+    .ig-meta-text { font-size: 12px; color: #9ca3af; }
+
+    /* Stats */
+    .ig-stats { display: grid; gap: 16px; margin-bottom: 20px; }
+    .ig-stats-3 { grid-template-columns: repeat(3, 1fr); }
+    .ig-stats-2 { grid-template-columns: repeat(2, 1fr); }
+    .ig-stat-card { display: flex; align-items: center; gap: 14px; padding: 18px 20px; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .ig-stat-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .ig-stat-navy    { background: rgba(30,58,138,0.08); color: #1e3a8a; }
+    .ig-stat-emerald { background: rgba(5,150,105,0.10); color: #059669; }
+    .ig-stat-red     { background: rgba(220,38,38,0.08); color: #dc2626; }
+    .ig-stat-content { display: flex; flex-direction: column; }
+    .ig-stat-value { font-size: 20px; font-weight: 700; color: #1f2937; line-height: 1.2; }
+    .ig-stat-label { font-size: 12px; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+
+    .ig-section-title { margin: 0; font-size: 15px; font-weight: 600; color: #1f2937; }
+    .ig-ts { font-size: 12px; color: #9ca3af; white-space: nowrap; }
+    .ig-mono { font-size: 12px; font-family: 'SFMono-Regular', Consolas, monospace; color: #9ca3af; }
+    .ig-msg { font-size: 12px; color: #9ca3af; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    @@media print { .no-print { display: none !important; } }
+    @@media (max-width: 768px) {
+        .ig-stats-3 { grid-template-columns: 1fr; }
+        .ig-stats-2 { grid-template-columns: 1fr; }
+        .ig-tabs { flex-direction: column; }
+        .ig-page-header { flex-direction: column; gap: 12px; }
+        .ig-integration-header { flex-direction: column; gap: 12px; align-items: flex-start; }
+    }
+</style>

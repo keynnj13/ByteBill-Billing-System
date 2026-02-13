@@ -48,12 +48,12 @@
         </div>
     </div>
     <div class="usr-stat-card">
-        <div class="usr-stat-icon usr-icon-purple">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        <div class="usr-stat-icon usr-icon-green">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
         </div>
         <div class="usr-stat-content">
-            <span class="usr-stat-value">@Model.AdminCount</span>
-            <span class="usr-stat-label">Admins</span>
+            <span class="usr-stat-value">@Model.BillingCount</span>
+            <span class="usr-stat-label">Billing Staff</span>
         </div>
     </div>
     <div class="usr-stat-card">
@@ -183,7 +183,7 @@
     .usr-stat-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .usr-icon-navy    { background: rgba(30,58,138,0.08); color: #1e3a8a; }
     .usr-icon-emerald { background: rgba(16,185,129,0.10); color: #059669; }
-    .usr-icon-purple  { background: rgba(139,92,246,0.10); color: #7c3aed; }
+    .usr-icon-green   { background: rgba(34,197,94,0.10); color: #16a34a; }
     .usr-icon-sky     { background: rgba(2,132,199,0.10); color: #0284c7; }
     .usr-stat-content { display: flex; flex-direction: column; }
     .usr-stat-value { font-size: 22px; font-weight: 700; color: #1f2937; line-height: 1.2; }

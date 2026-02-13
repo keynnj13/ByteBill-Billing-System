@@ -6,148 +6,203 @@
 
 <partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Reports", Url = Url.Action("Index", "Reports") }, new() { Label = "Payments", IsActive = true } } })" />
 
-<div class="page-header">
+<div class="pr-page-header">
     <div>
-        <h1 class="page-title">Payment Report</h1>
-        <p class="page-subtitle">@Model.DateFrom.ToString("MMM dd, yyyy") — @Model.DateTo.ToString("MMM dd, yyyy")</p>
+        <h1 class="pr-title">Payment Report</h1>
+        <p class="pr-subtitle">@Model.DateFrom.ToString("MMM dd, yyyy") — @Model.DateTo.ToString("MMM dd, yyyy")</p>
     </div>
-    <div class="page-actions">
-        <a asp-action="Index" class="btn btn-ghost">
+    <div class="pr-header-actions">
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="window.print()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            Print
+        </button>
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="exportPDF('Payment Report')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export PDF
+        </button>
+        <a asp-action="Index" class="btn btn-ghost btn-sm">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-            Back to Reports
+            Back
         </a>
     </div>
 </div>
 
-<!-- Date Range Filter -->
-<div class="section-card" style="margin-bottom: 20px;">
-    <form method="get" asp-action="Payments" class="filter-bar">
-        <div style="min-width: 160px;">
-            <label style="font-size: 12px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 4px;">From</label>
-            <input type="date" name="from" value="@Model.DateFrom.ToString("yyyy-MM-dd")" class="form-input" />
-        </div>
-        <div style="min-width: 160px;">
-            <label style="font-size: 12px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 4px;">To</label>
-            <input type="date" name="to" value="@Model.DateTo.ToString("yyyy-MM-dd")" class="form-input" />
-        </div>
-        <div style="padding-top: 18px;">
-            <button type="submit" class="btn btn-primary">Apply</button>
-        </div>
+<!-- Date Filter -->
+<div class="pr-controls no-print">
+    <form method="get" asp-action="Payments" class="pr-date-form">
+        <label class="pr-date-label">From</label>
+        <input type="date" name="from" value="@Model.DateFrom.ToString("yyyy-MM-dd")" class="form-input pr-date-input" />
+        <label class="pr-date-label">To</label>
+        <input type="date" name="to" value="@Model.DateTo.ToString("yyyy-MM-dd")" class="form-input pr-date-input" />
+        <button type="submit" class="btn btn-primary btn-sm">Apply</button>
     </form>
 </div>
 
-<!-- Summary Stats -->
-<div class="svc-stats">
-    <div class="svc-stat-card">
-        <div>
-            <span class="svc-stat-label">Total Received</span>
-            <span class="svc-stat-value" style="color: var(--emerald);">&#8369;@Model.TotalReceived.ToString("N2")</span>
+<!-- Stats -->
+<div class="pr-stats">
+    <div class="pr-stat-card">
+        <div class="pr-stat-icon pr-icon-emerald">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        </div>
+        <div class="pr-stat-content">
+            <span class="pr-stat-label">Total Received</span>
+            <span class="pr-stat-value" style="color: #059669;">&#8369;@Model.TotalReceived.ToString("N2")</span>
         </div>
     </div>
-    <div class="svc-stat-card">
-        <div>
-            <span class="svc-stat-label">Transactions</span>
-            <span class="svc-stat-value">@Model.TransactionCount</span>
+    <div class="pr-stat-card">
+        <div class="pr-stat-icon pr-icon-navy">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+        </div>
+        <div class="pr-stat-content">
+            <span class="pr-stat-label">Transactions</span>
+            <span class="pr-stat-value">@Model.TransactionCount</span>
         </div>
     </div>
-    <div class="svc-stat-card">
-        <div>
-            <span class="svc-stat-label">Average Payment</span>
-            <span class="svc-stat-value">&#8369;@Model.AveragePayment.ToString("N2")</span>
+    <div class="pr-stat-card">
+        <div class="pr-stat-icon pr-icon-slate">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        </div>
+        <div class="pr-stat-content">
+            <span class="pr-stat-label">Average Payment</span>
+            <span class="pr-stat-value">&#8369;@Model.AveragePayment.ToString("N2")</span>
         </div>
     </div>
 </div>
 
 <!-- Payment by Method -->
-<div class="section-card" style="margin-bottom: 20px;">
-    <h3 style="margin: 0 0 16px; font-size: 15px; font-weight: 600;">Breakdown by Payment Method</h3>
-    <div class="table-container">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Method</th>
-                    <th style="text-align: right;">Amount</th>
-                    <th style="text-align: center;">Transactions</th>
-                    <th style="text-align: right;">Share</th>
-                </tr>
-            </thead>
-            <tbody>
-                @{
-                    var methodColors = new Dictionary<string, string>
-                    {
-                        ["Cash"] = "#059669",
-                        ["GCash"] = "#0284c7",
-                        ["Card"] = "#7c3aed",
-                        ["PayMongo"] = "#d97706"
-                    };
-                }
-                @foreach (var m in Model.MethodBreakdown)
-                {
-                    var color = methodColors.GetValueOrDefault(m.Method, "#64748b");
+<div class="card" style="margin-bottom: 20px;">
+    <div class="card-header"><h3 class="pr-section-title">Breakdown by Payment Method</h3></div>
+    <div class="card-body p-0">
+        <div class="table-container">
+            <table class="table">
+                <thead>
                     <tr>
-                        <td>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <div style="width: 10px; height: 10px; border-radius: 3px; background: @color;"></div>
-                                <span class="fw-medium">@m.Method</span>
-                            </div>
-                        </td>
-                        <td style="text-align: right;">&#8369;@m.Amount.ToString("N2")</td>
-                        <td style="text-align: center;">@m.Count</td>
-                        <td style="text-align: right;">
-                            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
-                                <div style="width: 80px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
-                                    <div style="height: 100%; width: @m.Percentage%; background: @color; border-radius: 3px;"></div>
-                                </div>
-                                <span style="font-size: 13px; min-width: 42px;">@m.Percentage.ToString("N1")%</span>
-                            </div>
-                        </td>
+                        <th>Method</th>
+                        <th class="text-right">Amount</th>
+                        <th class="text-center">Transactions</th>
+                        <th class="text-right">Share</th>
                     </tr>
-                }
-            </tbody>
-            <tfoot>
-                <tr style="font-weight: 600; border-top: 2px solid var(--border);">
-                    <td>Total</td>
-                    <td style="text-align: right;">&#8369;@Model.TotalReceived.ToString("N2")</td>
-                    <td style="text-align: center;">@Model.TransactionCount</td>
-                    <td style="text-align: right;">100.0%</td>
-                </tr>
-            </tfoot>
-        </table>
+                </thead>
+                <tbody>
+                    @{
+                        var methodColors = new Dictionary<string, string>
+                        {
+                            ["Cash"] = "#059669",
+                            ["GCash"] = "#0284c7",
+                            ["Card"] = "#7c3aed",
+                            ["PayMongo"] = "#d97706"
+                        };
+                    }
+                    @foreach (var m in Model.MethodBreakdown)
+                    {
+                        var color = methodColors.GetValueOrDefault(m.Method, "#64748b");
+                        <tr>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div style="width: 10px; height: 10px; border-radius: 3px; background: @color;"></div>
+                                    <span class="fw-medium">@m.Method</span>
+                                </div>
+                            </td>
+                            <td class="text-right">&#8369;@m.Amount.ToString("N2")</td>
+                            <td class="text-center">@m.Count</td>
+                            <td class="text-right">
+                                <div class="pr-bar-cell">
+                                    <div class="pr-bar-track"><div class="pr-bar-fill" style="width: @m.Percentage%; background: @color;"></div></div>
+                                    <span class="pr-bar-text">@m.Percentage.ToString("N1")%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="pr-tfoot">
+                        <td class="fw-medium">Total</td>
+                        <td class="text-right">&#8369;@Model.TotalReceived.ToString("N2")</td>
+                        <td class="text-center">@Model.TransactionCount</td>
+                        <td class="text-right">100.0%</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
     </div>
 </div>
 
 <!-- Daily Trend -->
-<div class="section-card">
-    <h3 style="margin: 0 0 16px; font-size: 15px; font-weight: 600;">Daily Payment Trend (Last 14 Days)</h3>
-    <div class="table-container">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th style="text-align: right;">Amount</th>
-                    <th style="text-align: center;">Transactions</th>
-                    <th>Volume</th>
-                </tr>
-            </thead>
-            <tbody>
-                @{
-                    var maxDaily = Model.DailyTrend.Any() ? Model.DailyTrend.Max(d => d.Total) : 1;
-                }
-                @foreach (var d in Model.DailyTrend)
-                {
-                    var widthPct = maxDaily > 0 ? (d.Total / maxDaily * 100) : 0;
+<div class="card">
+    <div class="card-header"><h3 class="pr-section-title">Daily Payment Trend (Last 14 Days)</h3></div>
+    <div class="card-body p-0">
+        <div class="table-container">
+            <table class="table">
+                <thead>
                     <tr>
-                        <td class="fw-medium">@d.Date.ToString("MMM dd (ddd)")</td>
-                        <td style="text-align: right;">&#8369;@d.Total.ToString("N2")</td>
-                        <td style="text-align: center;">@d.Count</td>
-                        <td>
-                            <div style="width: 100%; max-width: 200px; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                                <div style="height: 100%; width: @widthPct%; background: var(--navy); border-radius: 4px; transition: width 0.3s;"></div>
-                            </div>
-                        </td>
+                        <th>Date</th>
+                        <th class="text-right">Amount</th>
+                        <th class="text-center">Transactions</th>
+                        <th>Volume</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @{
+                        var maxDaily = Model.DailyTrend.Any() ? Model.DailyTrend.Max(d => d.Total) : 1;
+                    }
+                    @foreach (var d in Model.DailyTrend)
+                    {
+                        var widthPct = maxDaily > 0 ? (d.Total / maxDaily * 100) : 0;
+                        <tr>
+                            <td class="fw-medium">@d.Date.ToString("MMM dd (ddd)")</td>
+                            <td class="text-right">&#8369;@d.Total.ToString("N2")</td>
+                            <td class="text-center">@d.Count</td>
+                            <td>
+                                <div class="pr-volume-bar">
+                                    <div class="pr-volume-fill" style="width: @widthPct%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
+
+<script>
+function exportPDF(title) {
+    var printWin = window.open('', '_blank');
+    var content = document.querySelector('.pr-stats').outerHTML;
+    document.querySelectorAll('.card').forEach(c => content += c.outerHTML);
+    var styles = document.querySelector('style').outerHTML;
+    printWin.document.write('<html><head><title>' + title + '<\/title>' + styles + '<link rel="stylesheet" href="/css/design-system.css" \/><\/head><body style="padding:24px;font-family:system-ui,-apple-system,sans-serif;">' + '<h1 style="font-size:20px;margin-bottom:4px;">' + title + '<\/h1><p style="color:#6b7280;font-size:13px;margin-bottom:20px;">Generated on ' + new Date().toLocaleDateString() + '<\/p>' + content + '<\/body><\/html>');
+    printWin.document.close();
+    setTimeout(function(){ printWin.print(); }, 500);
+}
+</script>
+
+<style>
+    .pr-page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .pr-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .pr-subtitle { font-size: 14px; color: #6b7280; }
+    .pr-header-actions { display: flex; gap: 8px; align-items: center; }
+    .pr-controls { margin-bottom: 20px; }
+    .pr-date-form { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .pr-date-label { font-size: 13px; font-weight: 500; color: #6b7280; }
+    .pr-date-input { width: 160px; }
+    .pr-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .pr-stat-card { display: flex; align-items: center; gap: 14px; padding: 18px 20px; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .pr-stat-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .pr-icon-emerald { background: rgba(5,150,105,0.10); color: #059669; }
+    .pr-icon-navy { background: rgba(30,58,138,0.08); color: #1e3a8a; }
+    .pr-icon-slate { background: rgba(100,116,139,0.10); color: #475569; }
+    .pr-stat-content { display: flex; flex-direction: column; }
+    .pr-stat-value { font-size: 20px; font-weight: 700; color: #1f2937; line-height: 1.2; }
+    .pr-stat-label { font-size: 12px; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+    .pr-section-title { margin: 0; font-size: 15px; font-weight: 600; color: #1f2937; }
+    .pr-bar-cell { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+    .pr-bar-track { width: 80px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+    .pr-bar-fill { height: 100%; border-radius: 3px; }
+    .pr-bar-text { font-size: 13px; min-width: 42px; text-align: right; }
+    .pr-volume-bar { width: 100%; max-width: 200px; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+    .pr-volume-fill { height: 100%; background: #1e3a8a; border-radius: 4px; transition: width 0.3s; }
+    .pr-tfoot td { font-weight: 600; border-top: 2px solid #e5e7eb; }
+    @@media print { .no-print, .pr-header-actions { display: none !important; } }
+    @@media (max-width: 768px) { .pr-stats { grid-template-columns: 1fr; } .pr-page-header { flex-direction: column; gap: 12px; } }
+</style>

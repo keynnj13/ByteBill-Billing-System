@@ -21,6 +21,7 @@ public class UserListViewModel
     // Stats
     public int ActiveCount { get; set; }
     public int AdminCount { get; set; }
+    public int BillingCount { get; set; }
     public int TechnicianCount { get; set; }
 }
 
