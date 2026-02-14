@@ -1,0 +1,98 @@
+@model GlobalUserFormViewModel
+
+<form asp-action="Edit" asp-controller="Users" asp-area="SuperAdmin" method="post"
+      data-ajax="true" data-ajax-method="POST" id="saEditUserForm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+
+    <div class="modal-form-body">
+        <!-- Personal Information -->
+        <div class="form-section">
+            <h4 class="form-section-title">Personal Information</h4>
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="FirstName" class="form-label">First Name <span class="required">*</span></label>
+                    <input asp-for="FirstName" class="form-input" placeholder="Enter first name" />
+                    <span asp-validation-for="FirstName" class="field-validation-error"></span>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="MiddleName" class="form-label">Middle Name</label>
+                    <input asp-for="MiddleName" class="form-input" placeholder="Enter middle name" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="LastName" class="form-label">Last Name <span class="required">*</span></label>
+                    <input asp-for="LastName" class="form-input" placeholder="Enter last name" />
+                    <span asp-validation-for="LastName" class="field-validation-error"></span>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="Phone" class="form-label">Phone</label>
+                    <input asp-for="Phone" class="form-input" placeholder="09XX-XXX-XXXX" />
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Information -->
+        <div class="form-section">
+            <h4 class="form-section-title">Account Information</h4>
+            <div class="form-group">
+                <label asp-for="Email" class="form-label">Email Address <span class="required">*</span></label>
+                <input asp-for="Email" class="form-input" type="email" placeholder="user@shop.com" />
+                <span asp-validation-for="Email" class="field-validation-error"></span>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="ShopId" class="form-label">Shop <span class="required">*</span></label>
+                    <select asp-for="ShopId" class="form-input">
+                        <option value="">Select a shop</option>
+                        @foreach (var shop in Model.AvailableShops)
+                        {
+                            <option value="@shop.Id">@shop.Name</option>
+                        }
+                    </select>
+                    <span asp-validation-for="ShopId" class="field-validation-error"></span>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="Role" class="form-label">Role <span class="required">*</span></label>
+                    <select asp-for="Role" class="form-input">
+                        <option value="">Select a role</option>
+                        @foreach (var r in Enum.GetValues<UserRole>())
+                        {
+                            <option value="@r">@r</option>
+                        }
+                    </select>
+                    <span asp-validation-for="Role" class="field-validation-error"></span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="toggle-label" style="display: flex; align-items: center; gap: 8px; padding-top: 4px;">
+                    <input type="checkbox" asp-for="IsActive" style="width: auto;" />
+                    <span>Active Account</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Password (Optional for edit) -->
+        <div class="form-section">
+            <h4 class="form-section-title">Change Password <span style="font-size: 12px; color: #9ca3af; font-weight: 400;">(leave blank to keep current)</span></h4>
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="Password" class="form-label">New Password</label>
+                    <input asp-for="Password" class="form-input" type="password" placeholder="Minimum 6 characters" />
+                    <span asp-validation-for="Password" class="field-validation-error"></span>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="ConfirmPassword" class="form-label">Confirm Password</label>
+                    <input asp-for="ConfirmPassword" class="form-input" type="password" placeholder="Re-enter password" />
+                    <span asp-validation-for="ConfirmPassword" class="field-validation-error"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-form-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeAjaxModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" onclick="submitAjaxForm(event, 'saEditUserForm')">Save Changes</button>
+    </div>
+</form>

@@ -1,20 +1,424 @@
+@model SystemSettingsViewModel
 @{
     ViewData["Title"] = "Settings";
+    var activeTab = ViewBag.ActiveTab ?? "general";
 }
+
+<style>
+    .stg-tabs { display: flex; gap: 4px; background: #f1f5f9; border-radius: 10px; padding: 4px; margin-bottom: 24px; }
+    .stg-tab { padding: 10px 20px; border-radius: 8px; border: none; background: transparent; color: #64748b; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px; }
+    .stg-tab:hover { color: #1f2937; background: rgba(255,255,255,0.5); }
+    .stg-tab-active { background: #fff; color: #1f2937; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .stg-panel { display: none; }
+    .stg-panel-active { display: block; }
+
+    .stg-card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; padding: 28px; margin-bottom: 24px; }
+    .stg-card-title { font-size: 16px; font-weight: 600; color: #1f2937; margin-bottom: 4px; }
+    .stg-card-desc { font-size: 13px; color: #9ca3af; margin-bottom: 24px; }
+
+    .stg-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .stg-form-group { display: flex; flex-direction: column; gap: 6px; }
+    .stg-form-group.full-width { grid-column: 1 / -1; }
+    .stg-form-label { font-size: 13px; font-weight: 500; color: #374151; }
+    .stg-form-hint { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+    .stg-form-input { padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; color: #1f2937; transition: border-color 0.2s; background: #fff; }
+    .stg-form-input:focus { outline: none; border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14,165,233,0.1); }
+    .stg-form-select { padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; color: #1f2937; background: #fff; cursor: pointer; }
+    .stg-form-select:focus { outline: none; border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14,165,233,0.1); }
+
+    .stg-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid #f3f4f6; }
+    .stg-toggle-row:last-child { border-bottom: none; }
+    .stg-toggle-info { display: flex; flex-direction: column; gap: 2px; }
+    .stg-toggle-label { font-size: 14px; font-weight: 500; color: #1f2937; }
+    .stg-toggle-desc { font-size: 12px; color: #9ca3af; }
+    .stg-toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+    .stg-toggle input { opacity: 0; width: 0; height: 0; }
+    .stg-toggle-slider { position: absolute; cursor: pointer; inset: 0; background: #d1d5db; border-radius: 24px; transition: 0.3s; }
+    .stg-toggle-slider:before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.3s; }
+    .stg-toggle input:checked + .stg-toggle-slider { background: #0ea5e9; }
+    .stg-toggle input:checked + .stg-toggle-slider:before { transform: translateX(20px); }
+
+    .stg-form-footer { display: flex; justify-content: flex-end; gap: 12px; padding-top: 20px; border-top: 1px solid #e5e7eb; margin-top: 8px; }
+
+    .stg-section-divider { border: none; border-top: 1px solid #e5e7eb; margin: 24px 0; }
+
+    .stg-smtp-test { display: flex; gap: 12px; align-items: flex-end; }
+    .stg-smtp-test .stg-form-group { flex: 1; }
+
+    .stg-success-toast { position: fixed; top: 24px; right: 24px; z-index: 9999; background: #10b981; color: #fff; padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); animation: stg-slideIn 0.3s ease; }
+    @@keyframes stg-slideIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+
+    @@media (max-width: 768px) {
+        .stg-tabs { flex-direction: column; }
+        .stg-form-grid { grid-template-columns: 1fr; }
+        .stg-smtp-test { flex-direction: column; }
+    }
+</style>
 
 <partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Settings", IsActive = true } } })" />
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">Settings</h1>
-        <p class="text-muted">Configure system settings</p>
+        <h1 class="page-title">System Settings</h1>
+        <p class="text-muted">Configure platform-wide settings and preferences</p>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body text-center py-5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-        <h3 class="text-muted">Coming Soon</h3>
-        <p class="text-muted">This module is currently under development.</p>
-    </div>
+<!-- Tabs -->
+<div class="stg-tabs">
+    <button class="stg-tab @(activeTab == "general" ? "stg-tab-active" : "")" data-tab="general" onclick="switchTab('general')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        General
+    </button>
+    <button class="stg-tab @(activeTab == "security" ? "stg-tab-active" : "")" data-tab="security" onclick="switchTab('security')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        Security
+    </button>
+    <button class="stg-tab @(activeTab == "email" ? "stg-tab-active" : "")" data-tab="email" onclick="switchTab('email')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+        Email / SMTP
+    </button>
 </div>
+
+<!-- ============ GENERAL TAB ============ -->
+<div id="tab-general" class="stg-panel @(activeTab == "general" ? "stg-panel-active" : "")">
+    <form id="generalForm" asp-action="SaveGeneral" method="post">
+        @Html.AntiForgeryToken()
+        <div class="stg-card">
+            <h3 class="stg-card-title">Platform Information</h3>
+            <p class="stg-card-desc">Basic platform identity and display settings</p>
+            <div class="stg-form-grid">
+                <div class="stg-form-group">
+                    <label class="stg-form-label" asp-for="PlatformName"></label>
+                    <input class="stg-form-input" asp-for="PlatformName" />
+                    <span class="stg-form-hint">Displayed in the header and login page</span>
+                </div>
+                <div class="stg-form-group">
+                    <label class="stg-form-label" asp-for="Tagline"></label>
+                    <input class="stg-form-input" asp-for="Tagline" />
+                    <span class="stg-form-hint">Short description shown on the login page</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="stg-card">
+            <h3 class="stg-card-title">Regional Settings</h3>
+            <p class="stg-card-desc">Configure currency, timezone, and date display preferences</p>
+            <div class="stg-form-grid">
+                <div class="stg-form-group">
+                    <label class="stg-form-label" asp-for="Currency"></label>
+                    <select class="stg-form-select" asp-for="Currency">
+                        <option value="PHP">PHP - Philippine Peso (&#8369;)</option>
+                        <option value="USD">USD - US Dollar ($)</option>
+                        <option value="EUR">EUR - Euro (€)</option>
+                        <option value="GBP">GBP - British Pound (£)</option>
+                        <option value="JPY">JPY - Japanese Yen (¥)</option>
+                        <option value="SGD">SGD - Singapore Dollar (S$)</option>
+                    </select>
+                </div>
+                <div class="stg-form-group">
+                    <label class="stg-form-label" asp-for="Timezone"></label>
+                    <select class="stg-form-select" asp-for="Timezone">
+                        <option value="Asia/Manila">Asia/Manila (UTC+8)</option>
+                        <option value="Asia/Singapore">Asia/Singapore (UTC+8)</option>
+                        <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
+                        <option value="America/New_York">America/New_York (UTC-5)</option>
+                        <option value="America/Los_Angeles">America/Los_Angeles (UTC-8)</option>
+                        <option value="Europe/London">Europe/London (UTC+0)</option>
+                        <option value="Australia/Sydney">Australia/Sydney (UTC+11)</option>
+                    </select>
+                </div>
+                <div class="stg-form-group">
+                    <label class="stg-form-label" asp-for="DateFormat"></label>
+                    <select class="stg-form-select" asp-for="DateFormat">
+                        <option value="MM/dd/yyyy">MM/dd/yyyy (01/15/2025)</option>
+                        <option value="dd/MM/yyyy">dd/MM/yyyy (15/01/2025)</option>
+                        <option value="yyyy-MM-dd">yyyy-MM-dd (2025-01-15)</option>
+                        <option value="MMM dd, yyyy">MMM dd, yyyy (Jan 15, 2025)</option>
+                        <option value="dd MMM yyyy">dd MMM yyyy (15 Jan 2025)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="stg-form-footer">
+            <button type="button" class="btn btn-secondary" onclick="resetForm('generalForm')">Reset</button>
+            <button type="button" class="btn btn-primary" onclick="saveSettings('generalForm', '@Url.Action("SaveGeneral")')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                Save General Settings
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- ============ SECURITY TAB ============ -->
+<div id="tab-security" class="stg-panel @(activeTab == "security" ? "stg-panel-active" : "")">
+    <form id="securityForm" asp-action="SaveSecurity" method="post">
+        @Html.AntiForgeryToken()
+        <div class="stg-card">
+            <h3 class="stg-card-title">Password Policy</h3>
+            <p class="stg-card-desc">Configure password strength requirements for all users</p>
+            <div class="stg-form-grid">
+                <div class="stg-form-group">
+                    <label class="stg-form-label" asp-for="MinPasswordLength"></label>
+                    <input type="number" class="stg-form-input" asp-for="MinPasswordLength" min="6" max="32" />
+                    <span class="stg-form-hint">Minimum number of characters (6–32)</span>
+                </div>
+            </div>
+
+            <hr class="stg-section-divider" />
+
+            <div class="stg-toggle-row">
+                <div class="stg-toggle-info">
+                    <span class="stg-toggle-label">Require Uppercase Letters</span>
+                    <span class="stg-toggle-desc">Password must contain at least one uppercase letter (A–Z)</span>
+                </div>
+                <label class="stg-toggle">
+                    <input type="checkbox" asp-for="RequireUppercase" />
+                    <span class="stg-toggle-slider"></span>
+                </label>
+            </div>
+            <div class="stg-toggle-row">
+                <div class="stg-toggle-info">
+                    <span class="stg-toggle-label">Require Numbers</span>
+                    <span class="stg-toggle-desc">Password must contain at least one digit (0–9)</span>
+                </div>
+                <label class="stg-toggle">
+                    <input type="checkbox" asp-for="RequireNumbers" />
+                    <span class="stg-toggle-slider"></span>
+                </label>
+            </div>
+            <div class="stg-toggle-row">
+                <div class="stg-toggle-info">
+                    <span class="stg-toggle-label">Require Special Characters</span>
+                    <span class="stg-toggle-desc">Password must contain at least one special character (@@#$%&amp;!)</span>
+                </div>
+                <label class="stg-toggle">
+                    <input type="checkbox" asp-for="RequireSpecialChars" />
+                    <span class="stg-toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="stg-card">
+            <h3 class="stg-card-title">Session &amp; Authentication</h3>
+            <p class="stg-card-desc">Configure session duration and login attempt limits</p>
+            <div class="stg-form-grid">
+                <div class="stg-form-group">
+                    <label class="stg-form-label" asp-for="SessionTimeout"></label>
+                    <input type="number" class="stg-form-input" asp-for="SessionTimeout" min="5" max="1440" />
+                    <span class="stg-form-hint">Auto-logout after inactivity (5–1440 minutes)</span>
+                </div>
+                <div class="stg-form-group">
+                    <label class="stg-form-label" asp-for="MaxLoginAttempts"></label>
+                    <input type="number" class="stg-form-input" asp-for="MaxLoginAttempts" min="3" max="20" />
+                    <span class="stg-form-hint">Account locks after this many failed attempts</span>
+                </div>
+            </div>
+
+            <hr class="stg-section-divider" />
+
+            <div class="stg-toggle-row">
+                <div class="stg-toggle-info">
+                    <span class="stg-toggle-label">Enable Two-Factor Authentication (2FA)</span>
+                    <span class="stg-toggle-desc">Require users to verify identity via OTP on login</span>
+                </div>
+                <label class="stg-toggle">
+                    <input type="checkbox" asp-for="Enable2FA" />
+                    <span class="stg-toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="stg-form-footer">
+            <button type="button" class="btn btn-secondary" onclick="resetForm('securityForm')">Reset</button>
+            <button type="button" class="btn btn-primary" onclick="saveSettings('securityForm', '@Url.Action("SaveSecurity")')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                Save Security Settings
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- ============ EMAIL / SMTP TAB ============ -->
+<div id="tab-email" class="stg-panel @(activeTab == "email" ? "stg-panel-active" : "")">
+    <form id="emailForm" asp-action="SaveEmail" method="post">
+        @Html.AntiForgeryToken()
+        <div class="stg-card">
+            <h3 class="stg-card-title">SMTP Server Configuration</h3>
+            <p class="stg-card-desc">Configure the outgoing mail server for system notifications</p>
+            <div class="stg-form-grid">
+                <div class="stg-form-group">
+                    <label class="stg-form-label" asp-for="SmtpHost"></label>
+                    <input class="stg-form-input" asp-for="SmtpHost" placeholder="smtp.gmail.com" />
+                </div>
+                <div class="stg-form-group">
+                    <label class="stg-form-label" asp-for="SmtpPort"></label>
+                    <input type="number" class="stg-form-input" asp-for="SmtpPort" min="1" max="65535" />
+                </div>
+                <div class="stg-form-group">
+                    <label class="stg-form-label" asp-for="SmtpUsername"></label>
+                    <input class="stg-form-input" asp-for="SmtpUsername" placeholder="user@gmail.com" />
+                </div>
+                <div class="stg-form-group">
+                    <label class="stg-form-label" asp-for="SmtpPassword"></label>
+                    <input type="password" class="stg-form-input" asp-for="SmtpPassword" placeholder="••••••••" />
+                </div>
+            </div>
+
+            <hr class="stg-section-divider" />
+
+            <div class="stg-toggle-row">
+                <div class="stg-toggle-info">
+                    <span class="stg-toggle-label">Use SSL / TLS</span>
+                    <span class="stg-toggle-desc">Encrypt emails in transit using SSL/TLS (recommended)</span>
+                </div>
+                <label class="stg-toggle">
+                    <input type="checkbox" asp-for="SmtpUseSsl" />
+                    <span class="stg-toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="stg-card">
+            <h3 class="stg-card-title">Sender Details</h3>
+            <p class="stg-card-desc">Configure the default sender name and email address</p>
+            <div class="stg-form-grid">
+                <div class="stg-form-group">
+                    <label class="stg-form-label" asp-for="FromEmail"></label>
+                    <input class="stg-form-input" asp-for="FromEmail" placeholder="noreply@bytebill.ph" />
+                </div>
+                <div class="stg-form-group">
+                    <label class="stg-form-label" asp-for="FromName"></label>
+                    <input class="stg-form-input" asp-for="FromName" placeholder="ByteBill Notifications" />
+                </div>
+            </div>
+
+            <hr class="stg-section-divider" />
+
+            <div class="stg-toggle-row">
+                <div class="stg-toggle-info">
+                    <span class="stg-toggle-label">Enable Email Notifications</span>
+                    <span class="stg-toggle-desc">Send system notifications, alerts, and reports via email</span>
+                </div>
+                <label class="stg-toggle">
+                    <input type="checkbox" asp-for="EnableEmailNotifications" />
+                    <span class="stg-toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="stg-card">
+            <h3 class="stg-card-title">Test Email</h3>
+            <p class="stg-card-desc">Send a test email to verify your SMTP configuration</p>
+            <div class="stg-smtp-test">
+                <div class="stg-form-group">
+                    <label class="stg-form-label">Recipient Email</label>
+                    <input type="email" id="testEmailAddress" class="stg-form-input" placeholder="test@example.com" />
+                </div>
+                <button type="button" class="btn btn-secondary" onclick="sendTestEmail()" style="height: 40px; white-space: nowrap; margin-bottom: 6px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    Send Test Email
+                </button>
+            </div>
+        </div>
+
+        <div class="stg-form-footer">
+            <button type="button" class="btn btn-secondary" onclick="resetForm('emailForm')">Reset</button>
+            <button type="button" class="btn btn-primary" onclick="saveSettings('emailForm', '@Url.Action("SaveEmail")')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                Save Email Settings
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Success Toast -->
+<div id="stgToast" class="stg-success-toast" style="display: none;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+    <span id="stgToastMessage"></span>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            showToast('@TempData["SuccessMessage"]');
+        });
+    </script>
+}
+
+<script>
+    function switchTab(tab) {
+        document.querySelectorAll('.stg-tab').forEach(t => t.classList.remove('stg-tab-active'));
+        document.querySelectorAll('.stg-panel').forEach(p => p.classList.remove('stg-panel-active'));
+        document.querySelector(`[data-tab="${tab}"]`).classList.add('stg-tab-active');
+        document.getElementById(`tab-${tab}`).classList.add('stg-panel-active');
+    }
+
+    function saveSettings(formId, url) {
+        var form = document.getElementById(formId);
+        var formData = new FormData(form);
+
+        // Handle unchecked checkboxes
+        form.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+            if (!cb.checked) {
+                formData.set(cb.name, 'false');
+            }
+        });
+
+        fetch(url, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message);
+            } else {
+                alert(data.message || 'Failed to save settings.');
+            }
+        })
+        .catch(() => alert('An error occurred while saving settings.'));
+    }
+
+    function sendTestEmail() {
+        var email = document.getElementById('testEmailAddress').value;
+        if (!email) {
+            alert('Please enter a recipient email address.');
+            return;
+        }
+
+        var token = document.querySelector('#emailForm input[name="__RequestVerificationToken"]').value;
+        var formData = new FormData();
+        formData.append('testEmailAddress', email);
+        formData.append('__RequestVerificationToken', token);
+
+        fetch('@Url.Action("TestEmail")', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message);
+            } else {
+                alert(data.message || 'Failed to send test email.');
+            }
+        })
+        .catch(() => alert('An error occurred while sending test email.'));
+    }
+
+    function resetForm(formId) {
+        document.getElementById(formId).reset();
+    }
+
+    function showToast(message) {
+        var toast = document.getElementById('stgToast');
+        document.getElementById('stgToastMessage').textContent = message;
+        toast.style.display = 'flex';
+        setTimeout(function () { toast.style.display = 'none'; }, 4000);
+    }
+</script>

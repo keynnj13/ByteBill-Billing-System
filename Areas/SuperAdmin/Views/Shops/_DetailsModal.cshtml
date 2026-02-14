@@ -1,0 +1,115 @@
+@model ShopDetailViewModel
+
+<div class="modal-detail-body">
+    <!-- Shop Header -->
+    <div style="display: flex; align-items: center; gap: 16px; padding-bottom: 20px; border-bottom: 1px solid var(--border, #e5e7eb); margin-bottom: 20px;">
+        <div style="width: 56px; height: 56px; border-radius: 12px; background: rgba(59,130,246,0.1); color: #3b82f6; font-weight: 700; font-size: 20px; display: flex; align-items: center; justify-content: center;">
+            @Model.Initials
+        </div>
+        <div style="flex: 1;">
+            <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1f2937;">@Model.Name</h3>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                <span class="badge @Model.StatusClass">@Model.Status</span>
+                <span style="font-size: 12px; color: #9ca3af;">Since @Model.CreatedAt.ToString("MMM yyyy")</span>
+            </div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="openAjaxModal('@Url.Action("EditModal", "Shops", new { area = "SuperAdmin", id = Model.Id })', 'Edit Shop')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="m18.5 2.5 2.5 2.5L12 14l-4 1 1-4 9-9.5z"></path></svg>
+            Edit
+        </button>
+    </div>
+
+    <!-- Quick Stats -->
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
+        <div style="background: #f8fafc; border-radius: 8px; padding: 14px; text-align: center;">
+            <div style="font-size: 20px; font-weight: 700; color: #3b82f6;">@Model.UserCount</div>
+            <div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">Users</div>
+        </div>
+        <div style="background: #f8fafc; border-radius: 8px; padding: 14px; text-align: center;">
+            <div style="font-size: 20px; font-weight: 700; color: #8b5cf6;">@Model.JobOrderCount</div>
+            <div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">Job Orders</div>
+        </div>
+        <div style="background: #f8fafc; border-radius: 8px; padding: 14px; text-align: center;">
+            <div style="font-size: 20px; font-weight: 700; color: #10b981;">&#8369;@Model.TotalRevenue.ToString("N0")</div>
+            <div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">Revenue</div>
+        </div>
+        <div style="background: #f8fafc; border-radius: 8px; padding: 14px; text-align: center;">
+            <div style="font-size: 20px; font-weight: 700; color: #f59e0b;">@Model.ActiveJobOrders</div>
+            <div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">Active Jobs</div>
+        </div>
+    </div>
+
+    <!-- Contact Information -->
+    <div class="form-section" style="margin-bottom: 16px;">
+        <h4 class="form-section-title">Contact Information</h4>
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="detail-label">Owner</span>
+                <span class="detail-value">@Model.Owner</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Email</span>
+                <span class="detail-value"><a href="mailto:@Model.Email" style="color: #3b82f6; text-decoration: none;">@Model.Email</a></span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Phone</span>
+                <span class="detail-value">@(Model.Phone ?? "—")</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Address</span>
+                <span class="detail-value">@(Model.Address ?? "—")</span>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.Notes))
+            {
+                <div class="detail-item">
+                    <span class="detail-label">Notes</span>
+                    <span class="detail-value">@Model.Notes</span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Shop Users -->
+    @if (Model.RecentUsers.Any())
+    {
+        <div class="form-section">
+            <h4 class="form-section-title">Shop Users</h4>
+            <div class="table-container">
+                <table class="table table-compact">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Email</th>
+                            <th class="text-center">Role</th>
+                            <th class="text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in Model.RecentUsers)
+                        {
+                            <tr>
+                                <td><span style="font-weight: 500; color: #1f2937;">@user.FullName</span></td>
+                                <td style="font-size: 13px; color: #6b7280;">@user.Email</td>
+                                <td class="text-center"><span class="badge @user.RoleClass">@user.RoleName</span></td>
+                                <td class="text-center">
+                                    @if (user.IsActive)
+                                    {
+                                        <span class="badge badge-success">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-muted">Inactive</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="modal-form-footer">
+    <button type="button" class="btn btn-secondary" onclick="closeAjaxModal()">Close</button>
+</div>
