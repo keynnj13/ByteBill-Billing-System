@@ -103,6 +103,8 @@ public class PaymentCreateViewModel
     public string CustomerName { get; set; } = string.Empty;
     public decimal InvoiceBalance { get; set; }
     
+    public List<AvailableInvoiceOption> AvailableInvoices { get; set; } = new();
+    
     [Required(ErrorMessage = "Amount is required")]
     [Range(0.01, double.MaxValue, ErrorMessage = "Amount must be greater than 0")]
     [Display(Name = "Amount")]
@@ -151,4 +153,12 @@ public class PaymentFormViewModel
     [StringLength(500)]
     [Display(Name = "Notes")]
     public string? Notes { get; set; }
+}
+
+public class AvailableInvoiceOption
+{
+    public long InvoiceId { get; set; }
+    public string InvoiceNumber { get; set; } = string.Empty;
+    public string CustomerName { get; set; } = string.Empty;
+    public decimal Balance { get; set; }
 }

@@ -133,6 +133,7 @@ public class InvoiceCreateViewModel
     
     public List<CustomerOption> Customers { get; set; } = new();
     public List<ServiceOption> AvailableServices { get; set; } = new();
+    public List<AvailableJobOrderOption> AvailableJobOrders { get; set; } = new();
     
     public List<InvoiceLineItemFormViewModel> LineItems { get; set; } = new();
     public List<LineItemInput> Items { get; set; } = new();
@@ -189,4 +190,12 @@ public class InvoiceLineItemFormViewModel
     [Required]
     [Range(0, double.MaxValue)]
     public decimal UnitPrice { get; set; }
+}
+
+public class AvailableJobOrderOption
+{
+    public long JobOrderId { get; set; }
+    public string JobNumber { get; set; } = string.Empty;
+    public string CustomerName { get; set; } = string.Empty;
+    public string DeviceSummary { get; set; } = string.Empty;
 }

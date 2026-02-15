@@ -1,6 +1,6 @@
 @model JobOrderCreateViewModel
 
-<form asp-action="Create" method="post" data-ajax="true">
+<form asp-action="Create" asp-controller="JobOrders" asp-area="Admin" method="post" data-ajax="true">
     @Html.AntiForgeryToken()
     <partial name="~/Views/Shared/_ValidationSummary.cshtml" />
     
@@ -103,9 +103,9 @@
                     </div>
                     <div class="wizard-panel-body">
                         <div class="form-group">
-                            <label asp-for="IssueDescription" class="form-label">Issue Description <span class="text-danger">*</span></label>
-                            <textarea asp-for="IssueDescription" class="form-input" rows="4" placeholder="Describe the issue or problem reported by the customer..."></textarea>
-                            <span asp-validation-for="IssueDescription" class="text-danger text-sm"></span>
+                            <label asp-for="ProblemDescription" class="form-label">Problem Description <span class="text-danger">*</span></label>
+                            <textarea asp-for="ProblemDescription" class="form-input" rows="4" placeholder="Describe the issue or problem reported by the customer..."></textarea>
+                            <span asp-validation-for="ProblemDescription" class="text-danger text-sm"></span>
                         </div>
                         <div class="form-row">
                             <div class="form-group">

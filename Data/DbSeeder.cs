@@ -9,10 +9,6 @@ namespace ByteBill_BS.Data;
 /// </summary>
 public static class DbSeeder
 {
-    // BCrypt hash of 'Password123!' (cost 12)
-    private const string DefaultPasswordHash =
-        "$2a$12$LJ3m4ys3Lk0TSwHleDJruOEGCxCXOGyGqoLNaHPbBMp7c8.hgy7G6";
-
     public static async Task SeedAsync(ApplicationDbContext db)
     {
         // Ensure the database exists (no-op if already created via SQL script)
@@ -34,7 +30,7 @@ public static class DbSeeder
             ShopCode = "MAIN",
             ShopName = "ByteBill Main Shop",
             Email = "admin@bytebill.com",
-            Phone = "+63-000-000-0000",
+            Phone = "+63 XXX XXX XXXX", // Philippine format: +63 XXX XXX XXXX (mobile) or +63 XX XXX XXXX (landline)
             Address = "Metro Manila, Philippines",
             Status = "Active",
             CreatedAt = DateTime.UtcNow
@@ -61,23 +57,46 @@ public static class DbSeeder
         await db.SaveChangesAsync();
     }
 
-    // ── Demo Users ───────────────────────────────────────────────────────
+    // ── Seed Users ───────────────────────────────────────────────────────
+    // Each user has a unique password hashed with BCrypt (cost 12).
+    // ┌──────────────┬──────────────┬────────────────────┐
+    // │ Username      │ Role         │ Password           │
+    // ├──────────────┼──────────────┼────────────────────┤
+    // │ vkpadao       │ SuperAdmin   │ Superadmin123!     │
+    // │ admin         │ Admin        │ Admin123!          │
+    // │ billing       │ Billing      │ Billing123!        │
+    // │ technician    │ Technician   │ Technician123!     │
+    // │ auditor       │ Auditor      │ Auditor123!        │
+    // └──────────────┴──────────────┴────────────────────┘
     private static async Task SeedUsersAsync(ApplicationDbContext db)
     {
         if (await db.Users.AnyAsync()) return;
 
         var shop = await db.Shops.FirstAsync();
 
-        var users = new List<User>
+        var seedUsers = new (string FirstName, string LastName, string UserName, string Password)[]
         {
-            new() { ShopId = shop.ShopId, FirstName = "Super",    LastName = "Admin",   UserName = "superadmin", PasswordHash = DefaultPasswordHash, IsActive = true, CreatedAt = DateTime.UtcNow },
-            new() { ShopId = shop.ShopId, FirstName = "Shop",     LastName = "Owner",   UserName = "admin",      PasswordHash = DefaultPasswordHash, IsActive = true, CreatedAt = DateTime.UtcNow },
-            new() { ShopId = shop.ShopId, FirstName = "Billing",  LastName = "Staff",   UserName = "billing",    PasswordHash = DefaultPasswordHash, IsActive = true, CreatedAt = DateTime.UtcNow },
-            new() { ShopId = shop.ShopId, FirstName = "Tech",     LastName = "Support", UserName = "tech",       PasswordHash = DefaultPasswordHash, IsActive = true, CreatedAt = DateTime.UtcNow },
-            new() { ShopId = shop.ShopId, FirstName = "External", LastName = "Auditor", UserName = "auditor",    PasswordHash = DefaultPasswordHash, IsActive = true, CreatedAt = DateTime.UtcNow }
+            ("Vaness", "Padao",   "vkpadao",    "Superadmin123!"),
+            ("Maria",      "Santos",  "admin",      "Admin123!"),
+            ("Juan",       "Cruz",    "billing",    "Billing123!"),
+            ("Carlos",     "Reyes",   "technician", "Technician123!"),
+            ("Ana",        "Garcia",  "auditor",    "Auditor123!")
         };
 
-        db.Users.AddRange(users);
+        foreach (var s in seedUsers)
+        {
+            db.Users.Add(new User
+            {
+                ShopId       = shop.ShopId,
+                FirstName    = s.FirstName,
+                LastName     = s.LastName,
+                UserName     = s.UserName,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(s.Password, workFactor: 12),
+                IsActive     = true,
+                CreatedAt    = DateTime.UtcNow
+            });
+        }
+
         await db.SaveChangesAsync();
     }
 
@@ -91,10 +110,10 @@ public static class DbSeeder
 
         var mapping = new Dictionary<string, string>
         {
-            ["superadmin"] = "SuperAdmin",
+            ["vkpadao"]    = "SuperAdmin",
             ["admin"]      = "Admin",
             ["billing"]    = "Billing",
-            ["tech"]       = "Technician",
+            ["technician"] = "Technician",
             ["auditor"]    = "Auditor"
         };
 

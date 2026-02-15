@@ -1,7 +1,13 @@
+using ByteBill_BS.Data;
+using ByteBill_BS.DTOs.Common;
+using ByteBill_BS.DTOs.Payments;
+using ByteBill_BS.Extensions;
 using ByteBill_BS.Models.Enums;
+using ByteBill_BS.Services;
 using ByteBill_BS.ViewModels.Payments;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ByteBill_BS.Areas.Admin.Controllers;
 
@@ -9,129 +15,287 @@ namespace ByteBill_BS.Areas.Admin.Controllers;
 [Authorize]
 public class PaymentsController : Controller
 {
-    private bool IsAuthorized()
+    private readonly IPaymentService _paymentService;
+    private readonly ApplicationDbContext _db;
+
+    public PaymentsController(IPaymentService paymentService, ApplicationDbContext db)
     {
-        var roleClaim = User.Claims.FirstOrDefault(c => c.Type == "Role")?.Value;
-        return roleClaim == UserRole.Admin.ToString();
+        _paymentService = paymentService;
+        _db = db;
     }
 
+    private bool IsAuthorized() => User.IsInRoles("Admin", "SuperAdmin");
+
+    private static string GetInitials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2
+            ? $"{parts[0][0]}{parts[^1][0]}".ToUpper()
+            : (parts.Length == 1 ? parts[0][..1].ToUpper() : "??");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  INDEX
+    // ═══════════════════════════════════════════════════════════════════
     [HttpGet]
-    public IActionResult Index(string? search, PaymentMethod? method, int page = 1)
+    public async Task<IActionResult> Index(string? search, PaymentMethod? method, int page = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+
+        var result = await _paymentService.GetListAsync(shopId, new PaymentPagedRequest
+        {
+            Page = page,
+            PageSize = 10,
+            Search = search
+        });
+
+        var metrics = await _paymentService.GetMetricsAsync(shopId);
 
         var viewModel = new PaymentListViewModel
         {
             SearchTerm = search,
             MethodFilter = method,
-            CurrentPage = page,
-            TotalCount = 98,
-            TotalReceived = 45820.00m,
-            TodayReceived = 1250.00m,
-            Payments = new List<PaymentItemViewModel>
+            CurrentPage = result.Page,
+            TotalCount = result.TotalCount,
+            PageSize = result.PageSize,
+            TotalReceived = metrics.TotalReceived,
+            TodayReceived = metrics.TodayReceived,
+            Payments = result.Items.Select(p =>
             {
-                new() { Id = 1, PaymentNumber = "PAY-2024-0142", InvoiceNumber = "INV-2024-0142", InvoiceId = 142, CustomerName = "Mike Johnson", CustomerInitials = "MJ", Amount = 450.00m, Method = PaymentMethod.Card, PaidAt = DateTime.Now.AddMinutes(-5), ReceivedByName = "Emily Brown", IsVoid = false },
-                new() { Id = 2, PaymentNumber = "PAY-2024-0141", InvoiceNumber = "INV-2024-0140", InvoiceId = 140, CustomerName = "Sarah Chen", CustomerInitials = "SC", Amount = 320.00m, Method = PaymentMethod.Cash, PaidAt = DateTime.Now.AddHours(-3), ReceivedByName = "Emily Brown", IsVoid = false },
-                new() { Id = 3, PaymentNumber = "PAY-2024-0140", InvoiceNumber = "INV-2024-0138", InvoiceId = 138, CustomerName = "Bob Martinez", CustomerInitials = "BM", Amount = 150.00m, Method = PaymentMethod.Card, PaidAt = DateTime.Now.AddDays(-1), ReceivedByName = "John Anderson", IsVoid = false },
-                new() { Id = 4, PaymentNumber = "PAY-2024-0139", InvoiceNumber = "INV-2024-0135", InvoiceId = 135, CustomerName = "Alice Thompson", CustomerInitials = "AT", Amount = 680.00m, Method = PaymentMethod.GCash, PaidAt = DateTime.Now.AddDays(-2), ReceivedByName = "Emily Brown", IsVoid = false },
-                new() { Id = 5, PaymentNumber = "PAY-2024-0138", InvoiceNumber = "INV-2024-0132", InvoiceId = 132, CustomerName = "Carol White", CustomerInitials = "CW", Amount = 95.00m, Method = PaymentMethod.Cash, ReferenceNumber = null, PaidAt = DateTime.Now.AddDays(-3), ReceivedByName = "John Anderson", IsVoid = true }
-            }
+                _ = Enum.TryParse<PaymentMethod>(p.Method, true, out var parsedMethod);
+                _ = Enum.TryParse<PaymentStatus>(p.Status, true, out var parsedStatus);
+                return new PaymentItemViewModel
+                {
+                    Id = p.PaymentId,
+                    CustomerName = p.CustomerName,
+                    CustomerInitials = GetInitials(p.CustomerName),
+                    InvoiceNumber = p.InvoiceNo,
+                    Method = parsedMethod,
+                    Amount = p.Amount,
+                    PaidAt = p.PaymentDate,
+                    PaymentDate = p.PaymentDate,
+                    ReceivedByName = p.ReceivedByName,
+                    ReceivedBy = p.ReceivedByName,
+                    ReferenceNo = p.ReferenceNo,
+                    ReferenceNumber = p.ReferenceNo,
+                    Status = parsedStatus,
+                    IsVoid = parsedStatus == PaymentStatus.Refunded
+                };
+            }).ToList()
         };
-        
+
+        // Apply client-side method filter if provided
+        if (method.HasValue)
+        {
+            viewModel.Payments = viewModel.Payments
+                .Where(p => p.Method == method.Value).ToList();
+        }
+
         return View(viewModel);
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  CREATE (Record Payment)
+    // ═══════════════════════════════════════════════════════════════════
     [HttpGet]
-    public IActionResult Create(long invoiceId)
+    public async Task<IActionResult> Create(long invoiceId)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
-        var model = new PaymentCreateViewModel
+
+        var model = await BuildCreateModelAsync(invoiceId);
+        if (model == null) return NotFound();
+        return View(model);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> CreateModal(long invoiceId = 0)
+    {
+        if (!IsAuthorized()) return Forbid();
+
+        var model = await BuildCreateModelAsync(invoiceId);
+        if (model == null) return NotFound();
+        return PartialView("_CreateModal", model);
+    }
+
+    private async Task<PaymentCreateViewModel?> BuildCreateModelAsync(long invoiceId)
+    {
+        var shopId = User.GetShopId();
+
+        if (invoiceId <= 0)
+        {
+            // No invoice selected – return model with unpaid invoices for selection
+            var unpaidInvoices = await _db.Invoices
+                .Include(i => i.Customer)
+                .Where(i => i.ShopId == shopId &&
+                       (i.Status == InvoiceStatus.Unpaid || i.Status == InvoiceStatus.Partial))
+                .OrderByDescending(i => i.CreatedAt)
+                .Select(i => new AvailableInvoiceOption
+                {
+                    InvoiceId = i.InvoiceId,
+                    InvoiceNumber = i.InvoiceNo,
+                    CustomerName = i.Customer!.FirstName + " " + i.Customer.LastName,
+                    Balance = i.Balance
+                })
+                .ToListAsync();
+
+            return new PaymentCreateViewModel
+            {
+                Method = PaymentMethod.Cash,
+                AvailableInvoices = unpaidInvoices
+            };
+        }
+
+        var invoice = await _db.Invoices
+            .Include(i => i.Customer)
+            .Where(i => i.ShopId == shopId && i.InvoiceId == invoiceId)
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        if (invoice == null) return null;
+
+        return new PaymentCreateViewModel
         {
             InvoiceId = invoiceId,
-            InvoiceNumber = "INV-2024-0143",
-            CustomerName = "Alice Thompson",
-            InvoiceBalance = 280.00m,
-            Amount = 280.00m,
+            InvoiceNumber = invoice.InvoiceNo,
+            CustomerName = $"{invoice.Customer?.FirstName} {invoice.Customer?.LastName}".Trim(),
+            InvoiceBalance = invoice.Balance,
+            Amount = invoice.Balance,
             Method = PaymentMethod.Cash
         };
-        
-        return View(model);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Create(PaymentCreateViewModel model)
+    public async Task<IActionResult> Create(PaymentCreateViewModel model)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
+
         if (!ModelState.IsValid)
         {
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
                 return PartialView("_CreateModal", model);
             return View(model);
         }
-        
+
+        var shopId = User.GetShopId();
+        var userId = User.GetUserId();
+
+        // Look up customer from the invoice
+        var invoice = await _db.Invoices
+            .Where(i => i.ShopId == shopId && i.InvoiceId == model.InvoiceId)
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        if (invoice == null)
+        {
+            ModelState.AddModelError("", "Invoice not found.");
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView("_CreateModal", model);
+            return View(model);
+        }
+
+        if (model.Amount > invoice.Balance)
+        {
+            ModelState.AddModelError("Amount", $"Amount cannot exceed invoice balance of {invoice.Balance:F2}.");
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView("_CreateModal", model);
+            return View(model);
+        }
+
+        var request = new RecordPaymentRequest
+        {
+            CustomerId = invoice.CustomerId,
+            Amount = model.Amount,
+            Method = model.Method.ToString(),
+            ReferenceNo = model.ReferenceNumber,
+            Notes = model.Notes,
+            Allocations = new List<PaymentAllocationRequestDto>
+            {
+                new() { InvoiceId = model.InvoiceId, AmountApplied = model.Amount }
+            }
+        };
+
+        var result = await _paymentService.RecordPaymentAsync(shopId, userId, request);
+        if (!result.Success)
+        {
+            ModelState.AddModelError("", result.Message ?? "Failed to record payment.");
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView("_CreateModal", model);
+            return View(model);
+        }
+
         TempData["Success"] = "Payment recorded successfully!";
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-            return Json(new { success = true, message = "Payment recorded successfully!" });
+            return Json(new { success = true, message = "Payment recorded successfully!", id = result.Data?.PaymentId });
         return RedirectToAction(nameof(Index));
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  DETAILS
+    // ═══════════════════════════════════════════════════════════════════
     [HttpGet]
-    public IActionResult CreateModal(long invoiceId = 0)
-    {
-        if (!IsAuthorized()) return Forbid();
-        
-        var model = new PaymentCreateViewModel
-        {
-            InvoiceId = invoiceId,
-            InvoiceNumber = "INV-2024-0143",
-            CustomerName = "Alice Thompson",
-            InvoiceBalance = 280.00m,
-            Amount = 280.00m,
-            Method = PaymentMethod.Cash
-        };
-        
-        return PartialView("_CreateModal", model);
-    }
-
-    [HttpGet]
-    public IActionResult Details(long id)
+    public async Task<IActionResult> Details(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
-        var model = GetPaymentDetail(id);
-        return View(model);
+
+        var vm = await GetPaymentDetailAsync(id);
+        if (vm == null) return NotFound();
+        return View(vm);
     }
 
     [HttpGet]
-    public IActionResult DetailsModal(long id)
+    public async Task<IActionResult> DetailsModal(long id)
     {
         if (!IsAuthorized()) return Forbid();
-        
-        var model = GetPaymentDetail(id);
-        return PartialView("_DetailsModal", model);
+
+        var vm = await GetPaymentDetailAsync(id);
+        if (vm == null) return NotFound();
+        return PartialView("_DetailsModal", vm);
     }
 
-    private PaymentDetailViewModel GetPaymentDetail(long id)
+    private async Task<PaymentDetailViewModel?> GetPaymentDetailAsync(long id)
     {
+        var shopId = User.GetShopId();
+        var dto = await _paymentService.GetDetailAsync(shopId, id);
+        if (dto == null) return null;
+
+        _ = Enum.TryParse<PaymentMethod>(dto.Method, true, out var parsedMethod);
+        _ = Enum.TryParse<PaymentStatus>(dto.Status, true, out var parsedStatus);
+
+        // Get customer details
+        var customer = await _db.Customers
+            .Where(c => c.CustomerId == dto.CustomerId)
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
         return new PaymentDetailViewModel
         {
-            Id = id,
-            PaymentNumber = "PAY-2024-0142",
-            InvoiceId = 142,
-            InvoiceNumber = "INV-2024-0142",
-            CustomerName = "Mike Johnson",
-            CustomerEmail = "mike@email.com",
-            CustomerPhone = "(555) 666-7777",
-            Amount = 450.00m,
-            Method = PaymentMethod.Card,
-            ReferenceNumber = "CC-4832",
-            Notes = "Full payment for laptop repair",
-            PaidAt = DateTime.Now.AddMinutes(-5),
-            ReceivedByName = "Emily Brown",
-            IsVoid = false
+            Id = dto.PaymentId,
+            CustomerId = dto.CustomerId,
+            CustomerName = dto.CustomerName,
+            CustomerEmail = customer?.Email,
+            CustomerPhone = customer?.Phone ?? "",
+            Method = parsedMethod,
+            Amount = dto.Amount,
+            ReferenceNo = dto.ReferenceNo,
+            ReferenceNumber = dto.ReferenceNo,
+            PaidAt = dto.PaymentDate,
+            PaymentDate = dto.PaymentDate,
+            ReceivedByName = dto.ReceivedByName,
+            ReceivedBy = dto.ReceivedByName,
+            Status = parsedStatus,
+            IsVoid = parsedStatus == PaymentStatus.Refunded,
+            Notes = dto.Notes,
+            InvoiceId = dto.Allocations.FirstOrDefault()?.InvoiceId,
+            InvoiceNumber = dto.Allocations.FirstOrDefault()?.InvoiceNo,
+            Allocations = dto.Allocations.Select(a => new PaymentAllocationItem
+            {
+                InvoiceId = a.InvoiceId,
+                InvoiceNumber = a.InvoiceNo,
+                AmountApplied = a.AmountApplied
+            }).ToList()
         };
     }
 }

@@ -1,7 +1,13 @@
+using ByteBill_BS.Data;
+using ByteBill_BS.DTOs.Common;
+using ByteBill_BS.DTOs.Invoices;
+using ByteBill_BS.Extensions;
 using ByteBill_BS.Models.Enums;
+using ByteBill_BS.Services;
 using ByteBill_BS.ViewModels.Invoices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ByteBill_BS.Areas.Billing.Controllers;
 
@@ -9,127 +15,226 @@ namespace ByteBill_BS.Areas.Billing.Controllers;
 [Authorize]
 public class InvoicesController : Controller
 {
-    private bool IsAuthorized()
+    private readonly IInvoiceService _invoiceService;
+    private readonly ApplicationDbContext _db;
+
+    public InvoicesController(IInvoiceService invoiceService, ApplicationDbContext db)
     {
-        var roleClaim = User.Claims.FirstOrDefault(c => c.Type == "Role")?.Value;
-        return roleClaim == UserRole.Billing.ToString();
+        _invoiceService = invoiceService;
+        _db = db;
+    }
+
+    private bool IsAuthorized() => User.IsInRoles("Billing", "Admin", "SuperAdmin");
+
+    private static string GetInitials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2
+            ? $"{parts[0][0]}{parts[^1][0]}".ToUpper()
+            : (parts.Length == 1 ? parts[0][..1].ToUpper() : "??");
     }
 
     [HttpGet]
-    public IActionResult Index(string? search, InvoiceStatus? status, int page = 1)
+    public async Task<IActionResult> Index(string? search, InvoiceStatus? status, int page = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var result = await _invoiceService.GetListAsync(shopId, new InvoicePagedRequest
+        {
+            Page = page,
+            PageSize = 10,
+            Search = search,
+            StatusFilter = status?.ToString()
+        });
+
+        var metrics = await _invoiceService.GetMetricsAsync(shopId);
 
         var viewModel = new InvoiceListViewModel
         {
             SearchTerm = search,
             StatusFilter = status,
-            CurrentPage = page,
-            TotalCount = 142,
-            TotalOutstanding = 8450.00m,
-            Invoices = new List<InvoiceItemViewModel>
+            CurrentPage = result.Page,
+            TotalCount = result.TotalCount,
+            PageSize = result.PageSize,
+            TotalOutstanding = metrics.Outstanding,
+            OverdueCount = metrics.Overdue,
+            Invoices = result.Items.Select(i =>
             {
-                new() { Id = 1, InvoiceNumber = "INV-2024-0143", CustomerName = "Sarah Chen", CustomerInitials = "SC", Status = InvoiceStatus.Unpaid, Total = 320.00m, AmountPaid = 0m, Balance = 320.00m, CreatedAt = DateTime.Now.AddMinutes(-30), DueDate = DateTime.Now.AddDays(30) },
-                new() { Id = 2, InvoiceNumber = "INV-2024-0142", CustomerName = "Mike Johnson", CustomerInitials = "MJ", Status = InvoiceStatus.Paid, Total = 450.00m, AmountPaid = 450.00m, Balance = 0m, CreatedAt = DateTime.Now.AddDays(-1), DueDate = DateTime.Now.AddDays(29) },
-                new() { Id = 3, InvoiceNumber = "INV-2024-0141", CustomerName = "Bob Martinez", CustomerInitials = "BM", Status = InvoiceStatus.Unpaid, Total = 680.00m, AmountPaid = 0m, Balance = 680.00m, CreatedAt = DateTime.Now.AddDays(-3), DueDate = DateTime.Now.AddDays(27) },
-                new() { Id = 4, InvoiceNumber = "INV-2024-0140", CustomerName = "Alice Thompson", CustomerInitials = "AT", Status = InvoiceStatus.Partial, Total = 520.00m, AmountPaid = 200.00m, Balance = 320.00m, CreatedAt = DateTime.Now.AddDays(-5), DueDate = DateTime.Now.AddDays(25) },
-                new() { Id = 5, InvoiceNumber = "INV-2024-0128", CustomerName = "Alice Thompson", CustomerInitials = "AT", Status = InvoiceStatus.Unpaid, Total = 280.00m, AmountPaid = 0m, Balance = 280.00m, CreatedAt = DateTime.Now.AddDays(-35), DueDate = DateTime.Now.AddDays(-5) }
-            }
+                _ = Enum.TryParse<InvoiceStatus>(i.Status, true, out var parsedStatus);
+                return new InvoiceItemViewModel
+                {
+                    Id = i.InvoiceId,
+                    InvoiceNumber = i.InvoiceNo,
+                    CustomerName = i.CustomerName,
+                    CustomerInitials = GetInitials(i.CustomerName),
+                    JobNumber = i.JobOrderNo,
+                    Status = parsedStatus,
+                    Total = i.TotalAmount,
+                    AmountPaid = i.AmountPaid,
+                    Balance = i.Balance,
+                    CreatedAt = i.InvoiceDate,
+                    DueDate = i.DueDate
+                };
+            }).ToList()
         };
-        
+
         return View(viewModel);
     }
 
     [HttpGet]
-    public IActionResult Create(long? jobOrderId)
+    public async Task<IActionResult> Create(long? jobOrderId)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
+
+        if (!jobOrderId.HasValue || jobOrderId.Value <= 0)
+        {
+            return View(new InvoiceCreateViewModel { DueDate = DateTime.Now.AddDays(30) });
+        }
+
+        var shopId = User.GetShopId();
+        var jobOrder = await _db.JobOrders
+            .Include(j => j.Customer)
+            .Include(j => j.JobOrderServices).ThenInclude(s => s.Service)
+            .Include(j => j.JobOrderParts).ThenInclude(p => p.Item)
+            .Where(j => j.ShopId == shopId && j.JobOrderId == jobOrderId.Value)
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        if (jobOrder == null) return NotFound();
+
+        var lines = new List<InvoiceCreateViewModel.LineItemInput>();
+        foreach (var svc in jobOrder.JobOrderServices)
+        {
+            lines.Add(new InvoiceCreateViewModel.LineItemInput
+            {
+                Description = svc.Service?.ServiceName ?? $"Service #{svc.ServiceId}",
+                Quantity = svc.Qty,
+                UnitPrice = svc.UnitPrice,
+                Type = "Service"
+            });
+        }
+        foreach (var part in jobOrder.JobOrderParts)
+        {
+            lines.Add(new InvoiceCreateViewModel.LineItemInput
+            {
+                Description = part.Item?.ItemName ?? $"Part #{part.ItemId}",
+                Quantity = part.QtyUsed,
+                UnitPrice = part.UnitPrice,
+                Type = "Part"
+            });
+        }
+
         var model = new InvoiceCreateViewModel
         {
-            JobOrderId = jobOrderId ?? 0,
+            JobOrderId = jobOrderId.Value,
+            JobNumber = jobOrder.JobOrderNo,
+            CustomerName = $"{jobOrder.Customer?.FirstName} {jobOrder.Customer?.LastName}".Trim(),
+            CustomerId = jobOrder.CustomerId,
             DueDate = DateTime.Now.AddDays(30),
-            TaxRate = 8.25m,
-            Customers = new List<InvoiceCreateViewModel.CustomerOption>
-            {
-                new() { Id = 1, Name = "Mike Johnson", Email = "mike@email.com" },
-                new() { Id = 2, Name = "Sarah Chen", Email = "sarah@email.com" },
-                new() { Id = 3, Name = "Bob Martinez", Email = "bob@email.com" }
-            },
-            AvailableServices = new List<InvoiceCreateViewModel.ServiceOption>
-            {
-                new() { Id = 1, Name = "System Diagnosis", Price = 50.00m },
-                new() { Id = 2, Name = "Virus/Malware Removal", Price = 75.00m },
-                new() { Id = 3, Name = "Screen Replacement", Price = 120.00m }
-            }
+            Items = lines
         };
 
-        if (jobOrderId.HasValue)
-        {
-            model.CustomerId = 1;
-            model.CustomerName = "Mike Johnson";
-            model.Items = new List<InvoiceCreateViewModel.LineItemInput>
-            {
-                new() { Description = "Display Cable Replacement", Quantity = 1, UnitPrice = 120.00m },
-                new() { Description = "Display Cable (MacBook Pro 2021)", Quantity = 1, UnitPrice = 85.00m },
-                new() { Description = "System Diagnosis", Quantity = 1, UnitPrice = 50.00m }
-            };
-        }
-        
         return View(model);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Create(InvoiceCreateViewModel model)
+    public async Task<IActionResult> Create(InvoiceCreateViewModel model)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
+
         if (!ModelState.IsValid) return View(model);
-        
+
+        var shopId = User.GetShopId();
+        var userId = User.GetUserId();
+
+        var request = new CreateInvoiceRequest
+        {
+            JobOrderId = model.JobOrderId,
+            DueDate = model.DueDate
+        };
+
+        var result = await _invoiceService.CreateFromJobOrderAsync(shopId, userId, request);
+        if (!result.Success)
+        {
+            ModelState.AddModelError("", result.Message ?? "Failed to create invoice.");
+            return View(model);
+        }
+
         TempData["Success"] = "Invoice created successfully!";
         return RedirectToAction(nameof(Index));
     }
 
     [HttpGet]
-    public IActionResult Details(long id)
+    public async Task<IActionResult> Details(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
+
+        var shopId = User.GetShopId();
+        var dto = await _invoiceService.GetDetailAsync(shopId, id);
+        if (dto == null) return NotFound();
+
+        _ = Enum.TryParse<InvoiceStatus>(dto.Status, true, out var parsedStatus);
+
+        var customer = await _db.Customers
+            .Where(c => c.CustomerId == dto.CustomerId)
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        var shop = await _db.Shops
+            .Where(s => s.ShopId == shopId)
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
         var model = new InvoiceDetailViewModel
         {
-            Id = id,
-            InvoiceNumber = "INV-2024-0142",
-            Status = InvoiceStatus.Paid,
-            CustomerId = 1,
-            CustomerName = "Mike Johnson",
-            CustomerEmail = "mike@email.com",
-            CustomerPhone = "(555) 123-4567",
-            CustomerAddress = "123 Main Street, Anytown, USA 12345",
-            JobOrderId = 156,
-            JobOrderNumber = "JO-2024-0156",
-            CreatedAt = DateTime.Now.AddDays(-1),
-            DueDate = DateTime.Now.AddDays(29),
-            PaidAt = DateTime.Now.AddMinutes(-5),
-            Notes = "Thank you for your business!",
-            LineItems = new List<InvoiceLineItemViewModel>
+            Id = dto.InvoiceId,
+            InvoiceNumber = dto.InvoiceNo,
+            CustomerId = dto.CustomerId,
+            CustomerName = dto.CustomerName,
+            CustomerEmail = customer?.Email,
+            CustomerPhone = customer?.Phone ?? "",
+            CustomerAddress = customer?.Address,
+            JobOrderId = dto.JobOrderId,
+            JobNumber = dto.JobOrderNo,
+            JobOrderNumber = dto.JobOrderNo,
+            ShopName = shop?.ShopName ?? "",
+            ShopAddress = shop?.Address,
+            ShopPhone = shop?.Phone,
+            ShopEmail = shop?.Email,
+            Status = parsedStatus,
+            Subtotal = dto.Subtotal,
+            TotalAdjustments = dto.TotalAdjustments,
+            Total = dto.TotalAmount,
+            AmountPaid = dto.AmountPaid,
+            Balance = dto.Balance,
+            CreatedAt = dto.InvoiceDate,
+            IssuedAt = dto.InvoiceDate,
+            DueDate = dto.DueDate,
+            LineItems = dto.Lines.Select(l => new InvoiceLineItemViewModel
             {
-                new() { Description = "Display Cable Replacement", Quantity = 1, UnitPrice = 120.00m, Total = 120.00m },
-                new() { Description = "Display Cable (MacBook Pro 2021)", Quantity = 1, UnitPrice = 85.00m, Total = 85.00m },
-                new() { Description = "System Diagnosis", Quantity = 1, UnitPrice = 50.00m, Total = 50.00m }
-            },
-            Subtotal = 255.00m,
-            TaxRate = 8.25m,
-            TaxAmount = 21.04m,
-            Total = 276.04m,
-            AmountPaid = 276.04m,
-            Balance = 0m,
-            Payments = new List<PaymentSummaryViewModel>
+                Id = l.InvoiceLineId,
+                Description = l.Description,
+                Quantity = l.Qty,
+                UnitPrice = l.UnitPrice,
+                Total = l.LineTotal,
+                Type = l.LineType
+            }).ToList(),
+            Payments = dto.Payments.Select(p =>
             {
-                new() { Id = 142, PaymentNumber = "PAY-2024-0142", Amount = 276.04m, Method = PaymentMethod.Card, PaidAt = DateTime.Now.AddMinutes(-5) }
-            }
+                _ = Enum.TryParse<PaymentMethod>(p.Method, true, out var pm);
+                return new PaymentSummaryViewModel
+                {
+                    Id = p.PaymentId,
+                    Amount = p.AmountApplied,
+                    Method = pm,
+                    PaidAt = p.PaymentDate,
+                    IsVoid = false
+                };
+            }).ToList()
         };
-        
+
         return View(model);
     }
 }

@@ -1,4 +1,8 @@
+using ByteBill_BS.Data;
+using ByteBill_BS.DTOs.JobOrders;
+using ByteBill_BS.Extensions;
 using ByteBill_BS.Models.Enums;
+using ByteBill_BS.Services;
 using ByteBill_BS.ViewModels.JobOrders;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,81 +13,149 @@ namespace ByteBill_BS.Areas.Billing.Controllers;
 [Authorize]
 public class JobOrdersController : Controller
 {
-    private bool IsAuthorized()
+    private readonly IJobOrderService _jobOrderService;
+
+    public JobOrdersController(IJobOrderService jobOrderService)
     {
-        var roleClaim = User.Claims.FirstOrDefault(c => c.Type == "Role")?.Value;
-        return roleClaim == UserRole.Billing.ToString();
+        _jobOrderService = jobOrderService;
+    }
+
+    private bool IsAuthorized() => User.IsInRoles("Billing", "Admin", "SuperAdmin");
+
+    private static string GetInitials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2
+            ? $"{parts[0][0]}{parts[^1][0]}".ToUpper()
+            : (parts.Length == 1 ? parts[0][..1].ToUpper() : "??");
     }
 
     [HttpGet]
-    public IActionResult Index(string? search, JobOrderStatus? status, int page = 1)
+    public async Task<IActionResult> Index(string? search, JobOrderStatus? status, int page = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var result = await _jobOrderService.GetListAsync(shopId, new JobOrderPagedRequest
+        {
+            Page = page,
+            PageSize = 10,
+            Search = search,
+            StatusFilter = status?.ToString()
+        });
 
         var viewModel = new JobOrderListViewModel
         {
             SearchTerm = search,
             StatusFilter = status,
-            CurrentPage = page,
-            TotalCount = 89,
-            JobOrders = new List<JobOrderItemViewModel>
+            CurrentPage = result.Page,
+            TotalCount = result.TotalCount,
+            PageSize = result.PageSize,
+            JobOrders = result.Items.Select(j =>
             {
-                new() { Id = 1, OrderNumber = "JO-2024-0156", CustomerName = "Mike Johnson", CustomerInitials = "MJ", DeviceType = "MacBook Pro 2021", Status = JobOrderStatus.Completed, Priority = "High", CreatedAt = DateTime.Now.AddDays(-2), AssignedTechnicianName = "David Lee" },
-                new() { Id = 2, OrderNumber = "JO-2024-0155", CustomerName = "Sarah Chen", CustomerInitials = "SC", DeviceType = "Dell XPS 15", Status = JobOrderStatus.Completed, Priority = "Normal", CreatedAt = DateTime.Now.AddDays(-3), AssignedTechnicianName = "Emily Chen" },
-                new() { Id = 3, OrderNumber = "JO-2024-0154", CustomerName = "Bob Martinez", CustomerInitials = "BM", DeviceType = "iPhone 14 Pro", Status = JobOrderStatus.ReadyForPickup, Priority = "Normal", CreatedAt = DateTime.Now.AddDays(-4), AssignedTechnicianName = "David Lee" },
-                new() { Id = 4, OrderNumber = "JO-2024-0153", CustomerName = "Alice Thompson", CustomerInitials = "AT", DeviceType = "HP Pavilion", Status = JobOrderStatus.InProgress, Priority = "Low", CreatedAt = DateTime.Now.AddDays(-5), AssignedTechnicianName = "Emily Chen" }
-            }
+                var deviceParts = j.DeviceSummary?.Split(" - ", 2) ?? Array.Empty<string>();
+                var deviceType = deviceParts.Length > 0 ? deviceParts[0] : "";
+                _ = Enum.TryParse<JobOrderStatus>(j.Status, true, out var parsedStatus);
+
+                return new JobOrderItemViewModel
+                {
+                    Id = j.JobOrderId,
+                    JobNumber = j.JobOrderNo,
+                    JobOrderNumber = j.JobOrderNo,
+                    OrderNumber = j.JobOrderNo,
+                    CustomerName = j.CustomerName,
+                    CustomerInitials = GetInitials(j.CustomerName),
+                    DeviceType = deviceType,
+                    DeviceInfo = j.DeviceSummary ?? "",
+                    Status = parsedStatus,
+                    TechnicianName = j.TechnicianName,
+                    AssignedTechnicianName = j.TechnicianName,
+                    CreatedAt = j.CreatedAt
+                };
+            }).ToList()
         };
-        
+
         return View(viewModel);
     }
 
     [HttpGet]
-    public IActionResult Details(long id)
+    public async Task<IActionResult> Details(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
+
+        var shopId = User.GetShopId();
+        var dto = await _jobOrderService.GetDetailAsync(shopId, id);
+        if (dto == null) return NotFound();
+
+        _ = Enum.TryParse<JobOrderStatus>(dto.Status, true, out var parsedStatus);
+        var serviceCost = dto.Services.Sum(s => s.LineTotal);
+        var partsCost = dto.Parts.Sum(p => p.LineTotal);
+
         var model = new JobOrderDetailViewModel
         {
-            Id = id,
-            OrderNumber = "JO-2024-0156",
-            CustomerId = 1,
-            CustomerName = "Mike Johnson",
-            CustomerEmail = "mike@email.com",
-            CustomerPhone = "(555) 123-4567",
-            DeviceType = "MacBook Pro 2021",
-            DeviceSerial = "C02X1234HKGG",
-            DeviceAccessories = "Charger, Laptop Bag",
-            IssueDescription = "Screen flickering and random shutdowns. Customer reports issue started after macOS update.",
-            Status = JobOrderStatus.Completed,
-            Priority = "High",
-            CreatedAt = DateTime.Now.AddDays(-2),
-            AssignedTechnicianId = 3,
-            AssignedTechnicianName = "David Lee",
-            EstimatedCompletionDate = DateTime.Now.AddDays(-1),
-            CompletedAt = DateTime.Now.AddHours(-6),
-            TechnicianNotes = "Diagnosed as display cable issue. Replaced cable and updated graphics drivers. Ran stress test for 2 hours - no issues.",
-            Timeline = new List<TimelineEventViewModel>
+            Id = dto.JobOrderId,
+            JobNumber = dto.JobOrderNo,
+            JobOrderNumber = dto.JobOrderNo,
+            OrderNumber = dto.JobOrderNo,
+            CustomerId = dto.CustomerId,
+            CustomerName = dto.CustomerName,
+            CustomerInitials = GetInitials(dto.CustomerName),
+            CustomerEmail = dto.CustomerEmail,
+            CustomerPhone = dto.CustomerPhone ?? "",
+            DeviceId = dto.DeviceId,
+            DeviceType = dto.DeviceType,
+            Brand = dto.Brand,
+            Model = dto.Model,
+            DeviceBrand = dto.Brand,
+            DeviceModel = dto.Model,
+            SerialNumber = dto.SerialNo,
+            DeviceSerial = dto.SerialNo,
+            DeviceInfo = $"{dto.DeviceType} - {dto.Brand} {dto.Model}",
+            Status = parsedStatus,
+            TechnicianId = dto.AssignedTechUserId,
+            AssignedTechnicianId = dto.AssignedTechUserId,
+            TechnicianName = dto.TechnicianName,
+            AssignedTechnicianName = dto.TechnicianName,
+            CreatedBy = dto.CreatedByName,
+            ProblemDescription = dto.ProblemReported,
+            ProblemReported = dto.ProblemReported,
+            IssueDescription = dto.ProblemReported,
+            DiagnosisNotes = dto.DiagnosisNotes,
+            TechnicianNotes = dto.DiagnosisNotes,
+            CreatedAt = dto.CreatedAt,
+            UpdatedAt = dto.UpdatedAt,
+            InvoiceId = dto.InvoiceId,
+            TotalServiceCost = serviceCost,
+            TotalPartsCost = partsCost,
+            Subtotal = serviceCost + partsCost,
+            Total = serviceCost + partsCost,
+            LineItems = dto.Services.Select(s => new JobOrderDetailViewModel.LineItem
             {
-                new() { Status = "Checked In", Description = "Device received from customer", Timestamp = DateTime.Now.AddDays(-2), CompletedBy = "Emily Brown" },
-                new() { Status = "Assigned", Description = "Assigned to David Lee", Timestamp = DateTime.Now.AddDays(-2).AddHours(1), CompletedBy = "John Anderson" },
-                new() { Status = "Diagnosis", Description = "Display cable issue identified", Timestamp = DateTime.Now.AddDays(-2).AddHours(3), CompletedBy = "David Lee" },
-                new() { Status = "In Progress", Description = "Repair started", Timestamp = DateTime.Now.AddDays(-1), CompletedBy = "David Lee" },
-                new() { Status = "Completed", Description = "Repair completed and tested", Timestamp = DateTime.Now.AddHours(-6), CompletedBy = "David Lee" }
-            },
-            LineItems = new List<JobOrderDetailViewModel.LineItem>
+                Description = s.ServiceName,
+                Type = "Service",
+                Quantity = s.Qty,
+                UnitPrice = s.UnitPrice,
+                Total = s.LineTotal
+            })
+            .Concat(dto.Parts.Select(p => new JobOrderDetailViewModel.LineItem
             {
-                new() { Description = "Display Cable Replacement", Type = "Service", Quantity = 1, UnitPrice = 120.00m, Total = 120.00m },
-                new() { Description = "Display Cable (MacBook Pro 2021)", Type = "Part", Quantity = 1, UnitPrice = 85.00m, Total = 85.00m },
-                new() { Description = "System Diagnosis", Type = "Service", Quantity = 1, UnitPrice = 50.00m, Total = 50.00m }
-            },
-            Subtotal = 255.00m,
-            TaxRate = 8.25m,
-            TaxAmount = 21.04m,
-            Total = 276.04m,
-            InvoiceId = null
+                Description = p.ItemName,
+                Type = "Part",
+                Quantity = p.QtyUsed,
+                UnitPrice = p.UnitPrice,
+                Total = p.LineTotal
+            })).ToList(),
+            Timeline = dto.Timeline.Select(t => new TimelineEventViewModel
+            {
+                Title = $"Status → {t.NewStatus}",
+                Description = $"By {t.ChangedByName}" + (string.IsNullOrEmpty(t.Remarks) ? "" : $" — {t.Remarks}"),
+                Timestamp = t.ChangedAt,
+                Status = t.NewStatus,
+                CompletedBy = t.ChangedByName,
+                IsCompleted = true
+            }).ToList()
         };
-        
+
         return View(model);
     }
 }

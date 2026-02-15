@@ -23,12 +23,52 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.AccessDeniedPath = "/Auth/AccessDenied";
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
         options.SlidingExpiration = true;
+        // Return 401 for API requests instead of redirecting
+        options.Events.OnRedirectToLogin = ctx =>
+        {
+            if (ctx.Request.Path.StartsWithSegments("/api"))
+            {
+                ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return Task.CompletedTask;
+            }
+            ctx.Response.Redirect(ctx.RedirectUri);
+            return Task.CompletedTask;
+        };
+        options.Events.OnRedirectToAccessDenied = ctx =>
+        {
+            if (ctx.Request.Path.StartsWithSegments("/api"))
+            {
+                ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return Task.CompletedTask;
+            }
+            ctx.Response.Redirect(ctx.RedirectUri);
+            return Task.CompletedTask;
+        };
     });
 
-builder.Services.AddAuthorization();
+// ── Authorization policies (role-based) ──────────────────────────────
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOrAbove", policy =>
+        policy.RequireClaim("Role", "SuperAdmin", "Admin"));
 
-// Register services
+    options.AddPolicy("BillingOrAbove", policy =>
+        policy.RequireClaim("Role", "SuperAdmin", "Admin", "Billing"));
+
+    options.AddPolicy("TechnicianOrAbove", policy =>
+        policy.RequireClaim("Role", "SuperAdmin", "Admin", "Billing", "Technician"));
+
+    options.AddPolicy("AnyAuthenticated", policy =>
+        policy.RequireClaim("Role", "SuperAdmin", "Admin", "Billing", "Technician", "Auditor"));
+});
+
+// ── Register application services ────────────────────────────────────
 builder.Services.AddScoped<INavigationService, NavigationService>();
+builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<IJobOrderService, JobOrderService>();
+builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 
 // Rate limiting for login endpoint
 builder.Services.AddRateLimiter(options =>

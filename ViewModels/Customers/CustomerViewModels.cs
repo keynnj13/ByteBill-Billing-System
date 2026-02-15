@@ -52,7 +52,7 @@ public class CustomerFormViewModel
     
     [StringLength(30)]
     [Display(Name = "Phone")]
-    public string? Phone { get; set; }
+    public string? Phone { get; set; } // Format: +63 XXX XXX XXXX (mobile) or +63 XX XXX XXXX (landline)
     
     [StringLength(255)]
     [Display(Name = "Address")]

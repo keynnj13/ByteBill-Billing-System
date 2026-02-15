@@ -1,7 +1,14 @@
+using ByteBill_BS.Data;
+using ByteBill_BS.DTOs.Common;
+using ByteBill_BS.DTOs.JobOrders;
+using ByteBill_BS.Extensions;
+using ByteBill_BS.Models;
 using ByteBill_BS.Models.Enums;
+using ByteBill_BS.Services;
 using ByteBill_BS.ViewModels.JobOrders;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ByteBill_BS.Areas.Admin.Controllers;
 
@@ -9,235 +16,428 @@ namespace ByteBill_BS.Areas.Admin.Controllers;
 [Authorize]
 public class JobOrdersController : Controller
 {
-    private bool IsAuthorized()
+    private readonly IJobOrderService _jobOrderService;
+    private readonly ApplicationDbContext _db;
+
+    public JobOrdersController(IJobOrderService jobOrderService, ApplicationDbContext db)
     {
-        var roleClaim = User.Claims.FirstOrDefault(c => c.Type == "Role")?.Value;
-        return roleClaim == UserRole.Admin.ToString();
+        _jobOrderService = jobOrderService;
+        _db = db;
     }
 
+    private bool IsAuthorized() => User.IsInRoles("Admin", "SuperAdmin");
+
+    // ── helpers ──────────────────────────────────────────────────────────
+    private static string GetInitials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2
+            ? $"{parts[0][0]}{parts[^1][0]}".ToUpper()
+            : (parts.Length == 1 ? parts[0][..1].ToUpper() : "??");
+    }
+
+    private async Task PopulateDropdowns(JobOrderCreateViewModel model, long shopId)
+    {
+        var customers = await _db.Customers
+            .Where(c => c.ShopId == shopId && c.IsActive)
+            .OrderBy(c => c.FirstName)
+            .Select(c => new CustomerSelectItem
+            {
+                Id = c.CustomerId,
+                FullName = c.FirstName + " " + c.LastName,
+                Name = c.FirstName + " " + c.LastName,
+                Phone = c.Phone ?? "",
+                Email = c.Email
+            })
+            .ToListAsync();
+
+        var technicians = await _db.Users
+            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+            .Where(u => u.ShopId == shopId && u.IsActive &&
+                        u.UserRoles.Any(ur => ur.Role!.RoleName == "Technician"))
+            .Select(u => new TechnicianSelectItem
+            {
+                Id = u.UserId,
+                FullName = u.FirstName + " " + u.LastName,
+                Name = u.FirstName + " " + u.LastName,
+                ActiveJobOrders = _db.JobOrders.Count(j =>
+                    j.AssignedTechUserId == u.UserId &&
+                    j.Status != JobOrderStatus.Completed &&
+                    j.Status != JobOrderStatus.Delivered &&
+                    j.Status != JobOrderStatus.Cancelled)
+            })
+            .ToListAsync();
+
+        model.AvailableCustomers = customers;
+        model.Customers = customers;
+        model.AvailableTechnicians = technicians;
+        model.Technicians = technicians;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  INDEX
+    // ═══════════════════════════════════════════════════════════════════
     [HttpGet]
-    public IActionResult Index(string? search, JobOrderStatus? status, int page = 1)
+    public async Task<IActionResult> Index(string? search, JobOrderStatus? status, int page = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var result = await _jobOrderService.GetListAsync(shopId, new JobOrderPagedRequest
+        {
+            Page = page,
+            PageSize = 10,
+            Search = search,
+            StatusFilter = status?.ToString()
+        });
 
         var viewModel = new JobOrderListViewModel
         {
             SearchTerm = search,
             StatusFilter = status,
-            CurrentPage = page,
-            TotalCount = 89,
-            JobOrders = new List<JobOrderItemViewModel>
+            CurrentPage = result.Page,
+            TotalCount = result.TotalCount,
+            PageSize = result.PageSize,
+            JobOrders = result.Items.Select(j =>
             {
-                new() { Id = 1, JobNumber = "JO-2024-0089", CustomerName = "Alice Thompson", CustomerInitials = "AT", DeviceType = "Laptop", DeviceBrand = "Dell", DeviceModel = "XPS 15", Status = JobOrderStatus.Pending, TechnicianName = null, EstimatedCost = 250.00m, CreatedAt = DateTime.Now.AddMinutes(-20) },
-                new() { Id = 2, JobNumber = "JO-2024-0088", CustomerName = "Bob Martinez", CustomerInitials = "BM", DeviceType = "Desktop", DeviceBrand = "HP", DeviceModel = "Pavilion", Status = JobOrderStatus.InProgress, TechnicianName = "David Lee", EstimatedCost = 180.00m, CreatedAt = DateTime.Now.AddHours(-2), DueDate = DateTime.Now.AddDays(2) },
-                new() { Id = 3, JobNumber = "JO-2024-0087", CustomerName = "Carol White", CustomerInitials = "CW", DeviceType = "Phone", DeviceBrand = "Apple", DeviceModel = "iPhone 14", Status = JobOrderStatus.AwaitingApproval, TechnicianName = "David Lee", EstimatedCost = 350.00m, CreatedAt = DateTime.Now.AddHours(-4) },
-                new() { Id = 4, JobNumber = "JO-2024-0086", CustomerName = "Dan Brown", CustomerInitials = "DB", DeviceType = "Tablet", DeviceBrand = "Samsung", DeviceModel = "Galaxy Tab S8", Status = JobOrderStatus.Diagnosed, TechnicianName = "Emily Chen", EstimatedCost = 120.00m, CreatedAt = DateTime.Now.AddHours(-6) },
-                new() { Id = 5, JobNumber = "JO-2024-0085", CustomerName = "Frank Wilson", CustomerInitials = "FW", DeviceType = "Desktop", DeviceBrand = "Custom", DeviceModel = "Gaming PC", Status = JobOrderStatus.Completed, TechnicianName = "David Lee", EstimatedCost = 95.00m, CreatedAt = DateTime.Now.AddDays(-1) }
-            }
+                var deviceParts = j.DeviceSummary?.Split(" - ", 2) ?? Array.Empty<string>();
+                var deviceType = deviceParts.Length > 0 ? deviceParts[0] : "";
+                var brandModel = deviceParts.Length > 1 ? deviceParts[1] : "";
+                var bmParts = brandModel.Split(' ', 2);
+
+                _ = Enum.TryParse<JobOrderStatus>(j.Status, true, out var parsedStatus);
+
+                return new JobOrderItemViewModel
+                {
+                    Id = j.JobOrderId,
+                    JobNumber = j.JobOrderNo,
+                    JobOrderNumber = j.JobOrderNo,
+                    OrderNumber = j.JobOrderNo,
+                    CustomerName = j.CustomerName,
+                    CustomerInitials = GetInitials(j.CustomerName),
+                    DeviceType = deviceType,
+                    DeviceInfo = j.DeviceSummary ?? "",
+                    DeviceBrand = bmParts.Length > 0 ? bmParts[0] : null,
+                    DeviceModel = bmParts.Length > 1 ? bmParts[1] : null,
+                    Brand = bmParts.Length > 0 ? bmParts[0] : null,
+                    Model = bmParts.Length > 1 ? bmParts[1] : null,
+                    Status = parsedStatus,
+                    TechnicianName = j.TechnicianName,
+                    AssignedTechnicianName = j.TechnicianName,
+                    AssignedTo = j.TechnicianName,
+                    CreatedAt = j.CreatedAt
+                };
+            }).ToList()
         };
-        
+
         return View(viewModel);
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  CREATE
+    // ═══════════════════════════════════════════════════════════════════
     [HttpGet]
-    public IActionResult Create()
+    public async Task<IActionResult> Create()
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
-        var model = GetJobOrderCreateModel();
+
+        var model = new JobOrderCreateViewModel { CurrentStep = 1 };
+        await PopulateDropdowns(model, User.GetShopId());
         return View(model);
     }
 
     [HttpGet]
-    public IActionResult CreateModal()
+    public async Task<IActionResult> CreateModal()
     {
         if (!IsAuthorized()) return Forbid();
-        
-        var model = GetJobOrderCreateModel();
-        return PartialView("_CreateModal", model);
-    }
 
-    private JobOrderCreateViewModel GetJobOrderCreateModel()
-    {
-        return new JobOrderCreateViewModel
-        {
-            CurrentStep = 1,
-            AvailableCustomers = new List<CustomerSelectItem>
-            {
-                new() { Id = 1, FullName = "Alice Thompson", Phone = "(555) 111-2222" },
-                new() { Id = 2, FullName = "Bob Martinez", Phone = "(555) 222-3333" },
-                new() { Id = 3, FullName = "Carol White", Phone = "(555) 333-4444" },
-                new() { Id = 4, FullName = "Dan Brown", Phone = "(555) 444-5555" }
-            },
-            AvailableTechnicians = new List<TechnicianSelectItem>
-            {
-                new() { Id = 1, FullName = "David Lee", ActiveJobOrders = 3 },
-                new() { Id = 2, FullName = "Emily Chen", ActiveJobOrders = 2 }
-            }
-        };
+        var model = new JobOrderCreateViewModel { CurrentStep = 1 };
+        await PopulateDropdowns(model, User.GetShopId());
+        return PartialView("_CreateModal", model);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Create(JobOrderCreateViewModel model)
+    public async Task<IActionResult> Create(JobOrderCreateViewModel model)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
+
         if (!ModelState.IsValid)
         {
-            // Re-populate dropdowns
-            model.AvailableCustomers = new List<CustomerSelectItem>
-            {
-                new() { Id = 1, FullName = "Alice Thompson", Phone = "(555) 111-2222" },
-                new() { Id = 2, FullName = "Bob Martinez", Phone = "(555) 222-3333" }
-            };
-            model.AvailableTechnicians = new List<TechnicianSelectItem>
-            {
-                new() { Id = 1, FullName = "David Lee", ActiveJobOrders = 3 },
-                new() { Id = 2, FullName = "Emily Chen", ActiveJobOrders = 2 }
-            };
+            await PopulateDropdowns(model, User.GetShopId());
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
                 return PartialView("_CreateModal", model);
             return View(model);
         }
-        
+
+        var shopId = User.GetShopId();
+        var userId = User.GetUserId();
+
+        var request = new CreateJobOrderRequest
+        {
+            CustomerId = model.CustomerId,
+            ProblemReported = model.ProblemDescription,
+            DiagnosisNotes = model.IssueDescription,
+            AssignedTechUserId = model.AssignedTechnicianId,
+            NewDevice = new CreateDeviceDto
+            {
+                DeviceType = model.DeviceType ?? "",
+                Brand = model.Brand ?? "N/A",
+                Model = model.Model ?? "N/A",
+                SerialNo = model.SerialNumber ?? model.DeviceSerial
+            }
+        };
+
+        var result = await _jobOrderService.CreateAsync(shopId, userId, request);
+        if (!result.Success)
+        {
+            ModelState.AddModelError("", result.Message ?? "Failed to create job order.");
+            await PopulateDropdowns(model, shopId);
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView("_CreateModal", model);
+            return View(model);
+        }
+
         TempData["Success"] = "Job order created successfully!";
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-            return Json(new { success = true, message = "Job order created successfully!" });
+            return Json(new { success = true, message = "Job order created successfully!", id = result.Data?.JobOrderId });
         return RedirectToAction(nameof(Index));
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  DETAILS
+    // ═══════════════════════════════════════════════════════════════════
     [HttpGet]
-    public IActionResult Details(long id)
+    public async Task<IActionResult> Details(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
-        var model = GetJobOrderDetail(id);
-        return View(model);
+
+        var vm = await GetJobOrderDetailAsync(id);
+        if (vm == null) return NotFound();
+        return View(vm);
     }
 
     [HttpGet]
-    public IActionResult DetailsModal(long id)
+    public async Task<IActionResult> DetailsModal(long id)
     {
         if (!IsAuthorized()) return Forbid();
-        
-        var model = GetJobOrderDetail(id);
-        return PartialView("_DetailsModal", model);
+
+        var vm = await GetJobOrderDetailAsync(id);
+        if (vm == null) return NotFound();
+        return PartialView("_DetailsModal", vm);
     }
 
-    private JobOrderDetailViewModel GetJobOrderDetail(long id)
+    private async Task<JobOrderDetailViewModel?> GetJobOrderDetailAsync(long id)
     {
+        var shopId = User.GetShopId();
+        var dto = await _jobOrderService.GetDetailAsync(shopId, id);
+        if (dto == null) return null;
+
+        _ = Enum.TryParse<JobOrderStatus>(dto.Status, true, out var parsedStatus);
+
+        var serviceCost = dto.Services.Sum(s => s.LineTotal);
+        var partsCost = dto.Parts.Sum(p => p.LineTotal);
+
         return new JobOrderDetailViewModel
         {
-            Id = id,
-            JobNumber = "JO-2024-0088",
-            CustomerId = 2,
-            CustomerName = "Bob Martinez",
-            CustomerInitials = "BM",
-            CustomerPhone = "(555) 222-3333",
-            CustomerEmail = "bob@email.com",
-            DeviceType = "Desktop",
-            DeviceBrand = "HP",
-            DeviceModel = "Pavilion",
-            SerialNumber = "HP-2024-XYZ123",
-            Status = JobOrderStatus.InProgress,
-            TechnicianId = 1,
-            TechnicianName = "David Lee",
-            ProblemDescription = "Computer running slow, takes 10+ minutes to boot. Customer reports frequent freezing and blue screens.",
-            DiagnosisNotes = "Found malware infection and failing HDD. Recommended SSD upgrade and full system cleanup.",
-            EstimatedCost = 180.00m,
-            FinalCost = 0,
-            CreatedAt = DateTime.Now.AddHours(-2),
-            DiagnosedAt = DateTime.Now.AddHours(-1),
-            DueDate = DateTime.Now.AddDays(2),
-            Items = new List<JobOrderItemLineViewModel>
+            Id = dto.JobOrderId,
+            JobNumber = dto.JobOrderNo,
+            JobOrderNumber = dto.JobOrderNo,
+            OrderNumber = dto.JobOrderNo,
+            CustomerId = dto.CustomerId,
+            CustomerName = dto.CustomerName,
+            CustomerInitials = GetInitials(dto.CustomerName),
+            CustomerEmail = dto.CustomerEmail,
+            CustomerPhone = dto.CustomerPhone ?? "",
+            DeviceId = dto.DeviceId,
+            DeviceType = dto.DeviceType,
+            Brand = dto.Brand,
+            Model = dto.Model,
+            DeviceBrand = dto.Brand,
+            DeviceModel = dto.Model,
+            SerialNumber = dto.SerialNo,
+            DeviceSerial = dto.SerialNo,
+            DeviceInfo = $"{dto.DeviceType} - {dto.Brand} {dto.Model}",
+            Status = parsedStatus,
+            TechnicianId = dto.AssignedTechUserId,
+            AssignedTechnicianId = dto.AssignedTechUserId,
+            TechnicianName = dto.TechnicianName,
+            AssignedTechnicianName = dto.TechnicianName,
+            AssignedTechnician = dto.TechnicianName,
+            CreatedBy = dto.CreatedByName,
+            ProblemDescription = dto.ProblemReported,
+            ProblemReported = dto.ProblemReported,
+            DiagnosisNotes = dto.DiagnosisNotes,
+            CreatedAt = dto.CreatedAt,
+            UpdatedAt = dto.UpdatedAt,
+            InvoiceId = dto.InvoiceId,
+            TotalServiceCost = serviceCost,
+            TotalPartsCost = partsCost,
+            Subtotal = serviceCost + partsCost,
+            Total = serviceCost + partsCost,
+            EstimatedCost = serviceCost + partsCost,
+            Services = dto.Services.Select(s => new JobOrderServiceItemViewModel
             {
-                new() { Id = 1, Description = "System Diagnosis", Quantity = 1, UnitPrice = 50.00m, Total = 50.00m, IsService = true },
-                new() { Id = 2, Description = "Malware Removal", Quantity = 1, UnitPrice = 75.00m, Total = 75.00m, IsService = true },
-                new() { Id = 3, Description = "500GB SSD", Quantity = 1, UnitPrice = 65.00m, Total = 65.00m, IsService = false }
-            },
-            Timeline = new List<TimelineEventViewModel>
+                Id = s.JobOrderServiceId,
+                ServiceName = s.ServiceName,
+                Quantity = s.Qty,
+                UnitPrice = s.UnitPrice,
+                Total = s.LineTotal
+            }).ToList(),
+            Parts = dto.Parts.Select(p => new JobOrderPartItemViewModel
             {
-                new() { Title = "Job Order Created", Description = "Created by Emily Brown", Timestamp = DateTime.Now.AddHours(-2), Icon = "plus", IsCompleted = true },
-                new() { Title = "Assigned to Technician", Description = "Assigned to David Lee", Timestamp = DateTime.Now.AddHours(-1).AddMinutes(-45), Icon = "user", IsCompleted = true },
-                new() { Title = "Diagnosis Completed", Description = "Malware and HDD issues identified", Timestamp = DateTime.Now.AddHours(-1), Icon = "search", IsCompleted = true },
-                new() { Title = "Repair In Progress", Description = "Currently being worked on", Timestamp = DateTime.Now.AddMinutes(-30), Icon = "wrench", IsCompleted = false }
-            }
+                Id = p.JobOrderPartId,
+                PartName = p.ItemName,
+                Quantity = p.QtyUsed,
+                UnitPrice = p.UnitPrice,
+                Total = p.LineTotal
+            }).ToList(),
+            Items = dto.Services.Select(s => new JobOrderItemLineViewModel
+            {
+                Id = s.JobOrderServiceId,
+                Description = s.ServiceName,
+                Quantity = s.Qty,
+                UnitPrice = s.UnitPrice,
+                Total = s.LineTotal,
+                IsService = true
+            })
+            .Concat(dto.Parts.Select(p => new JobOrderItemLineViewModel
+            {
+                Id = p.JobOrderPartId,
+                Description = p.ItemName,
+                Quantity = p.QtyUsed,
+                UnitPrice = p.UnitPrice,
+                Total = p.LineTotal,
+                IsService = false
+            })).ToList(),
+            Timeline = dto.Timeline.Select(t => new TimelineEventViewModel
+            {
+                Title = $"Status → {t.NewStatus}",
+                Description = $"By {t.ChangedByName}" + (string.IsNullOrEmpty(t.Remarks) ? "" : $" — {t.Remarks}"),
+                Timestamp = t.ChangedAt,
+                Status = t.NewStatus,
+                CompletedBy = t.ChangedByName,
+                IsCompleted = true,
+                Icon = t.NewStatus switch
+                {
+                    "Pending" => "plus",
+                    "CheckedIn" => "log-in",
+                    "Diagnosis" or "Diagnosed" => "search",
+                    "AwaitingApproval" => "clock",
+                    "Approved" => "check",
+                    "InProgress" => "wrench",
+                    "Completed" => "check-circle",
+                    "ReadyForPickup" => "package",
+                    "Delivered" => "truck",
+                    "Cancelled" => "x-circle",
+                    _ => "activity"
+                }
+            }).ToList()
         };
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  EDIT
+    // ═══════════════════════════════════════════════════════════════════
     [HttpGet]
-    public IActionResult Edit(long id)
+    public async Task<IActionResult> Edit(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
-        var model = GetJobOrderEditModel(id);
-        ViewBag.JobOrderNumber = "JO-2024-0088";
+
+        var model = await GetJobOrderEditModelAsync(id);
+        if (model == null) return NotFound();
+        ViewBag.JobOrderNumber = model.Id > 0 ? $"JO Edit #{model.Id}" : "";
         return View(model);
     }
 
     [HttpGet]
-    public IActionResult EditModal(long id)
+    public async Task<IActionResult> EditModal(long id)
     {
         if (!IsAuthorized()) return Forbid();
-        
-        var model = GetJobOrderEditModel(id);
+
+        var model = await GetJobOrderEditModelAsync(id);
+        if (model == null) return NotFound();
         return PartialView("_EditModal", model);
     }
 
-    private JobOrderCreateViewModel GetJobOrderEditModel(long id)
+    private async Task<JobOrderCreateViewModel?> GetJobOrderEditModelAsync(long id)
     {
-        return new JobOrderCreateViewModel
+        var shopId = User.GetShopId();
+        var dto = await _jobOrderService.GetDetailAsync(shopId, id);
+        if (dto == null) return null;
+
+        var model = new JobOrderCreateViewModel
         {
-            Id = id,
-            CustomerId = 2,
-            DeviceType = "Desktop",
-            Brand = "HP",
-            Model = "Pavilion",
-            SerialNumber = "HP-2024-XYZ123",
-            ProblemDescription = "Computer running slow, takes 10+ minutes to boot. Customer reports frequent freezing and blue screens.",
-            Priority = "Normal",
-            AssignedTechnicianId = 1,
-            EstimatedCompletionDate = DateTime.Now.AddDays(2),
-            AvailableCustomers = new List<CustomerSelectItem>
-            {
-                new() { Id = 1, FullName = "Alice Thompson", Phone = "(555) 111-2222" },
-                new() { Id = 2, FullName = "Bob Martinez", Phone = "(555) 222-3333" },
-                new() { Id = 3, FullName = "Carol White", Phone = "(555) 333-4444" },
-                new() { Id = 4, FullName = "Dan Brown", Phone = "(555) 444-5555" }
-            },
-            AvailableTechnicians = new List<TechnicianSelectItem>
-            {
-                new() { Id = 1, FullName = "David Lee", ActiveJobOrders = 3 },
-                new() { Id = 2, FullName = "Emily Chen", ActiveJobOrders = 2 }
-            }
+            Id = dto.JobOrderId,
+            CustomerId = dto.CustomerId,
+            DeviceType = dto.DeviceType,
+            Brand = dto.Brand,
+            Model = dto.Model,
+            SerialNumber = dto.SerialNo,
+            DeviceSerial = dto.SerialNo,
+            ProblemDescription = dto.ProblemReported,
+            AssignedTechnicianId = dto.AssignedTechUserId
         };
+
+        await PopulateDropdowns(model, shopId);
+        return model;
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Edit(JobOrderCreateViewModel model)
+    public async Task<IActionResult> Edit(JobOrderCreateViewModel model)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
+
         if (!ModelState.IsValid)
         {
-            model.AvailableCustomers = new List<CustomerSelectItem>
-            {
-                new() { Id = 1, FullName = "Alice Thompson", Phone = "(555) 111-2222" },
-                new() { Id = 2, FullName = "Bob Martinez", Phone = "(555) 222-3333" }
-            };
-            model.AvailableTechnicians = new List<TechnicianSelectItem>
-            {
-                new() { Id = 1, FullName = "David Lee", ActiveJobOrders = 3 },
-                new() { Id = 2, FullName = "Emily Chen", ActiveJobOrders = 2 }
-            };
+            await PopulateDropdowns(model, User.GetShopId());
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
                 return PartialView("_EditModal", model);
-            ViewBag.JobOrderNumber = "JO-2024-0088";
+            ViewBag.JobOrderNumber = $"JO Edit #{model.Id}";
             return View(model);
         }
-        
+
+        var shopId = User.GetShopId();
+        var userId = User.GetUserId();
+
+        // Update basic fields directly via EF since service only has status/assign methods
+        var jobOrder = await _db.JobOrders
+            .FirstOrDefaultAsync(j => j.ShopId == shopId && j.JobOrderId == model.Id);
+
+        if (jobOrder == null)
+        {
+            ModelState.AddModelError("", "Job order not found.");
+            await PopulateDropdowns(model, shopId);
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView("_EditModal", model);
+            return View(model);
+        }
+
+        jobOrder.ProblemReported = model.ProblemDescription?.Trim() ?? jobOrder.ProblemReported;
+        jobOrder.CustomerId = model.CustomerId;
+        jobOrder.UpdatedAt = DateTime.UtcNow;
+
+        // Update device
+        var device = await _db.Devices.FindAsync(jobOrder.DeviceId);
+        if (device != null)
+        {
+            device.DeviceType = model.DeviceType?.Trim() ?? device.DeviceType;
+            device.Brand = model.Brand?.Trim() ?? device.Brand;
+            device.Model = model.Model?.Trim() ?? device.Model;
+            device.SerialNo = model.SerialNumber?.Trim() ?? model.DeviceSerial?.Trim();
+        }
+
+        // Reassign technician if changed
+        if (model.AssignedTechnicianId.HasValue &&
+            model.AssignedTechnicianId != jobOrder.AssignedTechUserId)
+        {
+            await _jobOrderService.AssignTechnicianAsync(shopId, userId, model.Id,
+                new AssignTechnicianRequest { TechnicianUserId = model.AssignedTechnicianId.Value });
+        }
+
+        await _db.SaveChangesAsync();
+
         TempData["Success"] = "Job order updated successfully!";
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = true, message = "Job order updated successfully!" });

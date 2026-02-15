@@ -1,7 +1,13 @@
+using ByteBill_BS.Data;
+using ByteBill_BS.DTOs.Common;
+using ByteBill_BS.DTOs.Customers;
+using ByteBill_BS.Extensions;
 using ByteBill_BS.Models.Enums;
+using ByteBill_BS.Services;
 using ByteBill_BS.ViewModels.Customers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ByteBill_BS.Areas.Admin.Controllers;
 
@@ -9,32 +15,46 @@ namespace ByteBill_BS.Areas.Admin.Controllers;
 [Authorize]
 public class CustomersController : Controller
 {
-    private bool IsAuthorized()
+    private readonly ICustomerService _customerService;
+    private readonly ApplicationDbContext _db;
+
+    public CustomersController(ICustomerService customerService, ApplicationDbContext db)
     {
-        var roleClaim = User.Claims.FirstOrDefault(c => c.Type == "Role")?.Value;
-        return roleClaim == UserRole.Admin.ToString();
+        _customerService = customerService;
+        _db = db;
     }
 
+    private bool IsAuthorized() => User.IsInRoles("Admin", "SuperAdmin");
+
     [HttpGet]
-    public IActionResult Index(string? search, int page = 1)
+    public async Task<IActionResult> Index(string? search, int page = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var result = await _customerService.GetListAsync(shopId, new PagedRequest { Search = search, Page = page, PageSize = 10 });
 
         var viewModel = new CustomerListViewModel
         {
             SearchTerm = search,
             CurrentPage = page,
-            TotalCount = 48,
-            Customers = new List<CustomerItemViewModel>
+            TotalCount = result.TotalCount,
+            Customers = result.Items.Select(c => new CustomerItemViewModel
             {
-                new() { Id = 1, FullName = "Alice Thompson", Initials = "AT", Email = "alice@email.com", Phone = "(555) 111-2222", TotalJobOrders = 12, TotalSpent = 2450.00m, CreatedAt = DateTime.Now.AddMonths(-8), IsActive = true },
-                new() { Id = 2, FullName = "Bob Martinez", Initials = "BM", Email = "bob@email.com", Phone = "(555) 222-3333", TotalJobOrders = 8, TotalSpent = 1890.00m, CreatedAt = DateTime.Now.AddMonths(-5), IsActive = true },
-                new() { Id = 3, FullName = "Carol White", Initials = "CW", Email = "carol@email.com", Phone = "(555) 333-4444", TotalJobOrders = 5, TotalSpent = 980.00m, CreatedAt = DateTime.Now.AddMonths(-3), IsActive = true },
-                new() { Id = 4, FullName = "Dan Brown", Initials = "DB", Email = "dan@email.com", Phone = "(555) 444-5555", TotalJobOrders = 3, TotalSpent = 450.00m, CreatedAt = DateTime.Now.AddMonths(-1), IsActive = true },
-                new() { Id = 5, FullName = "Emily Chen", Initials = "EC", Email = "emily@email.com", Phone = "(555) 555-6666", TotalJobOrders = 15, TotalSpent = 3200.00m, CreatedAt = DateTime.Now.AddYears(-1), IsActive = true }
-            }
+                Id = c.CustomerId,
+                FullName = c.FullName,
+                Name = c.FullName,
+                Initials = c.Initials,
+                Email = c.Email,
+                Phone = c.Phone ?? "",
+                TotalOrders = c.Orders,
+                TotalJobOrders = c.Orders,
+                TotalSpent = c.TotalSpent,
+                CreatedAt = c.CreatedAt,
+                IsActive = c.IsActive
+            }).ToList()
         };
-        
+
         return View(viewModel);
     }
 
@@ -54,123 +74,191 @@ public class CustomersController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Create(CustomerFormViewModel model)
+    public async Task<IActionResult> Create(CustomerFormViewModel model)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
+
         if (!ModelState.IsValid)
         {
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
                 return PartialView("_CreateModal", model);
             return View(model);
         }
-        
-        TempData["Success"] = "Customer created successfully!";
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-            return Json(new { success = true, message = "Customer created successfully!" });
-        return RedirectToAction(nameof(Index));
+
+        try
+        {
+            var shopId = User.GetShopId();
+            var userId = User.GetUserId();
+
+            await _customerService.CreateAsync(shopId, userId, new CreateCustomerRequest
+            {
+                FirstName = model.FirstName,
+                MiddleName = model.MiddleName,
+                LastName = model.LastName,
+                Email = model.Email,
+                Phone = model.Phone,
+                Address = model.Address
+            });
+
+            TempData["Success"] = "Customer created successfully!";
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return Json(new { success = true, message = "Customer created successfully!" });
+            return RedirectToAction(nameof(Index));
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView("_CreateModal", model);
+            return View(model);
+        }
     }
 
     [HttpGet]
-    public IActionResult Edit(long id)
+    public async Task<IActionResult> Edit(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
-        var model = new CustomerFormViewModel
-        {
-            Id = id,
-            FirstName = "Alice",
-            LastName = "Thompson",
-            Email = "alice@email.com",
-            Phone = "(555) 111-2222",
-            Address = "123 Main St, Anytown, USA 12345",
-            Notes = "Preferred customer - 10% discount",
-            IsActive = true
-        };
-        
-        return View(model);
+
+        var shopId = User.GetShopId();
+        var customer = await _customerService.GetByIdAsync(shopId, id);
+        if (customer == null) return NotFound();
+
+        return View(MapToForm(customer));
     }
 
     [HttpGet]
-    public IActionResult EditModal(long id)
+    public async Task<IActionResult> EditModal(long id)
     {
         if (!IsAuthorized()) return Forbid();
-        
-        var model = new CustomerFormViewModel
-        {
-            Id = id,
-            FirstName = "Alice",
-            LastName = "Thompson",
-            Email = "alice@email.com",
-            Phone = "(555) 111-2222",
-            Address = "123 Main St, Anytown, USA 12345",
-            Notes = "Preferred customer - 10% discount",
-            IsActive = true
-        };
-        
-        return PartialView("_EditModal", model);
+
+        var shopId = User.GetShopId();
+        var customer = await _customerService.GetByIdAsync(shopId, id);
+        if (customer == null) return NotFound();
+
+        return PartialView("_EditModal", MapToForm(customer));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Edit(CustomerFormViewModel model)
+    public async Task<IActionResult> Edit(CustomerFormViewModel model)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
+
         if (!ModelState.IsValid)
         {
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
                 return PartialView("_EditModal", model);
             return View(model);
         }
-        
-        TempData["Success"] = "Customer updated successfully!";
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-            return Json(new { success = true, message = "Customer updated successfully!" });
-        return RedirectToAction(nameof(Index));
+
+        try
+        {
+            var shopId = User.GetShopId();
+            var userId = User.GetUserId();
+
+            var result = await _customerService.UpdateAsync(shopId, userId, model.Id, new UpdateCustomerRequest
+            {
+                FirstName = model.FirstName,
+                MiddleName = model.MiddleName,
+                LastName = model.LastName,
+                Email = model.Email,
+                Phone = model.Phone,
+                Address = model.Address
+            });
+
+            if (result == null) return NotFound();
+
+            TempData["Success"] = "Customer updated successfully!";
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return Json(new { success = true, message = "Customer updated successfully!" });
+            return RedirectToAction(nameof(Index));
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView("_EditModal", model);
+            return View(model);
+        }
     }
 
     [HttpGet]
-    public IActionResult Details(long id)
+    public async Task<IActionResult> Details(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
-        var model = GetCustomerDetail(id);
+
+        var model = await GetCustomerDetailAsync(id);
+        if (model == null) return NotFound();
         return View(model);
     }
 
     [HttpGet]
-    public IActionResult DetailsModal(long id)
+    public async Task<IActionResult> DetailsModal(long id)
     {
         if (!IsAuthorized()) return Forbid();
-        
-        var model = GetCustomerDetail(id);
+
+        var model = await GetCustomerDetailAsync(id);
+        if (model == null) return NotFound();
         return PartialView("_DetailsModal", model);
     }
 
-    private CustomerDetailViewModel GetCustomerDetail(long id)
+    // ── Private helpers ──────────────────────────────────────────────────
+
+    private static CustomerFormViewModel MapToForm(CustomerDetailDto c) => new()
     {
+        Id = c.CustomerId,
+        FirstName = c.FirstName,
+        MiddleName = c.MiddleName,
+        LastName = c.LastName,
+        Email = c.Email,
+        Phone = c.Phone,
+        Address = c.Address,
+        IsActive = c.IsActive
+    };
+
+    private async Task<CustomerDetailViewModel?> GetCustomerDetailAsync(long id)
+    {
+        var shopId = User.GetShopId();
+        var customer = await _customerService.GetByIdAsync(shopId, id);
+        if (customer == null) return null;
+
+        var outstandingBalance = await _db.Invoices
+            .Where(i => i.ShopId == shopId && i.CustomerId == id && i.Balance > 0 && i.Status != InvoiceStatus.Void)
+            .SumAsync(i => (decimal?)i.Balance) ?? 0;
+
+        var recentJobOrders = await _db.JobOrders
+            .Where(j => j.ShopId == shopId && j.CustomerId == id)
+            .OrderByDescending(j => j.CreatedAt)
+            .Take(5)
+            .Select(j => new CustomerJobOrderViewModel
+            {
+                Id = j.JobOrderId,
+                JobNumber = j.JobOrderNo,
+                DeviceType = j.Device!.DeviceType + " " + j.Device.Brand + " " + j.Device.Model,
+                Status = j.Status.ToString(),
+                StatusClass = "badge-" + j.Status.ToString().ToLower(),
+                Total = j.JobOrderServices.Sum(s => s.LineTotal) + j.JobOrderParts.Sum(p => p.LineTotal),
+                CreatedAt = j.CreatedAt
+            })
+            .AsNoTracking()
+            .ToListAsync();
+
         return new CustomerDetailViewModel
         {
-            Id = id,
-            FullName = "Alice Thompson",
-            Name = "Alice Thompson",
-            Initials = "AT",
-            Email = "alice@email.com",
-            Phone = "(555) 111-2222",
-            Address = "123 Main St, Anytown, USA 12345",
-            Notes = "Preferred customer - 10% discount",
-            IsActive = true,
-            CreatedAt = DateTime.Now.AddMonths(-8),
-            TotalJobOrders = 12,
-            TotalSpent = 2450.00m,
-            OutstandingBalance = 180.00m,
-            RecentJobOrders = new List<CustomerJobOrderViewModel>
-            {
-                new() { Id = 1, JobNumber = "JO-2024-0089", DeviceType = "Laptop", Status = "Pending", StatusClass = "badge-pending", Total = 0, CreatedAt = DateTime.Now.AddDays(-1) },
-                new() { Id = 2, JobNumber = "JO-2024-0075", DeviceType = "Desktop", Status = "Completed", StatusClass = "badge-completed", Total = 350.00m, CreatedAt = DateTime.Now.AddDays(-15) },
-                new() { Id = 3, JobNumber = "JO-2024-0062", DeviceType = "Phone", Status = "Completed", StatusClass = "badge-completed", Total = 180.00m, CreatedAt = DateTime.Now.AddDays(-30) }
-            }
+            Id = customer.CustomerId,
+            FullName = customer.FullName,
+            Name = customer.FullName,
+            Initials = customer.Initials,
+            Email = customer.Email,
+            Phone = customer.Phone ?? "",
+            Address = customer.Address,
+            IsActive = customer.IsActive,
+            CreatedAt = customer.CreatedAt,
+            TotalOrders = customer.Orders,
+            TotalJobOrders = customer.Orders,
+            TotalSpent = customer.TotalSpent,
+            OutstandingBalance = outstandingBalance,
+            RecentJobOrders = recentJobOrders
         };
     }
 }

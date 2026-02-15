@@ -13,6 +13,7 @@ public class Payment
     public string? ReferenceNo { get; set; }
     public long ReceivedByUserId { get; set; }
     public PaymentStatus Status { get; set; } = (PaymentStatus)(-1);
+    public string? Notes { get; set; }
 
     // Navigation properties
     public Shop? Shop { get; set; }

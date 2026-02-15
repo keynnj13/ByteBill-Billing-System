@@ -6,10 +6,17 @@
     <div class="modal-form-body">
         <div class="form-section">
             <h4 class="form-section-title">Personal Information</h4>
-            <div class="form-group">
-                <label asp-for="Name" class="form-label">Full Name <span class="required">*</span></label>
-                <input asp-for="Name" class="form-input" placeholder="Enter customer's full name" />
-                <span asp-validation-for="Name" class="field-error"></span>
+            <div class="form-row">
+                <div class="form-group">
+                    <label asp-for="FirstName" class="form-label">First Name <span class="required">*</span></label>
+                    <input asp-for="FirstName" class="form-input" placeholder="First name" />
+                    <span asp-validation-for="FirstName" class="field-error"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="LastName" class="form-label">Last Name <span class="required">*</span></label>
+                    <input asp-for="LastName" class="form-input" placeholder="Last name" />
+                    <span asp-validation-for="LastName" class="field-error"></span>
+                </div>
             </div>
         </div>
 

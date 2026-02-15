@@ -141,6 +141,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Email).HasMaxLength(100);
             entity.Property(e => e.Phone).HasMaxLength(30);
             entity.Property(e => e.Address).HasMaxLength(255);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
             entity.HasIndex(e => e.ShopId);
             entity.Ignore(e => e.FullName);
@@ -431,6 +432,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue(InvoiceStatus.Unpaid)
                   .HasConversion<string>();
             entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
+            entity.Property(e => e.DueDate).HasColumnType("datetime2(0)");
             entity.HasIndex(e => new { e.ShopId, e.InvoiceNo }).IsUnique();
             entity.HasIndex(e => e.JobOrderId).IsUnique(); // 1:1 with JOB_ORDERS
             entity.HasIndex(e => e.ShopId);
@@ -495,6 +497,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue(PaymentStatus.Confirmed)
                   .HasConversion<string>()
                   .HasSentinel((PaymentStatus)(-1));
+            entity.Property(e => e.Notes).HasMaxLength(500);
             entity.HasIndex(e => e.ShopId);
             entity.HasIndex(e => e.CustomerId);
             entity.HasIndex(e => e.ReceivedByUserId);

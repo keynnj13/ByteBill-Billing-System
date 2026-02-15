@@ -17,6 +17,7 @@ public class Invoice
     public decimal Balance { get; set; }
     public InvoiceStatus Status { get; set; } = InvoiceStatus.Unpaid;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? DueDate { get; set; }
 
     // Navigation properties
     public Shop? Shop { get; set; }

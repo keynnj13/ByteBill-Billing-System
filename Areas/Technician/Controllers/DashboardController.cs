@@ -26,24 +26,15 @@ public class DashboardController : Controller
             PendingInvoices = 0,
             PaidToday = 0,
             OutstandingBalance = 0,
-            RecentActivity = new List<RecentActivityItem>
-            {
-                new() { Icon = "wrench", IconColor = "primary", Title = "Job assigned", Description = "JO-2024-0157 - Dell XPS 15 needs diagnosis", TimeAgo = "10 min ago" },
-                new() { Icon = "check-circle", IconColor = "success", Title = "Job completed", Description = "JO-2024-0156 - MacBook Pro repair finished", TimeAgo = "30 min ago" },
-                new() { Icon = "wrench", IconColor = "warning", Title = "In progress", Description = "JO-2024-0154 - iPhone screen replacement", TimeAgo = "1 hour ago" }
-            },
-            PendingJobOrders = new List<JobOrderSummary>
-            {
-                new() { Id = 157, OrderNumber = "JO-2024-0157", CustomerName = "Sarah Chen", Status = JobOrderStatus.CheckedIn, DeviceType = "Dell XPS 15", StatusBadgeClass = "info" },
-                new() { Id = 154, OrderNumber = "JO-2024-0154", CustomerName = "Bob Martinez", Status = JobOrderStatus.InProgress, DeviceType = "iPhone 14 Pro", StatusBadgeClass = "warning" },
-                new() { Id = 153, OrderNumber = "JO-2024-0153", CustomerName = "Alice Thompson", Status = JobOrderStatus.WaitingForParts, DeviceType = "HP Pavilion", StatusBadgeClass = "secondary" }
-            }
+            RecentActivity = new List<RecentActivityItem>(),
+            PendingJobOrders = new List<JobOrderSummary>()
+            // TODO: Connect to API - GET /api/jobordersapi for technician's assigned jobs
         };
         
-        ViewBag.MyJobsToday = 4;
-        ViewBag.CompletedToday = 2;
-        ViewBag.InProgress = 2;
-        ViewBag.WaitingParts = 1;
+        ViewBag.MyJobsToday = 0;
+        ViewBag.CompletedToday = 0;
+        ViewBag.InProgress = 0;
+        ViewBag.WaitingParts = 0;
         
         return View(viewModel);
     }
