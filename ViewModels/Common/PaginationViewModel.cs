@@ -7,6 +7,7 @@ public class PaginationViewModel
     public int TotalItems { get; set; }
     public int PageSize { get; set; } = 10;
     public string BaseUrl { get; set; } = string.Empty;
+    public string? SearchTerm { get; set; }
     
     public bool HasPreviousPage => CurrentPage > 1;
     public bool HasNextPage => CurrentPage < TotalPages;

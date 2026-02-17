@@ -1,0 +1,238 @@
+@model PaymentDetailViewModel
+@{
+    ViewData["Title"] = "Payment Details";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Payments", Url = Url.Action("Index", "Payments", new { area = "Billing" }) }, new() { Label = "Payment Details", IsActive = true } } })" />
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Payment Details</h1>
+        <p class="page-subtitle">Payment for @(Model.InvoiceNumber ?? "—")</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Back to Payments
+    </a>
+</div>
+
+<div class="detail-layout">
+    <!-- Main Column -->
+    <div class="detail-main">
+        <!-- Payment Info -->
+        <div class="card">
+            <div class="card-header-section">
+                <div class="header-flex">
+                    <h2 class="section-title">Payment Information</h2>
+                    @if (Model.IsVoid)
+                    {
+                        <span class="badge badge-void">VOID</span>
+                    }
+                    else
+                    {
+                        <span class="badge badge-success">Completed</span>
+                    }
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Amount</span>
+                        <span class="info-value amount-value">₱ @Model.Amount.ToString("N2")</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Method</span>
+                        <span class="info-value">
+                            <span class="method-badge method-@Model.Method.ToString().ToLower()">@Model.MethodDisplay</span>
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Date</span>
+                        <span class="info-value">@Model.PaymentDate.ToString("MMMM dd, yyyy")</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Reference No.</span>
+                        <span class="info-value">@(Model.ReferenceNo ?? "—")</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Received By</span>
+                        <span class="info-value">@(Model.ReceivedByName ?? "—")</span>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Notes))
+                {
+                    <div class="notes-section">
+                        <span class="info-label">Notes</span>
+                        <p class="notes-text">@Model.Notes</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Customer Info -->
+        <div class="card">
+            <div class="card-header-section">
+                <h2 class="section-title">Customer</h2>
+            </div>
+            <div class="card-body">
+                <div class="customer-row">
+                    <div class="avatar-md">@(Model.CustomerName.Length >= 2 ? Model.CustomerName[..2].ToUpper() : "?")</div>
+                    <div>
+                        <div class="customer-name">@Model.CustomerName</div>
+                        <div class="customer-contact">
+                            @if (!string.IsNullOrWhiteSpace(Model.CustomerEmail))
+                            {
+                                <span>@Model.CustomerEmail</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(Model.CustomerPhone))
+                            {
+                                <span> · @Model.CustomerPhone</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Allocations -->
+        @if (Model.Allocations.Any())
+        {
+            <div class="card">
+                <div class="card-header-section">
+                    <h2 class="section-title">Payment Allocations</h2>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Invoice</th>
+                                <th class="text-right">Amount Applied</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var alloc in Model.Allocations)
+                            {
+                                <tr>
+                                    <td>
+                                        <a asp-action="Details" asp-controller="Invoices" asp-route-id="@alloc.InvoiceId" class="text-primary font-medium">
+                                            @alloc.InvoiceNumber
+                                        </a>
+                                    </td>
+                                    <td class="text-right font-medium">₱ @alloc.AmountApplied.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td class="font-medium">Total Applied</td>
+                                <td class="text-right font-bold">₱ @Model.Allocations.Sum(a => a.AmountApplied).ToString("N2")</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Sidebar -->
+    <div class="detail-sidebar">
+        <div class="card">
+            <div class="card-header-section">
+                <h2 class="section-title">Quick Info</h2>
+            </div>
+            <div class="card-body">
+                <div class="sidebar-item">
+                    <span class="sidebar-label">Invoice</span>
+                    @if (Model.InvoiceId.HasValue)
+                    {
+                        <a asp-action="Details" asp-controller="Invoices" asp-route-id="@Model.InvoiceId" class="sidebar-link">@Model.InvoiceNumber</a>
+                    }
+                    else
+                    {
+                        <span class="sidebar-value">—</span>
+                    }
+                </div>
+                <div class="sidebar-item">
+                    <span class="sidebar-label">Amount</span>
+                    <span class="sidebar-value font-bold">₱ @Model.Amount.ToString("N2")</span>
+                </div>
+                <div class="sidebar-item">
+                    <span class="sidebar-label">Method</span>
+                    <span class="sidebar-value">@Model.MethodDisplay</span>
+                </div>
+                <div class="sidebar-item">
+                    <span class="sidebar-label">Date</span>
+                    <span class="sidebar-value">@Model.PaymentDate.ToString("MMM dd, yyyy")</span>
+                </div>
+                <div class="sidebar-item">
+                    <span class="sidebar-label">Status</span>
+                    <span class="sidebar-value">
+                        @if (Model.IsVoid)
+                        {
+                            <span class="badge badge-void">Void</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-success">Completed</span>
+                        }
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: #6b7280; }
+    .detail-layout { display: grid; grid-template-columns: 1fr 320px; gap: 24px; align-items: start; }
+    .detail-main { display: flex; flex-direction: column; gap: 20px; }
+    .card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
+    .card-header-section { padding: 16px 20px; border-bottom: 1px solid #f3f4f6; }
+    .card-body { padding: 20px; }
+    .card-body.p-0 { padding: 0; }
+    .header-flex { display: flex; justify-content: space-between; align-items: center; }
+    .section-title { font-size: 15px; font-weight: 600; color: #374151; margin: 0; }
+    .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .info-item { display: flex; flex-direction: column; gap: 4px; }
+    .info-label { font-size: 12px; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .info-value { font-size: 14px; font-weight: 500; color: #1f2937; }
+    .amount-value { font-size: 22px; font-weight: 700; color: #10b981; }
+    .method-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .method-cash { background: #ecfdf5; color: #059669; }
+    .method-gcash { background: #eff6ff; color: #2563eb; }
+    .method-card { background: #f0f9ff; color: #0284c7; }
+    .method-paymongo { background: #faf5ff; color: #7c3aed; }
+    .notes-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid #f3f4f6; }
+    .notes-text { margin-top: 6px; font-size: 14px; color: #374151; line-height: 1.5; }
+    .customer-row { display: flex; align-items: center; gap: 14px; }
+    .avatar-md { width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+    .customer-name { font-size: 15px; font-weight: 600; color: #1f2937; }
+    .customer-contact { font-size: 13px; color: #6b7280; margin-top: 2px; }
+    .table { width: 100%; border-collapse: collapse; }
+    .table th { padding: 10px 20px; text-align: left; font-size: 12px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #f3f4f6; background: #fafafa; }
+    .table td { padding: 12px 20px; font-size: 14px; color: #374151; border-bottom: 1px solid #f3f4f6; }
+    .table tfoot td { font-size: 14px; background: #f9fafb; border-top: 2px solid #e5e7eb; }
+    .text-right { text-align: right; }
+    .text-primary { color: #3b82f6; }
+    .font-medium { font-weight: 500; }
+    .font-bold { font-weight: 700; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 50px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .badge-success { background: #ecfdf5; color: #059669; }
+    .badge-void { background: #fef2f2; color: #dc2626; }
+    .sidebar-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+    .sidebar-item:last-child { border-bottom: none; }
+    .sidebar-label { font-size: 13px; color: #6b7280; }
+    .sidebar-value { font-size: 14px; font-weight: 500; color: #1f2937; }
+    .sidebar-link { font-size: 14px; font-weight: 600; color: #3b82f6; text-decoration: none; }
+    .sidebar-link:hover { text-decoration: underline; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; text-decoration: none; }
+    .btn-outline-secondary { background: white; color: #6b7280; border: 1px solid #d1d5db; }
+    .btn-outline-secondary:hover { background: #f9fafb; }
+    @@media (max-width: 768px) {
+        .detail-layout { grid-template-columns: 1fr; }
+        .info-grid { grid-template-columns: 1fr 1fr; }
+    }
+</style>

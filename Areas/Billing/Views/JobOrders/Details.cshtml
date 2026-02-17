@@ -1,0 +1,223 @@
+@model JobOrderDetailViewModel
+@{
+    ViewData["Title"] = $"Job Order {Model.JobNumber}";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Job Orders", Url = Url.Action("Index", "JobOrders", new { area = "Billing" }) }, new() { Label = Model.JobNumber, IsActive = true } } })" />
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">@Model.JobNumber</h1>
+        <p class="page-subtitle">
+            <span class="badge @Model.StatusClass">@Model.StatusDisplay</span>
+            <span class="text-muted" style="margin-left: 8px;">Created @Model.CreatedAt.ToString("MMM dd, yyyy")</span>
+        </p>
+    </div>
+    <div class="page-actions">
+        @if (Model.Status == JobOrderStatus.Completed && !Model.HasInvoice)
+        {
+            <a href="@Url.Action("Create", "Invoices", new { area = "Billing", jobOrderId = Model.Id })" class="btn btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                Create Invoice
+            </a>
+        }
+        @if (Model.HasInvoice)
+        {
+            <a href="@Url.Action("Details", "Invoices", new { area = "Billing", id = Model.InvoiceId })" class="btn btn-outline-primary">View Invoice</a>
+        }
+    </div>
+</div>
+
+<div class="detail-grid">
+    <!-- Left Column -->
+    <div class="detail-main">
+        <!-- Customer Info -->
+        <div class="card">
+            <div class="card-body">
+                <h3 class="section-title">Customer Information</h3>
+                <div class="detail-row">
+                    <div class="detail-field">
+                        <span class="detail-label">Name</span>
+                        <span class="detail-value">@Model.CustomerName</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">Phone</span>
+                        <span class="detail-value">@(string.IsNullOrEmpty(Model.CustomerPhone) ? "—" : Model.CustomerPhone)</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">Email</span>
+                        <span class="detail-value">@(string.IsNullOrEmpty(Model.CustomerEmail) ? "—" : Model.CustomerEmail)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Device Info -->
+        <div class="card">
+            <div class="card-body">
+                <h3 class="section-title">Device Information</h3>
+                <div class="detail-row">
+                    <div class="detail-field">
+                        <span class="detail-label">Type</span>
+                        <span class="detail-value">@Model.DeviceType</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">Brand</span>
+                        <span class="detail-value">@(Model.Brand ?? "—")</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">Model</span>
+                        <span class="detail-value">@(Model.Model ?? "—")</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">Serial Number</span>
+                        <span class="detail-value">@(Model.SerialNumber ?? "—")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Problem & Diagnosis -->
+        <div class="card">
+            <div class="card-body">
+                <h3 class="section-title">Problem & Diagnosis</h3>
+                <div class="detail-field" style="margin-bottom: 16px;">
+                    <span class="detail-label">Problem Reported</span>
+                    <p class="detail-value" style="margin: 4px 0 0; white-space: pre-wrap;">@Model.ProblemReported</p>
+                </div>
+                @if (!string.IsNullOrEmpty(Model.DiagnosisNotes))
+                {
+                    <div class="detail-field">
+                        <span class="detail-label">Diagnosis Notes</span>
+                        <p class="detail-value" style="margin: 4px 0 0; white-space: pre-wrap;">@Model.DiagnosisNotes</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Line Items -->
+        @if (Model.LineItems.Any())
+        {
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="section-title">Services & Parts</h3>
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th class="text-center">Type</th>
+                                    <th class="text-center">Qty</th>
+                                    <th class="text-right">Unit Price</th>
+                                    <th class="text-right">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.LineItems)
+                                {
+                                    <tr>
+                                        <td class="font-medium">@item.Description</td>
+                                        <td class="text-center"><span class="category-badge">@item.Type</span></td>
+                                        <td class="text-center">@item.Quantity</td>
+                                        <td class="text-right">@item.UnitPrice.ToString("N2")</td>
+                                        <td class="text-right font-medium">@item.Total.ToString("N2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="4" class="text-right font-medium">Services Total:</td>
+                                    <td class="text-right font-medium">@Model.TotalServiceCost.ToString("N2")</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" class="text-right font-medium">Parts Total:</td>
+                                    <td class="text-right font-medium">@Model.TotalPartsCost.ToString("N2")</td>
+                                </tr>
+                                <tr style="border-top: 2px solid #e5e7eb;">
+                                    <td colspan="4" class="text-right" style="font-weight: 700; font-size: 15px;">Grand Total:</td>
+                                    <td class="text-right" style="font-weight: 700; font-size: 15px;">@Model.Total.ToString("N2")</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Right Column: Sidebar -->
+    <div class="detail-sidebar">
+        <!-- Assignment -->
+        <div class="card">
+            <div class="card-body">
+                <h3 class="section-title">Assignment</h3>
+                <div class="detail-field" style="margin-bottom: 12px;">
+                    <span class="detail-label">Technician</span>
+                    <span class="detail-value">@(Model.TechnicianName ?? "Unassigned")</span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">Created By</span>
+                    <span class="detail-value">@Model.CreatedBy</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        @if (Model.Timeline.Any())
+        {
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="section-title">Timeline</h3>
+                    <div class="timeline">
+                        @foreach (var evt in Model.Timeline)
+                        {
+                            <div class="timeline-item">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-content">
+                                    <div class="timeline-title">@evt.Title</div>
+                                    <div class="timeline-desc">@evt.Description</div>
+                                    <div class="timeline-time">@evt.Timestamp.ToString("MMM dd, yyyy h:mm tt")</div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; display: flex; align-items: center; }
+    .page-actions { display: flex; gap: 8px; }
+    .detail-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+    .detail-main { display: flex; flex-direction: column; gap: 20px; }
+    .detail-sidebar { display: flex; flex-direction: column; gap: 20px; }
+    .section-title { font-size: 15px; font-weight: 600; color: #1f2937; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #f3f4f6; }
+    .detail-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .detail-field { }
+    .detail-label { display: block; font-size: 12px; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+    .detail-value { display: block; font-size: 14px; color: #1f2937; font-weight: 500; }
+    .font-medium { font-weight: 500; }
+    .category-badge { font-size: 11px; padding: 2px 8px; border-radius: 99px; background: #f3f4f6; color: #374151; font-weight: 500; }
+
+    .timeline { position: relative; padding-left: 20px; }
+    .timeline::before { content: ''; position: absolute; left: 6px; top: 0; bottom: 0; width: 2px; background: #e5e7eb; }
+    .timeline-item { position: relative; padding-bottom: 20px; }
+    .timeline-item:last-child { padding-bottom: 0; }
+    .timeline-dot { position: absolute; left: -17px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: #3b82f6; border: 2px solid white; box-shadow: 0 0 0 2px #e5e7eb; }
+    .timeline-content { }
+    .timeline-title { font-size: 13px; font-weight: 600; color: #1f2937; }
+    .timeline-desc { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .timeline-time { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+
+    @@media (max-width: 1024px) {
+        .detail-grid { grid-template-columns: 1fr; }
+    }
+    @@media (max-width: 768px) {
+        .page-header { flex-direction: column; gap: 12px; }
+        .detail-row { grid-template-columns: 1fr; }
+    }
+</style>

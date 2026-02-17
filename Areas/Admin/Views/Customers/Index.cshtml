@@ -27,13 +27,10 @@
 
 <div class="card">
     <div class="card-header">
-        <form method="get" class="search-form">
-            <div class="search-input-wrapper">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <input type="text" name="search" value="@Model.SearchTerm" placeholder="Search customers by name, email, or phone..." class="form-input search-input" />
-            </div>
-            <button type="submit" class="btn btn-outline-primary">Search</button>
-        </form>
+        <div class="search-input-wrapper">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="customerSearchInput" value="@Model.SearchTerm" placeholder="Search customers by name, email, or phone..." class="form-input search-input" />
+        </div>
     </div>
     <div class="card-body p-0">
         @if (Model.Customers.Any())
@@ -94,7 +91,7 @@
                 </table>
             </div>
 
-            <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel { CurrentPage = Model.CurrentPage, TotalPages = (int)Math.Ceiling(Model.TotalCount / 10.0), BaseUrl = Url.Action("Index") })" />
+            <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel { CurrentPage = Model.CurrentPage, TotalPages = (int)Math.Ceiling(Model.TotalCount / 10.0), TotalItems = Model.TotalCount, BaseUrl = Url.Action("Index"), SearchTerm = Model.SearchTerm })" />
         }
         else
         {
@@ -130,4 +127,29 @@
         .search-input { min-width: 100%; }
         .table { table-layout: auto !important; }
     }
+    .form-hint { font-size: 11px; color: #9ca3af; margin-top: 2px; }
 </style>
+
+<script>
+(function() {
+    var searchInput = document.getElementById('customerSearchInput');
+    if (!searchInput) return;
+    var debounceTimer;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        var val = this.value.trim();
+        debounceTimer = setTimeout(function() {
+            var url = '@Url.Action("Index", "Customers", new { area = "Admin" })';
+            if (val.length > 0) {
+                url += '?search=' + encodeURIComponent(val);
+            }
+            window.location.href = url;
+        }, 400);
+    });
+    // Focus search and put cursor at end
+    if (searchInput.value) {
+        searchInput.focus();
+        searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
+    }
+})();
+</script>

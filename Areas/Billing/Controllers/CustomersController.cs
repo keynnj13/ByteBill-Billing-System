@@ -34,6 +34,8 @@ public class CustomersController : Controller
             : (parts.Length == 1 ? parts[0][..1].ToUpper() : "??");
     }
 
+    // ── Index ────────────────────────────────────────────────────────────
+
     [HttpGet]
     public async Task<IActionResult> Index(string? search, int page = 1)
     {
@@ -71,14 +73,156 @@ public class CustomersController : Controller
         return View(viewModel);
     }
 
+    // ── Create ───────────────────────────────────────────────────────────
+
+    [HttpGet]
+    public IActionResult CreateModal()
+    {
+        if (!IsAuthorized()) return Forbid();
+        return PartialView("_CreateModal", new CustomerFormViewModel());
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(CustomerFormViewModel model)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        if (!ModelState.IsValid)
+        {
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView("_CreateModal", model);
+            return View(model);
+        }
+
+        try
+        {
+            var shopId = User.GetShopId();
+            var userId = User.GetUserId();
+
+            await _customerService.CreateAsync(shopId, userId, new CreateCustomerRequest
+            {
+                FirstName = model.FirstName,
+                MiddleName = model.MiddleName,
+                LastName = model.LastName,
+                Email = model.Email,
+                Phone = model.Phone,
+                Address = model.Address
+            });
+
+            TempData["Success"] = "Customer created successfully!";
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return Json(new { success = true, message = "Customer created successfully!" });
+            return RedirectToAction(nameof(Index));
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView("_CreateModal", model);
+            return View(model);
+        }
+    }
+
+    // ── Edit ─────────────────────────────────────────────────────────────
+
+    [HttpGet]
+    public async Task<IActionResult> EditModal(long id)
+    {
+        if (!IsAuthorized()) return Forbid();
+
+        var shopId = User.GetShopId();
+        var customer = await _customerService.GetByIdAsync(shopId, id);
+        if (customer == null) return NotFound();
+
+        return PartialView("_EditModal", MapToForm(customer));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(CustomerFormViewModel model)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        if (!ModelState.IsValid)
+        {
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView("_EditModal", model);
+            return View(model);
+        }
+
+        try
+        {
+            var shopId = User.GetShopId();
+            var userId = User.GetUserId();
+
+            var result = await _customerService.UpdateAsync(shopId, userId, model.Id, new UpdateCustomerRequest
+            {
+                FirstName = model.FirstName,
+                MiddleName = model.MiddleName,
+                LastName = model.LastName,
+                Email = model.Email,
+                Phone = model.Phone,
+                Address = model.Address
+            });
+
+            if (result == null) return NotFound();
+
+            TempData["Success"] = "Customer updated successfully!";
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return Json(new { success = true, message = "Customer updated successfully!" });
+            return RedirectToAction(nameof(Index));
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView("_EditModal", model);
+            return View(model);
+        }
+    }
+
+    // ── Details ──────────────────────────────────────────────────────────
+
     [HttpGet]
     public async Task<IActionResult> Details(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
+        var model = await GetCustomerDetailAsync(id);
+        if (model == null) return NotFound();
+        return View(model);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> DetailsModal(long id)
+    {
+        if (!IsAuthorized()) return Forbid();
+
+        var model = await GetCustomerDetailAsync(id);
+        if (model == null) return NotFound();
+        return PartialView("_DetailsModal", model);
+    }
+
+    // ── Private helpers ──────────────────────────────────────────────────
+
+    private static CustomerFormViewModel MapToForm(CustomerDetailDto c) => new()
+    {
+        Id = c.CustomerId,
+        FirstName = c.FirstName,
+        MiddleName = c.MiddleName,
+        LastName = c.LastName,
+        Email = c.Email,
+        Phone = c.Phone,
+        Address = c.Address,
+        IsActive = c.IsActive
+    };
+
+    private async Task<CustomerDetailViewModel?> GetCustomerDetailAsync(long id)
+    {
         var shopId = User.GetShopId();
         var customer = await _customerService.GetByIdAsync(shopId, id);
-        if (customer == null) return NotFound();
+        if (customer == null) return null;
 
         var outstandingBalance = await _db.Invoices
             .Where(i => i.CustomerId == id && i.ShopId == shopId && i.Balance > 0 &&
@@ -101,24 +245,22 @@ public class CustomersController : Controller
             })
             .ToListAsync();
 
-        var model = new CustomerDetailViewModel
+        return new CustomerDetailViewModel
         {
             Id = customer.CustomerId,
-            FullName = $"{customer.FirstName} {customer.LastName}",
-            Name = $"{customer.FirstName} {customer.LastName}",
+            FullName = customer.FullName,
+            Name = customer.FullName,
+            Initials = GetInitials(customer.FullName),
             Email = customer.Email ?? "",
             Phone = customer.Phone ?? "",
             Address = customer.Address ?? "",
+            IsActive = customer.IsActive,
             CreatedAt = customer.CreatedAt,
-            TotalOrders = await _db.JobOrders.CountAsync(j => j.CustomerId == id && j.ShopId == shopId),
-            TotalSpent = await _db.Payments
-                .Where(p => p.CustomerId == id && p.ShopId == shopId &&
-                            p.Status == PaymentStatus.Confirmed)
-                .SumAsync(p => (decimal?)p.Amount) ?? 0,
+            TotalOrders = customer.Orders,
+            TotalJobOrders = customer.Orders,
+            TotalSpent = customer.TotalSpent,
             OutstandingBalance = outstandingBalance,
             RecentOrders = recentOrders
         };
-
-        return View(model);
     }
 }

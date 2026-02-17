@@ -1,4 +1,7 @@
+using ByteBill_BS.DTOs.Common;
+using ByteBill_BS.Extensions;
 using ByteBill_BS.Models.Enums;
+using ByteBill_BS.Services;
 using ByteBill_BS.ViewModels.Inventory;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,6 +12,13 @@ namespace ByteBill_BS.Areas.Admin.Controllers;
 [Authorize]
 public class InventoryController : Controller
 {
+    private readonly IInventoryService _service;
+
+    public InventoryController(IInventoryService service)
+    {
+        _service = service;
+    }
+
     private bool IsAuthorized()
     {
         var roleClaim = User.Claims.FirstOrDefault(c => c.Type == "Role")?.Value;
@@ -16,30 +26,40 @@ public class InventoryController : Controller
     }
 
     [HttpGet]
-    public IActionResult Index(string? search, string? category, bool? lowStock, int page = 1)
+    public async Task<IActionResult> Index(string? search, string? category, bool? lowStock, int page = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var result = await _service.GetListAsync(shopId, new PagedRequest { Page = page, PageSize = 10, Search = search }, category, lowStock);
 
         var viewModel = new InventoryListViewModel
         {
             SearchTerm = search,
             CategoryFilter = category,
             LowStockOnly = lowStock,
-            CurrentPage = page,
-            TotalCount = 68,
-            LowStockCount = 5,
-            Categories = new List<string> { "Storage", "Memory", "Cables", "Peripherals", "Components", "Tools" },
-            Items = new List<InventoryItemViewModel>
+            CurrentPage = result.Page,
+            TotalCount = result.TotalCount,
+            LowStockCount = result.LowStockCount,
+            Items = result.Items.Select(i => new InventoryItemViewModel
             {
-                new() { Id = 1, SKU = "SSD-500-SAM", Name = "Samsung 870 EVO 500GB SSD", Category = "Storage", Brand = "Samsung", QuantityInStock = 12, ReorderLevel = 5, CostPrice = 45.00m, SellingPrice = 65.00m, IsLowStock = false, IsActive = true },
-                new() { Id = 2, SKU = "RAM-16-COR", Name = "Corsair Vengeance 16GB DDR4", Category = "Memory", Brand = "Corsair", QuantityInStock = 8, ReorderLevel = 5, CostPrice = 55.00m, SellingPrice = 89.00m, IsLowStock = false, IsActive = true },
-                new() { Id = 3, SKU = "HDD-1TB-WD", Name = "WD Blue 1TB HDD", Category = "Storage", Brand = "Western Digital", QuantityInStock = 3, ReorderLevel = 5, CostPrice = 35.00m, SellingPrice = 55.00m, IsLowStock = true, IsActive = true },
-                new() { Id = 4, SKU = "CBL-HDMI-2M", Name = "HDMI Cable 2m", Category = "Cables", Brand = "Generic", QuantityInStock = 25, ReorderLevel = 10, CostPrice = 3.50m, SellingPrice = 12.00m, IsLowStock = false, IsActive = true },
-                new() { Id = 5, SKU = "PST-THRM-NT", Name = "Noctua NT-H1 Thermal Paste", Category = "Components", Brand = "Noctua", QuantityInStock = 2, ReorderLevel = 5, CostPrice = 8.00m, SellingPrice = 15.00m, IsLowStock = true, IsActive = true },
-                new() { Id = 6, SKU = "KBD-LOGI-K120", Name = "Logitech K120 Keyboard", Category = "Peripherals", Brand = "Logitech", QuantityInStock = 6, ReorderLevel = 5, CostPrice = 12.00m, SellingPrice = 25.00m, IsLowStock = false, IsActive = true }
-            }
+                Id = i.ItemId,
+                SKU = i.SKU,
+                Name = i.ItemName,
+                ItemName = i.ItemName,
+                Unit = i.Unit,
+                UnitCost = i.UnitCost,
+                UnitPrice = i.UnitPrice,
+                CostPrice = i.UnitCost,
+                SellingPrice = i.UnitPrice,
+                QtyOnHand = i.QtyOnHand,
+                QuantityInStock = i.QtyOnHand,
+                ReorderLevel = i.ReorderLevel,
+                IsActive = i.IsActive,
+                IsLowStock = i.IsLowStock
+            }).ToList()
         };
-        
+
         return View(viewModel);
     }
 
@@ -47,41 +67,42 @@ public class InventoryController : Controller
     public IActionResult Create()
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
-        return View(new InventoryFormViewModel
-        {
-            ExistingCategories = new List<string> { "Storage", "Memory", "Cables", "Peripherals", "Components", "Tools" },
-            ExistingBrands = new List<string> { "Samsung", "Corsair", "Western Digital", "Logitech", "Noctua", "Generic" }
-        });
+        return View(new InventoryFormViewModel());
     }
 
     [HttpGet]
     public IActionResult CreateModal()
     {
         if (!IsAuthorized()) return Forbid();
-        
-        return PartialView("_CreateModal", new InventoryFormViewModel
-        {
-            ExistingCategories = new List<string> { "Storage", "Memory", "Cables", "Peripherals", "Components", "Tools" },
-            ExistingBrands = new List<string> { "Samsung", "Corsair", "Western Digital", "Logitech", "Noctua", "Generic" }
-        });
+        return PartialView("_CreateModal", new InventoryFormViewModel());
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Create(InventoryFormViewModel model)
+    public async Task<IActionResult> Create(InventoryFormViewModel model)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
+
         if (!ModelState.IsValid)
         {
-            model.ExistingCategories = new List<string> { "Storage", "Memory", "Cables", "Peripherals", "Components", "Tools" };
-            model.ExistingBrands = new List<string> { "Samsung", "Corsair", "Western Digital", "Logitech", "Noctua", "Generic" };
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
                 return PartialView("_CreateModal", model);
             return View(model);
         }
-        
+
+        var shopId = User.GetShopId();
+        await _service.CreateAsync(shopId, new CreateInventoryItemRequest
+        {
+            SKU = model.SKU,
+            ItemName = model.Name,
+            Unit = model.Unit,
+            UnitCost = model.CostPrice,
+            UnitPrice = model.SellingPrice,
+            QtyOnHand = model.QuantityInStock,
+            ReorderLevel = model.ReorderLevel,
+            IsActive = model.IsActive
+        });
+
         TempData["Success"] = "Inventory item created successfully!";
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = true, message = "Inventory item created successfully!" });
@@ -89,58 +110,72 @@ public class InventoryController : Controller
     }
 
     [HttpGet]
-    public IActionResult Edit(long id)
+    public async Task<IActionResult> Edit(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
-        var model = GetInventoryEditModel(id);
+
+        var model = await GetInventoryEditModel(id);
+        if (model == null) return NotFound();
         return View(model);
     }
 
     [HttpGet]
-    public IActionResult EditModal(long id)
+    public async Task<IActionResult> EditModal(long id)
     {
         if (!IsAuthorized()) return Forbid();
-        
-        var model = GetInventoryEditModel(id);
+
+        var model = await GetInventoryEditModel(id);
+        if (model == null) return NotFound();
         return PartialView("_EditModal", model);
     }
 
-    private InventoryFormViewModel GetInventoryEditModel(long id)
+    private async Task<InventoryFormViewModel?> GetInventoryEditModel(long id)
     {
+        var shopId = User.GetShopId();
+        var detail = await _service.GetDetailAsync(shopId, id);
+        if (detail == null) return null;
+
         return new InventoryFormViewModel
         {
-            Id = id,
-            SKU = "SSD-500-SAM",
-            Name = "Samsung 870 EVO 500GB SSD",
-            Description = "High-performance SATA SSD for system upgrades",
-            Category = "Storage",
-            Brand = "Samsung",
-            QuantityInStock = 12,
-            ReorderLevel = 5,
-            CostPrice = 45.00m,
-            SellingPrice = 65.00m,
-            IsActive = true,
-            ExistingCategories = new List<string> { "Storage", "Memory", "Cables", "Peripherals", "Components", "Tools" },
-            ExistingBrands = new List<string> { "Samsung", "Corsair", "Western Digital", "Logitech", "Noctua", "Generic" }
+            Id = detail.ItemId,
+            SKU = detail.SKU,
+            Name = detail.ItemName,
+            Unit = detail.Unit,
+            CostPrice = detail.UnitCost,
+            SellingPrice = detail.UnitPrice,
+            QuantityInStock = detail.QtyOnHand,
+            ReorderLevel = detail.ReorderLevel,
+            IsActive = detail.IsActive
         };
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Edit(InventoryFormViewModel model)
+    public async Task<IActionResult> Edit(InventoryFormViewModel model)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
+
         if (!ModelState.IsValid)
         {
-            model.ExistingCategories = new List<string> { "Storage", "Memory", "Cables", "Peripherals", "Components", "Tools" };
-            model.ExistingBrands = new List<string> { "Samsung", "Corsair", "Western Digital", "Logitech", "Noctua", "Generic" };
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
                 return PartialView("_EditModal", model);
             return View(model);
         }
-        
+
+        var shopId = User.GetShopId();
+        var result = await _service.UpdateAsync(shopId, model.Id, new UpdateInventoryItemRequest
+        {
+            SKU = model.SKU,
+            ItemName = model.Name,
+            Unit = model.Unit,
+            UnitCost = model.CostPrice,
+            UnitPrice = model.SellingPrice,
+            ReorderLevel = model.ReorderLevel,
+            IsActive = model.IsActive
+        });
+
+        if (result == null) return NotFound();
+
         TempData["Success"] = "Inventory item updated successfully!";
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = true, message = "Inventory item updated successfully!" });
@@ -148,45 +183,52 @@ public class InventoryController : Controller
     }
 
     [HttpGet]
-    public IActionResult Details(long id)
+    public async Task<IActionResult> Details(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
-        var model = GetInventoryDetail(id);
+
+        var model = await GetInventoryDetail(id);
+        if (model == null) return NotFound();
         return View(model);
     }
 
     [HttpGet]
-    public IActionResult DetailsModal(long id)
+    public async Task<IActionResult> DetailsModal(long id)
     {
         if (!IsAuthorized()) return Forbid();
-        
-        var model = GetInventoryDetail(id);
+
+        var model = await GetInventoryDetail(id);
+        if (model == null) return NotFound();
         return PartialView("_DetailsModal", model);
     }
 
-    private InventoryDetailViewModel GetInventoryDetail(long id)
+    private async Task<InventoryDetailViewModel?> GetInventoryDetail(long id)
     {
+        var shopId = User.GetShopId();
+        var detail = await _service.GetDetailAsync(shopId, id);
+        if (detail == null) return null;
+
         return new InventoryDetailViewModel
         {
-            Id = id,
-            SKU = "SSD-500-SAM",
-            Name = "Samsung 870 EVO 500GB SSD",
-            Category = "Storage",
-            Brand = "Samsung",
-            Unit = "pcs",
-            UnitCost = 45.00m,
-            UnitPrice = 65.00m,
-            QtyOnHand = 12,
-            ReorderLevel = 5,
-            IsActive = true,
-            RecentTransactions = new List<InventoryTxnItemViewModel>
+            Id = detail.ItemId,
+            SKU = detail.SKU,
+            Name = detail.ItemName,
+            Unit = detail.Unit,
+            UnitCost = detail.UnitCost,
+            UnitPrice = detail.UnitPrice,
+            QtyOnHand = detail.QtyOnHand,
+            ReorderLevel = detail.ReorderLevel,
+            IsActive = detail.IsActive,
+            RecentTransactions = detail.RecentTransactions.Select(t => new InventoryTxnItemViewModel
             {
-                new() { Id = 1, TxnType = "In", Quantity = 10, Remarks = "Purchase Order #PO-2024-015", CreatedAt = DateTime.Now.AddDays(-14) },
-                new() { Id = 2, TxnType = "Out", Quantity = 2, Remarks = "Job Order JO-2024-0079", CreatedAt = DateTime.Now.AddDays(-7) },
-                new() { Id = 3, TxnType = "In", Quantity = 5, Remarks = "Purchase Order #PO-2024-018", CreatedAt = DateTime.Now.AddDays(-3) },
-                new() { Id = 4, TxnType = "Out", Quantity = 1, Remarks = "Job Order JO-2024-0085", CreatedAt = DateTime.Now.AddDays(-1) }
-            }
+                Id = t.Id,
+                TxnType = t.TxnType,
+                Quantity = t.Quantity,
+                ReferenceType = t.ReferenceType,
+                ReferenceId = t.ReferenceId,
+                Remarks = t.Remarks,
+                CreatedAt = t.CreatedAt
+            }).ToList()
         };
     }
 }

@@ -1,0 +1,138 @@
+@model InvoiceCreateViewModel
+@{
+    ViewData["Title"] = "Create Invoice";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Invoices", Url = Url.Action("Index", "Invoices", new { area = "Billing" }) }, new() { Label = "Create Invoice", IsActive = true } } })" />
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Create Invoice</h1>
+        <p class="page-subtitle">Generate invoice from completed job order</p>
+    </div>
+</div>
+
+<form asp-action="Create" asp-controller="Invoices" asp-area="Billing" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="JobOrderId" />
+    <input type="hidden" asp-for="CustomerId" />
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-danger" style="margin-bottom: 20px; padding: 12px 16px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #991b1b; font-size: 14px;">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <p style="margin: 0;">@error.ErrorMessage</p>
+            }
+        </div>
+    }
+
+    <div class="detail-grid">
+        <div class="detail-main">
+            <!-- Job Order & Customer Info -->
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="section-title">Job Order Details</h3>
+                    <div class="detail-row">
+                        <div class="detail-field">
+                            <span class="detail-label">Job Order</span>
+                            <span class="detail-value font-medium text-primary">@Model.JobNumber</span>
+                        </div>
+                        <div class="detail-field">
+                            <span class="detail-label">Customer</span>
+                            <span class="detail-value">@Model.CustomerName</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Line Items -->
+            @if (Model.Items.Any())
+            {
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="section-title">Line Items</h3>
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Description</th>
+                                        <th class="text-center">Type</th>
+                                        <th class="text-center">Qty</th>
+                                        <th class="text-right">Unit Price</th>
+                                        <th class="text-right">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (int i = 0; i < Model.Items.Count; i++)
+                                    {
+                                        <input type="hidden" name="Items[@i].Description" value="@Model.Items[i].Description" />
+                                        <input type="hidden" name="Items[@i].Quantity" value="@Model.Items[i].Quantity" />
+                                        <input type="hidden" name="Items[@i].UnitPrice" value="@Model.Items[i].UnitPrice" />
+                                        <input type="hidden" name="Items[@i].Type" value="@Model.Items[i].Type" />
+                                        <tr>
+                                            <td class="font-medium">@Model.Items[i].Description</td>
+                                            <td class="text-center"><span class="category-badge">@Model.Items[i].Type</span></td>
+                                            <td class="text-center">@Model.Items[i].Quantity</td>
+                                            <td class="text-right">@Model.Items[i].UnitPrice.ToString("N2")</td>
+                                            <td class="text-right font-medium">@((Model.Items[i].Quantity * Model.Items[i].UnitPrice).ToString("N2"))</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr style="border-top: 2px solid #e5e7eb;">
+                                        <td colspan="4" class="text-right" style="font-weight: 700;">Total:</td>
+                                        <td class="text-right" style="font-weight: 700;">@Model.Items.Sum(i => i.Quantity * i.UnitPrice).ToString("N2")</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="detail-sidebar">
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="section-title">Invoice Settings</h3>
+                    <div class="form-group">
+                        <label asp-for="DueDate" class="form-label">Due Date</label>
+                        <input asp-for="DueDate" type="date" class="form-input" />
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Notes" class="form-label">Notes</label>
+                        <textarea asp-for="Notes" class="form-input" rows="3" placeholder="Optional notes..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions-sidebar">
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    Create Invoice
+                </button>
+                <a href="@Url.Action("Index", "Invoices", new { area = "Billing" })" class="btn btn-ghost" style="width: 100%;">Cancel</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+<style>
+    .page-header { margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: #6b7280; }
+    .detail-grid { display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
+    .detail-main { display: flex; flex-direction: column; gap: 20px; }
+    .detail-sidebar { display: flex; flex-direction: column; gap: 20px; }
+    .section-title { font-size: 15px; font-weight: 600; color: #1f2937; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #f3f4f6; }
+    .detail-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .detail-label { display: block; font-size: 12px; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+    .detail-value { display: block; font-size: 14px; color: #1f2937; font-weight: 500; }
+    .font-medium { font-weight: 500; }
+    .text-primary { color: #3b82f6; }
+    .category-badge { font-size: 11px; padding: 2px 8px; border-radius: 99px; background: #f3f4f6; color: #374151; font-weight: 500; }
+    .form-group { margin-bottom: 16px; }
+    .form-actions-sidebar { display: flex; flex-direction: column; gap: 8px; }
+    @@media (max-width: 1024px) { .detail-grid { grid-template-columns: 1fr; } }
+</style>

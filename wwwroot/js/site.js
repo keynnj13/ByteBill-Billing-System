@@ -441,6 +441,19 @@ window.ByteBill = { Navigation, Toast, Modal, Forms, Utils, UserDropdown };
 // ===========================================
 // AJAX Modal Module
 // ===========================================
+// Execute inline scripts injected via innerHTML (which doesn't run <script> tags)
+function executeInlineScripts(container) {
+    container.querySelectorAll('script').forEach(function(oldScript) {
+        var newScript = document.createElement('script');
+        if (oldScript.src) {
+            newScript.src = oldScript.src;
+        } else {
+            newScript.textContent = oldScript.textContent;
+        }
+        oldScript.parentNode.replaceChild(newScript, oldScript);
+    });
+}
+
 function openAjaxModal(url, title) {
     const backdrop = document.getElementById('ajax-modal-backdrop');
     const modal = document.getElementById('ajax-modal');
@@ -468,6 +481,8 @@ function openAjaxModal(url, title) {
     })
     .then(html => {
         contentEl.innerHTML = html;
+        // Execute any inline scripts in the loaded content
+        executeInlineScripts(contentEl);
         // Bind AJAX form submission
         bindAjaxForms(contentEl);
         // Focus first focusable element

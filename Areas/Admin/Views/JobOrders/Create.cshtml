@@ -37,19 +37,70 @@
                     </div>
                     <div class="card-body">
                         <div class="form-group">
-                            <label asp-for="CustomerId" class="form-label">Customer <span class="text-danger">*</span></label>
-                            <select asp-for="CustomerId" class="form-select">
-                                <option value="">Select a customer...</option>
-                                @foreach (var customer in Model.Customers)
-                                {
-                                    <option value="@customer.Id">@customer.Name (@customer.Email)</option>
-                                }
-                            </select>
-                            <span asp-validation-for="CustomerId" class="text-danger text-sm"></span>
+                            <label class="form-label">Customer <span class="text-danger">*</span></label>
+                            <input type="hidden" name="CustomerId" id="CustomerId" value="" />
+                            <div class="customer-combo-wrapper" id="customerSearchWrapper">
+                                <div class="customer-combo-input">
+                                    <svg class="combo-search-icon" width="15" height="15" fill="none" stroke="#9ca3af" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                    <input type="text" class="form-select" id="customerSearchInput" placeholder="Select a customer..." autocomplete="off" style="padding-left:34px;padding-right:36px;cursor:pointer;" />
+                                    <button type="button" class="combo-chevron-btn" id="comboChevronBtn" tabindex="-1">
+                                        <svg width="16" height="16" fill="none" stroke="#6b7280" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    </button>
+                                </div>
+                                <div class="customer-combo-results" id="customerSearchResults"></div>
+                            </div>
+                            <div class="selected-customer-card" id="selectedCustomer" style="display: none;">
+                                <div class="selected-customer-info">
+                                    <span class="selected-customer-name" id="selectedCustomerName"></span>
+                                    <span class="selected-customer-detail" id="selectedCustomerDetail"></span>
+                                </div>
+                                <button type="button" class="btn-clear-customer" id="clearCustomerBtn" title="Clear selection">&times;</button>
+                            </div>
+                            <span class="text-danger text-sm" id="customerError"></span>
                         </div>
                         <p class="text-sm text-muted mt-3">
-                            <a asp-action="Create" asp-controller="Customers" class="text-primary">+ Add new customer</a>
+                            <a href="#" id="toggleAddCustomerLink" class="text-primary">+ Add new customer</a>
                         </p>
+
+                        <!-- Inline Add Customer Form -->
+                        <div id="inlineAddCustomerForm" style="display: none; margin-top: 12px; padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+                            <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">New Customer</h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">First Name <span class="text-danger">*</span></label>
+                                    <input type="text" id="newCustFirstName" class="form-input" maxlength="20" placeholder="First name" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Middle Name</label>
+                                    <input type="text" id="newCustMiddleName" class="form-input" maxlength="10" placeholder="Middle name" />
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Last Name <span class="text-danger">*</span></label>
+                                    <input type="text" id="newCustLastName" class="form-input" maxlength="10" placeholder="Last name" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Phone</label>
+                                    <input type="tel" id="newCustPhone" class="form-input" maxlength="11" inputmode="numeric" placeholder="09XXXXXXXXX" />
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" id="newCustEmail" class="form-input" maxlength="50" placeholder="customer@email.com" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Address</label>
+                                    <input type="text" id="newCustAddress" class="form-input" maxlength="100" placeholder="Street address, city" />
+                                </div>
+                            </div>
+                            <span class="text-danger text-sm" id="newCustError" style="display:none;"></span>
+                            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                                <button type="button" class="btn btn-ghost btn-sm" id="cancelAddCustomerBtn">Cancel</button>
+                                <button type="button" class="btn btn-primary btn-sm" id="saveNewCustomerBtn">Save & Select</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -152,6 +203,23 @@
     .form-group { margin-bottom: 16px; }
     .form-label { font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px; display: block; }
     .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .customer-combo-wrapper { position: relative; }
+    .customer-combo-input { position: relative; display: flex; align-items: center; }
+    .combo-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 1; }
+    .combo-chevron-btn { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 8px 10px; cursor: pointer; color: #6b7280; display: flex; align-items: center; }
+    .combo-chevron-btn:hover { color: #374151; }
+    .customer-combo-results { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #d1d5db; border-top: none; border-radius: 0 0 8px 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.12); z-index: 50; max-height: 260px; overflow-y: auto; display: none; }
+    .customer-result-item { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f3f4f6; transition: background 0.15s; }
+    .customer-result-item:hover { background: #eff6ff; }
+    .customer-result-item:last-child { border-bottom: none; }
+    .customer-result-name { font-size: 15px; font-weight: 600; color: #111827; }
+    .customer-result-detail { font-size: 12px; color: #6b7280; margin-top: 3px; }
+    .customer-result-empty { padding: 16px; font-size: 13px; color: #9ca3af; text-align: center; }
+    .selected-customer-card { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; }
+    .selected-customer-name { font-size: 14px; font-weight: 600; color: #1e40af; display: block; }
+    .selected-customer-detail { font-size: 12px; color: #3b82f6; }
+    .btn-clear-customer { background: none; border: none; font-size: 20px; color: #6b7280; cursor: pointer; padding: 0 4px; line-height: 1; }
+    .btn-clear-customer:hover { color: #ef4444; }
     @@media (max-width: 640px) { .form-row { grid-template-columns: 1fr; } }
 </style>
 
@@ -180,7 +248,161 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     prevBtn.addEventListener('click', () => { if (currentStep > 1) { currentStep--; updateWizard(); } });
-    nextBtn.addEventListener('click', () => { if (currentStep < 3) { currentStep++; updateWizard(); } });
+    nextBtn.addEventListener('click', () => {
+        // Validate step before advancing
+        if (currentStep === 1) {
+            var custId = document.getElementById('CustomerId').value;
+            if (!custId) { document.getElementById('customerError').textContent = 'Please select a customer to continue.'; return; }
+        }
+        if (currentStep === 2) {
+            var dt = document.getElementById('DeviceType');
+            if (dt && !dt.value.trim()) { alert('Please enter the device type.'); return; }
+        }
+        if (currentStep < 3) { currentStep++; updateWizard(); }
+    });
+
+    // ── Customer Search ──────────────────────────────────────────────────
+    var searchInput = document.getElementById('customerSearchInput');
+    var searchResults = document.getElementById('customerSearchResults');
+    var searchWrapper = document.getElementById('customerSearchWrapper');
+    var selectedCard = document.getElementById('selectedCustomer');
+    var customerIdInput = document.getElementById('CustomerId');
+    var customerError = document.getElementById('customerError');
+    var searchTimer = null;
+    var dropdownOpen = false;
+
+    function openDropdown() {
+        if (dropdownOpen && searchResults.children.length > 0) return;
+        dropdownOpen = true;
+        searchCustomers(searchInput.value.trim());
+    }
+
+    function closeDropdown() {
+        dropdownOpen = false;
+        searchResults.style.display = 'none';
+    }
+
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimer);
+        if (customerError) customerError.textContent = '';
+        searchTimer = setTimeout(function() { searchCustomers(searchInput.value.trim()); }, 300);
+    });
+
+    searchInput.addEventListener('focus', function() {
+        openDropdown();
+    });
+
+    var chevronBtn = document.getElementById('comboChevronBtn');
+    chevronBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (dropdownOpen) { closeDropdown(); } else { searchInput.focus(); openDropdown(); }
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!searchWrapper.contains(e.target)) closeDropdown();
+    });
+
+    function searchCustomers(query) {
+        var url = '/api/customersapi?pageSize=10' + (query ? '&search=' + encodeURIComponent(query) : '');
+        fetch(url, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(res => {
+            searchResults.innerHTML = '';
+            if (res.success && res.data && res.data.items && res.data.items.length > 0) {
+                res.data.items.forEach(c => {
+                    var div = document.createElement('div');
+                    div.className = 'customer-result-item';
+                    div.innerHTML = '<div class="customer-result-name">' + escapeHtml(c.fullName) + '</div>' +
+                        '<div class="customer-result-detail">' + escapeHtml(c.phone || '') + (c.email ? ' &middot; ' + escapeHtml(c.email) : '') + '</div>';
+                    div.addEventListener('click', () => selectCustomer(c.customerId, c.fullName, c.phone, c.email));
+                    searchResults.appendChild(div);
+                });
+                searchResults.style.display = 'block';
+            } else {
+                searchResults.innerHTML = '<div class="customer-result-empty">No customers found</div>';
+                searchResults.style.display = 'block';
+            }
+        });
+    }
+
+    function selectCustomer(id, name, phone, email) {
+        customerIdInput.value = id;
+        document.getElementById('selectedCustomerName').textContent = name;
+        document.getElementById('selectedCustomerDetail').textContent = (phone || '') + (email ? ' · ' + email : '');
+        selectedCard.style.display = 'flex';
+        searchWrapper.style.display = 'none';
+        searchResults.style.display = 'none';
+        if (customerError) customerError.textContent = '';
+    }
+
+    document.getElementById('clearCustomerBtn').addEventListener('click', function() {
+        customerIdInput.value = '';
+        searchInput.value = '';
+        searchResults.innerHTML = '';
+        selectedCard.style.display = 'none';
+        searchWrapper.style.display = 'block';
+        searchInput.focus();
+    });
+
+    // ── Inline Add Customer ──────────────────────────────────────────────
+    var toggleLink = document.getElementById('toggleAddCustomerLink');
+    var addForm = document.getElementById('inlineAddCustomerForm');
+    var newCustPhone = document.getElementById('newCustPhone');
+
+    toggleLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        addForm.style.display = addForm.style.display === 'none' ? 'block' : 'none';
+    });
+    document.getElementById('cancelAddCustomerBtn').addEventListener('click', function() { addForm.style.display = 'none'; });
+
+    if (newCustPhone) {
+        newCustPhone.addEventListener('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '').substring(0, 11);
+        });
+    }
+
+    document.getElementById('saveNewCustomerBtn').addEventListener('click', function() {
+        var fn = document.getElementById('newCustFirstName').value.trim();
+        var ln = document.getElementById('newCustLastName').value.trim();
+        var errEl = document.getElementById('newCustError');
+        if (!fn || !ln) { errEl.textContent = 'First name and last name are required.'; errEl.style.display = 'block'; return; }
+        var phone = document.getElementById('newCustPhone').value.trim();
+        if (phone && (phone.length !== 11 || !/^09\d{9}$/.test(phone))) { errEl.textContent = 'Phone must be 11 digits starting with 09.'; errEl.style.display = 'block'; return; }
+        errEl.style.display = 'none';
+        var btn = this;
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        fetch('/api/customersapi', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({
+                firstName: fn,
+                middleName: document.getElementById('newCustMiddleName').value.trim() || null,
+                lastName: ln,
+                email: document.getElementById('newCustEmail').value.trim() || null,
+                phone: phone || null,
+                address: document.getElementById('newCustAddress').value.trim() || null
+            })
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success && res.data) {
+                selectCustomer(res.data.customerId, res.data.fullName, res.data.phone, res.data.email);
+                addForm.style.display = 'none';
+                ['newCustFirstName','newCustMiddleName','newCustLastName','newCustEmail','newCustPhone','newCustAddress'].forEach(id => { document.getElementById(id).value = ''; });
+            } else {
+                errEl.textContent = res.message || 'Failed to create customer.';
+                errEl.style.display = 'block';
+            }
+        })
+        .catch(() => { errEl.textContent = 'Network error. Please try again.'; errEl.style.display = 'block'; })
+        .finally(() => { btn.disabled = false; btn.textContent = 'Save & Select'; });
+    });
+
+    function escapeHtml(str) { var d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
 });
 </script>
 

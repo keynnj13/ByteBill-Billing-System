@@ -1,4 +1,8 @@
+using ByteBill_BS.Data;
+using ByteBill_BS.DTOs.Common;
+using ByteBill_BS.Extensions;
 using ByteBill_BS.Models.Enums;
+using ByteBill_BS.Services;
 using ByteBill_BS.ViewModels.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,6 +13,13 @@ namespace ByteBill_BS.Areas.Admin.Controllers;
 [Authorize]
 public class ServicesController : Controller
 {
+    private readonly IServiceCatalogService _service;
+
+    public ServicesController(IServiceCatalogService service)
+    {
+        _service = service;
+    }
+
     private bool IsAuthorized()
     {
         var roleClaim = User.Claims.FirstOrDefault(c => c.Type == "Role")?.Value;
@@ -16,67 +27,86 @@ public class ServicesController : Controller
     }
 
     [HttpGet]
-    public IActionResult Index(string? search, string? category, int page = 1)
+    public async Task<IActionResult> Index(string? search, string? category, int page = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var result = await _service.GetListAsync(shopId, new PagedRequest { Page = page, PageSize = 10, Search = search }, category);
+        var categories = await _service.GetCategoriesAsync(shopId);
 
         var viewModel = new ServiceListViewModel
         {
             SearchTerm = search,
             CategoryFilter = category,
-            CurrentPage = page,
-            TotalCount = 24,
-            Categories = new List<string> { "Diagnosis", "Repair", "Installation", "Maintenance", "Data Recovery" },
-            Services = new List<ServiceItemViewModel>
+            CurrentPage = result.Page,
+            TotalCount = result.TotalCount,
+            Categories = categories,
+            Services = result.Items.Select(s => new ServiceItemViewModel
             {
-                new() { Id = 1, Name = "System Diagnosis", Description = "Full hardware and software diagnostic assessment", Category = "Diagnosis", Price = 50.00m, EstimatedDuration = "30 min", IsActive = true },
-                new() { Id = 2, Name = "Virus/Malware Removal", Description = "Complete malware scan and removal with system cleanup", Category = "Repair", Price = 75.00m, EstimatedDuration = "1h 30m", IsActive = true },
-                new() { Id = 3, Name = "Screen Replacement", Description = "Laptop or phone screen replacement service", Category = "Repair", Price = 120.00m, EstimatedDuration = "1h", IsActive = true },
-                new() { Id = 4, Name = "OS Installation", Description = "Clean installation of Windows, macOS, or Linux", Category = "Installation", Price = 80.00m, EstimatedDuration = "2h", IsActive = true },
-                new() { Id = 5, Name = "Data Recovery", Description = "Recovery of data from damaged or corrupted drives", Category = "Data Recovery", Price = 150.00m, EstimatedDuration = "4h", IsActive = true },
-                new() { Id = 6, Name = "Hardware Cleanup", Description = "Internal cleaning and thermal paste replacement", Category = "Maintenance", Price = 45.00m, EstimatedDuration = "45 min", IsActive = true }
-            }
+                Id = s.ServiceId,
+                Name = s.ServiceName,
+                ServiceName = s.ServiceName,
+                Category = s.CategoryName,
+                Price = s.BasePrice,
+                BasePrice = s.BasePrice,
+                IsActive = s.IsActive,
+                UsageCount = s.UsageCount
+            }).ToList()
         };
-        
+
         return View(viewModel);
     }
 
     [HttpGet]
-    public IActionResult Create()
+    public async Task<IActionResult> Create()
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
+
+        var shopId = User.GetShopId();
         return View(new ServiceFormViewModel
         {
-            ExistingCategories = new List<string> { "Diagnosis", "Repair", "Installation", "Maintenance", "Data Recovery" }
+            ExistingCategories = await _service.GetCategoriesAsync(shopId)
         });
     }
 
     [HttpGet]
-    public IActionResult CreateModal()
+    public async Task<IActionResult> CreateModal()
     {
         if (!IsAuthorized()) return Forbid();
-        
+
+        var shopId = User.GetShopId();
         return PartialView("_CreateModal", new ServiceFormViewModel
         {
-            ExistingCategories = new List<string> { "Diagnosis", "Repair", "Installation", "Maintenance", "Data Recovery" }
+            ExistingCategories = await _service.GetCategoriesAsync(shopId)
         });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Create(ServiceFormViewModel model)
+    public async Task<IActionResult> Create(ServiceFormViewModel model)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
+
         if (!ModelState.IsValid)
         {
-            model.ExistingCategories = new List<string> { "Diagnosis", "Repair", "Installation", "Maintenance", "Data Recovery" };
+            var shopId2 = User.GetShopId();
+            model.ExistingCategories = await _service.GetCategoriesAsync(shopId2);
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
                 return PartialView("_CreateModal", model);
             return View(model);
         }
-        
+
+        var shopId = User.GetShopId();
+        await _service.CreateAsync(shopId, new CreateServiceRequest
+        {
+            ServiceName = model.Name,
+            CategoryName = model.Category,
+            CategoryId = model.CategoryId,
+            BasePrice = model.Price,
+            IsActive = model.IsActive
+        });
+
         TempData["Success"] = "Service created successfully!";
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = true, message = "Service created successfully!" });
@@ -84,52 +114,70 @@ public class ServicesController : Controller
     }
 
     [HttpGet]
-    public IActionResult Edit(long id)
+    public async Task<IActionResult> Edit(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
-        var model = GetServiceEditModel(id);
+
+        var model = await GetServiceEditModel(id);
+        if (model == null) return NotFound();
         return View(model);
     }
 
     [HttpGet]
-    public IActionResult EditModal(long id)
+    public async Task<IActionResult> EditModal(long id)
     {
         if (!IsAuthorized()) return Forbid();
-        
-        var model = GetServiceEditModel(id);
+
+        var model = await GetServiceEditModel(id);
+        if (model == null) return NotFound();
         return PartialView("_EditModal", model);
     }
 
-    private ServiceFormViewModel GetServiceEditModel(long id)
+    private async Task<ServiceFormViewModel?> GetServiceEditModel(long id)
     {
+        var shopId = User.GetShopId();
+        var detail = await _service.GetDetailAsync(shopId, id);
+        if (detail == null) return null;
+
         return new ServiceFormViewModel
         {
-            Id = id,
-            Name = "Virus/Malware Removal",
-            Description = "Complete malware scan and removal with system cleanup",
-            Category = "Repair",
-            Price = 75.00m,
-            EstimatedDuration = 90,
-            IsActive = true,
-            ExistingCategories = new List<string> { "Diagnosis", "Repair", "Installation", "Maintenance", "Data Recovery" }
+            Id = detail.ServiceId,
+            Name = detail.ServiceName,
+            Category = detail.CategoryName,
+            CategoryId = detail.ServiceCategoryId,
+            Price = detail.BasePrice,
+            IsActive = detail.IsActive,
+            ExistingCategories = await _service.GetCategoriesAsync(shopId)
         };
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Edit(ServiceFormViewModel model)
+    public async Task<IActionResult> Edit(ServiceFormViewModel model)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
+
         if (!ModelState.IsValid)
         {
-            model.ExistingCategories = new List<string> { "Diagnosis", "Repair", "Installation", "Maintenance", "Data Recovery" };
+            var shopId2 = User.GetShopId();
+            model.ExistingCategories = await _service.GetCategoriesAsync(shopId2);
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
                 return PartialView("_EditModal", model);
             return View(model);
         }
-        
+
+        var shopId = User.GetShopId();
+        var result = await _service.UpdateAsync(shopId, model.Id, new UpdateServiceRequest
+        {
+            ServiceName = model.Name,
+            CategoryName = model.Category,
+            CategoryId = model.CategoryId,
+            BasePrice = model.Price,
+            IsActive = model.IsActive
+        });
+
+        if (result == null) return NotFound();
+
         TempData["Success"] = "Service updated successfully!";
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = true, message = "Service updated successfully!" });
@@ -137,36 +185,40 @@ public class ServicesController : Controller
     }
 
     [HttpGet]
-    public IActionResult Details(long id)
+    public async Task<IActionResult> Details(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
-        var model = GetServiceDetail(id);
+
+        var model = await GetServiceDetail(id);
+        if (model == null) return NotFound();
         return View(model);
     }
 
     [HttpGet]
-    public IActionResult DetailsModal(long id)
+    public async Task<IActionResult> DetailsModal(long id)
     {
         if (!IsAuthorized()) return Forbid();
-        
-        var model = GetServiceDetail(id);
+
+        var model = await GetServiceDetail(id);
+        if (model == null) return NotFound();
         return PartialView("_DetailsModal", model);
     }
 
-    private ServiceDetailViewModel GetServiceDetail(long id)
+    private async Task<ServiceDetailViewModel?> GetServiceDetail(long id)
     {
+        var shopId = User.GetShopId();
+        var detail = await _service.GetDetailAsync(shopId, id);
+        if (detail == null) return null;
+
         return new ServiceDetailViewModel
         {
-            Id = id,
-            Name = "Virus/Malware Removal",
-            Description = "Complete malware scan and removal with system cleanup",
-            Category = "Repair",
-            Price = 75.00m,
-            IsActive = true,
-            UsageCount = 34,
-            TotalRevenue = 2550.00m,
-            AverageRating = 4.7m
+            Id = detail.ServiceId,
+            Name = detail.ServiceName,
+            Category = detail.CategoryName,
+            Price = detail.BasePrice,
+            IsActive = detail.IsActive,
+            UsageCount = detail.UsageCount,
+            TotalRevenue = detail.TotalRevenue
         };
     }
 }

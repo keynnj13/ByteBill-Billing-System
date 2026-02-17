@@ -6,6 +6,7 @@ public class Payment
 {
     public long PaymentId { get; set; }
     public long ShopId { get; set; }
+    public string PaymentNo { get; set; } = string.Empty;
     public long CustomerId { get; set; }
     public DateTime PaymentDate { get; set; } = DateTime.UtcNow;
     public decimal Amount { get; set; }

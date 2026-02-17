@@ -488,6 +488,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.PaymentId).HasColumnName("PaymentID");
             entity.Property(e => e.ShopId).HasColumnName("ShopID");
             entity.Property(e => e.CustomerId).HasColumnName("CustomerID");
+            entity.Property(e => e.PaymentNo).HasMaxLength(30).IsRequired();
             entity.Property(e => e.PaymentDate).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
             entity.Property(e => e.Amount).HasPrecision(18, 2).IsRequired();
             entity.Property(e => e.Method).HasMaxLength(30).IsRequired()

@@ -6,6 +6,7 @@ using ByteBill_BS.Services;
 using ByteBill_BS.ViewModels.JobOrders;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ByteBill_BS.Areas.Billing.Controllers;
 
@@ -14,10 +15,12 @@ namespace ByteBill_BS.Areas.Billing.Controllers;
 public class JobOrdersController : Controller
 {
     private readonly IJobOrderService _jobOrderService;
+    private readonly ApplicationDbContext _db;
 
-    public JobOrdersController(IJobOrderService jobOrderService)
+    public JobOrdersController(IJobOrderService jobOrderService, ApplicationDbContext db)
     {
         _jobOrderService = jobOrderService;
+        _db = db;
     }
 
     private bool IsAuthorized() => User.IsInRoles("Billing", "Admin", "SuperAdmin");
@@ -157,5 +160,155 @@ public class JobOrdersController : Controller
         };
 
         return View(model);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Create()
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+
+        var customers = await _db.Customers
+            .Where(c => c.ShopId == shopId && c.IsActive)
+            .OrderBy(c => c.FirstName)
+            .Select(c => new CustomerSelectItem
+            {
+                Id = c.CustomerId,
+                FullName = c.FirstName + " " + c.LastName,
+                Name = c.FirstName + " " + c.LastName,
+                Phone = c.Phone ?? "",
+                Email = c.Email
+            })
+            .ToListAsync();
+
+        var technicians = await _db.Users
+            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+            .Where(u => u.ShopId == shopId && u.IsActive &&
+                        u.UserRoles.Any(ur => ur.Role!.RoleName == "Technician"))
+            .Select(u => new TechnicianSelectItem
+            {
+                Id = u.UserId,
+                FullName = u.FirstName + " " + u.LastName,
+                Name = u.FirstName + " " + u.LastName,
+                ActiveJobOrders = _db.JobOrders.Count(j => j.AssignedTechUserId == u.UserId &&
+                    j.Status != JobOrderStatus.Completed && j.Status != JobOrderStatus.Delivered && j.Status != JobOrderStatus.Cancelled)
+            })
+            .ToListAsync();
+
+        var model = new JobOrderCreateViewModel
+        {
+            CurrentStep = 1,
+            AvailableCustomers = customers,
+            Customers = customers,
+            AvailableTechnicians = technicians,
+            Technicians = technicians
+        };
+
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(JobOrderCreateViewModel viewModel)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var userId = User.GetUserId();
+
+        // Remove validations for non-required wizard fields
+        ModelState.Remove("IssueDescription");
+        ModelState.Remove("Priority");
+        ModelState.Remove("DeviceAccessories");
+        ModelState.Remove("DeviceSerial");
+        ModelState.Remove("EstimatedCompletionDate");
+
+        if (!ModelState.IsValid)
+        {
+            // Repopulate dropdowns
+            await PopulateCreateDropdowns(viewModel, shopId);
+            return View(viewModel);
+        }
+
+        var request = new CreateJobOrderRequest
+        {
+            CustomerId = viewModel.CustomerId,
+            NewDevice = new CreateDeviceDto
+            {
+                DeviceType = viewModel.DeviceType,
+                Brand = viewModel.Brand ?? "",
+                Model = viewModel.Model ?? "",
+                SerialNo = viewModel.SerialNumber
+            },
+            ProblemReported = viewModel.ProblemDescription,
+            AssignedTechUserId = viewModel.AssignedTechnicianId
+        };
+
+        var result = await _jobOrderService.CreateAsync(shopId, userId, request);
+        if (!result.Success)
+        {
+            ModelState.AddModelError("", result.Message ?? "Failed to create job order.");
+            await PopulateCreateDropdowns(viewModel, shopId);
+            return View(viewModel);
+        }
+
+        TempData["Success"] = "Job order created successfully!";
+        return RedirectToAction(nameof(Details), new { id = result.Data!.JobOrderId });
+    }
+
+    /// <summary>
+    /// AJAX endpoint to load customer devices for the wizard.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetCustomerDevices(long customerId)
+    {
+        if (!IsAuthorized()) return Forbid();
+
+        var shopId = User.GetShopId();
+        var devices = await _db.Devices
+            .Where(d => d.CustomerId == customerId &&
+                        d.Customer!.ShopId == shopId)
+            .Select(d => new
+            {
+                d.DeviceId,
+                d.DeviceType,
+                d.Brand,
+                d.Model,
+                d.SerialNo
+            })
+            .ToListAsync();
+
+        return Json(devices);
+    }
+
+    private async Task PopulateCreateDropdowns(JobOrderCreateViewModel model, long shopId)
+    {
+        model.AvailableCustomers = await _db.Customers
+            .Where(c => c.ShopId == shopId && c.IsActive)
+            .OrderBy(c => c.FirstName)
+            .Select(c => new CustomerSelectItem
+            {
+                Id = c.CustomerId,
+                FullName = c.FirstName + " " + c.LastName,
+                Name = c.FirstName + " " + c.LastName,
+                Phone = c.Phone ?? "",
+                Email = c.Email
+            })
+            .ToListAsync();
+        model.Customers = model.AvailableCustomers;
+
+        model.AvailableTechnicians = await _db.Users
+            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+            .Where(u => u.ShopId == shopId && u.IsActive &&
+                        u.UserRoles.Any(ur => ur.Role!.RoleName == "Technician"))
+            .Select(u => new TechnicianSelectItem
+            {
+                Id = u.UserId,
+                FullName = u.FirstName + " " + u.LastName,
+                Name = u.FirstName + " " + u.LastName
+            })
+            .ToListAsync();
+        model.Technicians = model.AvailableTechnicians;
     }
 }

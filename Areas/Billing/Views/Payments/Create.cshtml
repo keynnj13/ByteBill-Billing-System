@@ -1,0 +1,197 @@
+@model PaymentCreateViewModel
+@{
+    ViewData["Title"] = "Record Payment";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Payments", Url = Url.Action("Index", "Payments", new { area = "Billing" }) }, new() { Label = "Record Payment", IsActive = true } } })" />
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Record Payment</h1>
+        <p class="page-subtitle">Record payment for Invoice @Model.InvoiceNumber</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Back
+    </a>
+</div>
+
+<form asp-action="Create" method="post" class="pay-create-layout">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="InvoiceId" />
+    <input type="hidden" asp-for="InvoiceNumber" />
+    <input type="hidden" asp-for="CustomerName" />
+    <input type="hidden" asp-for="InvoiceBalance" />
+
+    <div asp-validation-summary="ModelOnly" class="alert-error"></div>
+
+    <!-- Main Column -->
+    <div class="pay-main">
+        <!-- Invoice Info Card -->
+        <div class="card">
+            <div class="card-header-section">
+                <h2 class="section-title">Invoice Information</h2>
+            </div>
+            <div class="card-body">
+                <div class="invoice-info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Invoice</span>
+                        <span class="info-value text-primary">@Model.InvoiceNumber</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Customer</span>
+                        <span class="info-value">@Model.CustomerName</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Outstanding Balance</span>
+                        <span class="info-value text-danger font-bold">₱ @Model.InvoiceBalance.ToString("N2")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Details -->
+        <div class="card">
+            <div class="card-header-section">
+                <h2 class="section-title">Payment Details</h2>
+            </div>
+            <div class="card-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label asp-for="Amount" class="form-label">Amount <span class="text-danger">*</span></label>
+                        <div class="input-with-prefix">
+                            <span class="input-prefix">₱</span>
+                            <input asp-for="Amount" class="form-input" type="number" step="0.01" min="0.01" max="@Model.InvoiceBalance" placeholder="0.00" />
+                        </div>
+                        <span asp-validation-for="Amount" class="text-danger text-sm"></span>
+                        <span class="form-hint">Maximum: ₱ @Model.InvoiceBalance.ToString("N2")</span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Method" class="form-label">Payment Method <span class="text-danger">*</span></label>
+                        <select asp-for="Method" asp-items="Html.GetEnumSelectList<PaymentMethod>()" class="form-select" onchange="toggleReference(this)"></select>
+                        <span asp-validation-for="Method" class="text-danger text-sm"></span>
+                    </div>
+                </div>
+                <div class="form-group" id="referenceGroup" style="display: none;">
+                    <label asp-for="ReferenceNumber" class="form-label">Reference Number</label>
+                    <input asp-for="ReferenceNumber" class="form-input" placeholder="e.g. GCash Ref#, Card last 4 digits" />
+                    <span asp-validation-for="ReferenceNumber" class="text-danger text-sm"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Notes" class="form-label">Notes</label>
+                    <textarea asp-for="Notes" class="form-input" rows="3" placeholder="Optional notes..."></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="pay-sidebar">
+        <div class="card">
+            <div class="card-header-section">
+                <h2 class="section-title">Summary</h2>
+            </div>
+            <div class="card-body">
+                <div class="summary-row">
+                    <span class="summary-label">Invoice</span>
+                    <span class="summary-value">@Model.InvoiceNumber</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Balance Due</span>
+                    <span class="summary-value">₱ @Model.InvoiceBalance.ToString("N2")</span>
+                </div>
+                <hr />
+                <div class="summary-row summary-total">
+                    <span class="summary-label">Payment Amount</span>
+                    <span class="summary-value text-primary" id="summaryAmount">₱ @Model.Amount.ToString("N2")</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Remaining After</span>
+                    <span class="summary-value" id="summaryRemaining">₱ 0.00</span>
+                </div>
+            </div>
+            <div class="card-footer-section">
+                <button type="submit" class="btn btn-primary btn-full">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    Record Payment
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: #6b7280; }
+    .pay-create-layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; }
+    .pay-main { display: flex; flex-direction: column; gap: 20px; }
+    .card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
+    .card-header-section { padding: 16px 20px; border-bottom: 1px solid #f3f4f6; }
+    .card-body { padding: 20px; }
+    .card-footer-section { padding: 16px 20px; border-top: 1px solid #f3f4f6; }
+    .section-title { font-size: 15px; font-weight: 600; color: #374151; margin: 0; }
+    .invoice-info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .info-item { display: flex; flex-direction: column; gap: 4px; }
+    .info-label { font-size: 12px; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .info-value { font-size: 15px; font-weight: 600; color: #1f2937; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group:last-child { margin-bottom: 0; }
+    .form-label { display: block; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px; }
+    .form-input, .form-select { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; transition: border-color 0.2s; }
+    .form-input:focus, .form-select:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+    .form-hint { display: block; font-size: 12px; color: #9ca3af; margin-top: 4px; }
+    .input-with-prefix { position: relative; }
+    .input-prefix { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #6b7280; font-weight: 500; font-size: 14px; }
+    .input-with-prefix .form-input { padding-left: 28px; }
+    .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
+    .summary-label { font-size: 13px; color: #6b7280; }
+    .summary-value { font-size: 14px; font-weight: 600; color: #1f2937; }
+    .summary-total { padding: 12px 0; }
+    .summary-total .summary-value { font-size: 18px; }
+    hr { border: none; border-top: 1px solid #f3f4f6; margin: 4px 0; }
+    .text-primary { color: #3b82f6; }
+    .text-danger { color: #ef4444; }
+    .text-sm { font-size: 12px; }
+    .font-bold { font-weight: 700; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; text-decoration: none; }
+    .btn-primary { background: #6366f1; color: white; }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn-outline-secondary { background: white; color: #6b7280; border: 1px solid #d1d5db; }
+    .btn-outline-secondary:hover { background: #f9fafb; }
+    .btn-full { width: 100%; justify-content: center; padding: 10px 16px; }
+    .alert-error { padding: 12px 16px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #991b1b; font-size: 14px; margin-bottom: 20px; }
+    .alert-error:empty { display: none; }
+    @@media (max-width: 768px) {
+        .pay-create-layout { grid-template-columns: 1fr; }
+        .invoice-info-grid { grid-template-columns: 1fr; }
+        .form-grid { grid-template-columns: 1fr; }
+    }
+</style>
+
+@section Scripts {
+<script>
+    function toggleReference(sel) {
+        var refGroup = document.getElementById('referenceGroup');
+        var method = sel.value;
+        refGroup.style.display = (method === 'Cash') ? 'none' : 'block';
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleReference(document.querySelector('[name="Method"]'));
+
+        var amountInput = document.querySelector('[name="Amount"]');
+        var balance = @Model.InvoiceBalance;
+
+        amountInput.addEventListener('input', function() {
+            var amt = parseFloat(this.value) || 0;
+            document.getElementById('summaryAmount').textContent = '₱ ' + amt.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+            var remaining = Math.max(balance - amt, 0);
+            document.getElementById('summaryRemaining').textContent = '₱ ' + remaining.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+        });
+
+        amountInput.dispatchEvent(new Event('input'));
+    });
+</script>
+}

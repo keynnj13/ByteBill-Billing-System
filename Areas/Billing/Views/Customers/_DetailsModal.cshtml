@@ -1,0 +1,98 @@
+@model CustomerDetailViewModel
+
+<div class="modal-detail-body">
+    <!-- Customer Header -->
+    <div class="modal-detail-header">
+        <div class="avatar-lg">@Model.Name.Substring(0, 1)@(Model.Name.Contains(" ") ? Model.Name.Split(' ').Last().Substring(0, 1) : "")</div>
+        <div>
+            <h3 class="modal-detail-name">@Model.Name</h3>
+            <p class="modal-detail-sub">Customer since @Model.CreatedAt.ToString("MMMM yyyy")</p>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="modal-stats-row">
+        <div class="modal-stat">
+            <span class="modal-stat-label">Total Orders</span>
+            <span class="modal-stat-value">@Model.TotalOrders</span>
+        </div>
+        <div class="modal-stat">
+            <span class="modal-stat-label">Total Spent</span>
+            <span class="modal-stat-value">@Model.TotalSpent.ToString("C")</span>
+        </div>
+        <div class="modal-stat">
+            <span class="modal-stat-label">Outstanding</span>
+            <span class="modal-stat-value @(Model.OutstandingBalance > 0 ? "text-danger" : "")">@Model.OutstandingBalance.ToString("C")</span>
+        </div>
+    </div>
+
+    <!-- Contact Information -->
+    <div class="modal-detail-section">
+        <h4 class="modal-section-title">Contact Information</h4>
+        <dl class="modal-detail-list">
+            <div class="modal-detail-item">
+                <dt>Email</dt>
+                <dd><a href="mailto:@Model.Email" class="text-link">@Model.Email</a></dd>
+            </div>
+            <div class="modal-detail-item">
+                <dt>Phone</dt>
+                <dd>@(Model.Phone ?? "Not provided")</dd>
+            </div>
+            <div class="modal-detail-item">
+                <dt>Address</dt>
+                <dd>@(Model.Address ?? "Not provided")</dd>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.Notes))
+            {
+                <div class="modal-detail-item">
+                    <dt>Notes</dt>
+                    <dd>@Model.Notes</dd>
+                </div>
+            }
+        </dl>
+    </div>
+
+    <!-- Recent Orders -->
+    <div class="modal-detail-section">
+        <h4 class="modal-section-title">Recent Orders</h4>
+        @if (Model.RecentOrders.Any())
+        {
+            <div class="table-container">
+                <table class="table table-compact">
+                    <thead>
+                        <tr>
+                            <th>Order</th>
+                            <th>Device</th>
+                            <th>Status</th>
+                            <th class="text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var order in Model.RecentOrders)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="text-link font-medium">@order.OrderNumber</span>
+                                    <span class="cell-sub">@order.CreatedAt.ToString("MMM d, yyyy")</span>
+                                </td>
+                                <td>@order.DeviceType</td>
+                                <td><span class="badge badge-@order.StatusClass">@order.Status</span></td>
+                                <td class="text-right font-medium">@order.Total.ToString("C")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="empty-box-sm">
+                <p class="text-muted">No orders yet</p>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="modal-form-footer">
+    <button type="button" class="btn btn-ghost" onclick="closeAjaxModal()">Close</button>
+</div>

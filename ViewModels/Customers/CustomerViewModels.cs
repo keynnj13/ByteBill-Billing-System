@@ -32,33 +32,34 @@ public class CustomerFormViewModel
     public long Id { get; set; }
     
     [Required(ErrorMessage = "First name is required")]
-    [StringLength(50)]
+    [StringLength(20, ErrorMessage = "First name cannot exceed 20 characters")]
     [Display(Name = "First Name")]
     public string FirstName { get; set; } = string.Empty;
 
-    [StringLength(50)]
+    [StringLength(10, ErrorMessage = "Middle name cannot exceed 10 characters")]
     [Display(Name = "Middle Name")]
     public string? MiddleName { get; set; }
     
     [Required(ErrorMessage = "Last name is required")]
-    [StringLength(50)]
+    [StringLength(10, ErrorMessage = "Last name cannot exceed 10 characters")]
     [Display(Name = "Last Name")]
     public string LastName { get; set; } = string.Empty;
     
     [EmailAddress(ErrorMessage = "Invalid email address")]
-    [StringLength(100)]
+    [StringLength(50, ErrorMessage = "Email cannot exceed 50 characters")]
     [Display(Name = "Email")]
     public string? Email { get; set; }
     
-    [StringLength(30)]
+    [RegularExpression(@"^09\d{9}$", ErrorMessage = "Phone must be 11 digits starting with 09")]
+    [StringLength(11, MinimumLength = 11, ErrorMessage = "Phone number must be exactly 11 digits")]
     [Display(Name = "Phone")]
-    public string? Phone { get; set; } // Format: +63 XXX XXX XXXX (mobile) or +63 XX XXX XXXX (landline)
+    public string? Phone { get; set; }
     
-    [StringLength(255)]
+    [StringLength(100, ErrorMessage = "Address cannot exceed 100 characters")]
     [Display(Name = "Address")]
     public string? Address { get; set; }
 
-    [StringLength(500)]
+    [StringLength(255, ErrorMessage = "Notes cannot exceed 255 characters")]
     [Display(Name = "Notes")]
     public string? Notes { get; set; }
 
