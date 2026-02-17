@@ -1,0 +1,252 @@
+@{
+    ViewData["Title"] = "Adjustments";
+
+    // ── Mock data ──
+    var pendingRequests = new[]
+    {
+        new { Id = 1, Type = "Credit", InvoiceNumber = "INV-2025-0142", CustomerName = "Alice Thompson", Amount = -150.00m, Reason = "Loyal customer discount — 3+ years", RequestedBy = "Juan Cruz", RequestedAt = DateTime.Now.AddHours(-2), Status = "Pending" },
+        new { Id = 2, Type = "Refund", InvoiceNumber = "INV-2025-0138", CustomerName = "Bob Martinez", Amount = -75.00m, Reason = "Defective part returned within warranty", RequestedBy = "Juan Cruz", RequestedAt = DateTime.Now.AddHours(-5), Status = "Pending" },
+        new { Id = 3, Type = "Debit", InvoiceNumber = "INV-2025-0130", CustomerName = "Carol White", Amount = 200.00m, Reason = "Additional labor charges — after-hours service", RequestedBy = "Juan Cruz", RequestedAt = DateTime.Now.AddDays(-1), Status = "Pending" }
+    };
+
+    var allAdjustments = new[]
+    {
+        new { Id = 10, Type = "Credit", InvoiceNumber = "INV-2025-0120", CustomerName = "Mike Johnson", Amount = -50.00m, Reason = "Service credit for inconvenience", RequestedBy = "Juan Cruz", ApprovedBy = "Maria Santos", Status = "Approved", CreatedAt = DateTime.Now.AddDays(-3) },
+        new { Id = 9, Type = "Refund", InvoiceNumber = "INV-2025-0115", CustomerName = "Sarah Chen", Amount = -30.00m, Reason = "Parts return — unused components", RequestedBy = "Juan Cruz", ApprovedBy = "Maria Santos", Status = "Approved", CreatedAt = DateTime.Now.AddDays(-5) },
+        new { Id = 8, Type = "Debit", InvoiceNumber = "INV-2025-0108", CustomerName = "Diana Soriano", Amount = 100.00m, Reason = "Rush service surcharge", RequestedBy = "Juan Cruz", ApprovedBy = "Maria Santos", Status = "Approved", CreatedAt = DateTime.Now.AddDays(-7) },
+        new { Id = 7, Type = "Credit", InvoiceNumber = "INV-2025-0095", CustomerName = "Paolo Deleon", Amount = -200.00m, Reason = "Bulk discount — 5 devices", RequestedBy = "Juan Cruz", ApprovedBy = "—", Status = "Rejected", CreatedAt = DateTime.Now.AddDays(-10) }
+    };
+}
+
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+    <div>
+        <h1 class="page-title">Adjustments</h1>
+        <p class="page-subtitle">Review and manage billing adjustment requests</p>
+    </div>
+</div>
+
+<!-- ── Stat Cards ── -->
+<div class="stats-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
+    <div class="adj-stat-card">
+        <div class="stat-card-icon emerald">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <div>
+            <div class="adj-stat-label">Approved</div>
+            <div class="adj-stat-value">3</div>
+        </div>
+    </div>
+    <div class="adj-stat-card">
+        <div class="stat-card-icon" style="background: rgba(245,176,65,0.1); color: #f5b041;">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <div>
+            <div class="adj-stat-label">Pending</div>
+            <div class="adj-stat-value">3</div>
+        </div>
+    </div>
+    <div class="adj-stat-card">
+        <div class="stat-card-icon" style="background: rgba(225,95,72,0.1); color: #e15f48;">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <div>
+            <div class="adj-stat-label">Rejected</div>
+            <div class="adj-stat-value">1</div>
+        </div>
+    </div>
+    <div class="adj-stat-card">
+        <div class="stat-card-icon navy">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <div>
+            <div class="adj-stat-label">Total Value</div>
+            <div class="adj-stat-value">₱605.00</div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Pending Requests (Needs Action) ── -->
+<div class="card" style="margin-bottom: 24px;">
+    <div class="card-body" style="padding: 0;">
+        <div style="padding: 20px 24px 12px; display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <h3 class="adj-section-title">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                    Pending Requests
+                </h3>
+                <p class="adj-section-desc">@pendingRequests.Length adjustment request(s) awaiting your review</p>
+            </div>
+        </div>
+
+        @if (pendingRequests.Length == 0)
+        {
+            <div style="padding: 40px 24px; text-align: center;">
+                <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--gray-400); margin: 0 auto 12px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <h3 class="adj-empty-title">All caught up!</h3>
+                <p class="adj-empty-desc">No pending adjustment requests at this time.</p>
+            </div>
+        }
+        else
+        {
+            <table class="data-table" style="margin: 0;">
+                <thead>
+                    <tr>
+                        <th>TYPE</th>
+                        <th>INVOICE</th>
+                        <th>CUSTOMER</th>
+                        <th style="text-align: right;">AMOUNT</th>
+                        <th>REASON</th>
+                        <th>REQUESTED BY</th>
+                        <th>DATE</th>
+                        <th style="text-align: center;">ACTIONS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var req in pendingRequests)
+                    {
+                        var badgeClass = req.Type == "Credit" ? "badge-info" : req.Type == "Refund" ? "badge-warning" : "badge-purple";
+                        var amountClass = req.Amount < 0 ? "adj-amount-credit" : "adj-amount-debit";
+                        <tr>
+                            <td><span class="badge @badgeClass">@req.Type</span></td>
+                            <td><span class="adj-inv-link">@req.InvoiceNumber</span></td>
+                            <td><span class="adj-customer">@req.CustomerName</span></td>
+                            <td style="text-align: right;"><span class="@amountClass">@(req.Amount < 0 ? "−" : "+")₱@(Math.Abs(req.Amount).ToString("N2"))</span></td>
+                            <td><span class="adj-reason">@req.Reason</span></td>
+                            <td><span class="adj-requested-by">@req.RequestedBy</span></td>
+                            <td><span class="adj-date">@req.RequestedAt.ToString("MMM dd, yyyy h:mm tt")</span></td>
+                            <td style="text-align: center;">
+                                <div style="display: flex; gap: 6px; justify-content: center;">
+                                    <button class="adj-btn-approve" title="Approve">
+                                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                        Approve
+                                    </button>
+                                    <button class="adj-btn-reject" title="Reject">
+                                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        Reject
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+<!-- ── All Adjustments History ── -->
+<div class="card">
+    <div class="card-body" style="padding: 0;">
+        <div style="padding: 20px 24px 12px; display: flex; align-items: center; justify-content: space-between;">
+            <h3 class="adj-section-title">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Adjustment History
+            </h3>
+            <div style="display: flex; gap: 8px;">
+                <div class="search-container" style="position: relative; width: 260px;">
+                    <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" class="form-input" placeholder="Search adjustments..." style="padding-left: 36px; height: 36px; font-size: 13px;" />
+                </div>
+            </div>
+        </div>
+
+        <table class="data-table" style="margin: 0;">
+            <thead>
+                <tr>
+                    <th>TYPE</th>
+                    <th>INVOICE</th>
+                    <th>CUSTOMER</th>
+                    <th style="text-align: right;">AMOUNT</th>
+                    <th>REASON</th>
+                    <th>REQUESTED BY</th>
+                    <th>REVIEWED BY</th>
+                    <th>STATUS</th>
+                    <th>DATE</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var adj in allAdjustments)
+                {
+                    var badgeClass = adj.Type == "Credit" ? "badge-info" : adj.Type == "Refund" ? "badge-warning" : "badge-purple";
+                    var statusBadge = adj.Status == "Approved" ? "badge-success" : adj.Status == "Rejected" ? "badge-destructive" : "badge-pending";
+                    var amountClass = adj.Amount < 0 ? "adj-amount-credit" : "adj-amount-debit";
+                    <tr class="clickable-row">
+                        <td><span class="badge @badgeClass">@adj.Type</span></td>
+                        <td><span class="adj-inv-link">@adj.InvoiceNumber</span></td>
+                        <td><span class="adj-customer">@adj.CustomerName</span></td>
+                        <td style="text-align: right;"><span class="@amountClass">@(adj.Amount < 0 ? "−" : "+")₱@(Math.Abs(adj.Amount).ToString("N2"))</span></td>
+                        <td><span class="adj-reason">@adj.Reason</span></td>
+                        <td><span class="adj-requested-by">@adj.RequestedBy</span></td>
+                        <td><span class="adj-reviewed-by">@adj.ApprovedBy</span></td>
+                        <td><span class="badge @statusBadge">@adj.Status</span></td>
+                        <td><span class="adj-date">@adj.CreatedAt.ToString("MMM dd, yyyy")</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    /* ── Stat Cards ── */
+    .adj-stat-card {
+        display: flex; align-items: center; gap: 16px;
+        background: white; border: 1px solid var(--gray-border);
+        border-radius: var(--radius-md); padding: 20px;
+        box-shadow: var(--shadow-card);
+    }
+    .adj-stat-label { font-size: 12px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+    .adj-stat-value { font-size: 22px; font-weight: 700; color: #1f2937; margin-top: 2px; }
+
+    /* ── Section Titles ── */
+    .adj-section-title { font-size: 16px; font-weight: 600; color: #1f2937; display: flex; align-items: center; gap: 8px; margin: 0; }
+    .adj-section-desc { font-size: 13px; color: #9ca3af; margin-top: 2px; }
+
+    /* ── Page Header ── */
+    .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: #6b7280; }
+
+    /* ── Table Content ── */
+    .adj-inv-link { color: #3b82f6; font-weight: 500; font-size: 13px; cursor: pointer; }
+    .adj-inv-link:hover { text-decoration: underline; }
+    .adj-customer { font-weight: 600; color: #1f2937; font-size: 13px; }
+    .adj-reason { color: #374151; font-size: 13px; max-width: 200px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .adj-requested-by { color: #374151; font-size: 13px; font-weight: 500; }
+    .adj-reviewed-by { color: #6b7280; font-size: 13px; }
+    .adj-date { color: #6b7280; font-size: 13px; white-space: nowrap; }
+
+    /* ── Amount Colors ── */
+    .adj-amount-credit { color: #059669; font-weight: 600; font-size: 13px; }
+    .adj-amount-debit { color: #dc2626; font-weight: 600; font-size: 13px; }
+
+    /* ── Empty State ── */
+    .adj-empty-title { color: #6b7280; font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+    .adj-empty-desc { color: #9ca3af; font-size: 14px; }
+
+    /* ── Approve / Reject Buttons ── */
+    .adj-btn-approve {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;
+        font-family: inherit; border: 1px solid #10b981; color: #10b981;
+        background: transparent; cursor: pointer; transition: all 0.2s;
+    }
+    .adj-btn-approve:hover { background: #10b981; color: white; }
+
+    .adj-btn-reject {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;
+        font-family: inherit; border: 1px solid #ef4444; color: #ef4444;
+        background: transparent; cursor: pointer; transition: all 0.2s;
+    }
+    .adj-btn-reject:hover { background: #ef4444; color: white; }
+
+    /* ── Row hover ── */
+    .clickable-row:hover { background-color: #f0f7ff; }
+
+    @@media (max-width: 1024px) {
+        .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    }
+    @@media (max-width: 640px) {
+        .stats-grid { grid-template-columns: 1fr !important; }
+    }
+</style>

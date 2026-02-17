@@ -1,20 +1,234 @@
 @{
     ViewData["Title"] = "Adjustments";
+
+    // ── Mock data: Billing staff's own requests ──
+    var myRequests = new[]
+    {
+        new { Id = 1, Type = "Credit",  InvoiceNumber = "INV-2025-0142", CustomerName = "Alice Thompson", Amount = -150.00m, Reason = "Loyal customer discount — 3+ years",          Status = "Pending",  SubmittedAt = DateTime.Now.AddHours(-2),  ReviewedBy = (string?)null },
+        new { Id = 2, Type = "Refund",  InvoiceNumber = "INV-2025-0138", CustomerName = "Bob Martinez",   Amount =  -75.00m, Reason = "Defective part returned within warranty",     Status = "Pending",  SubmittedAt = DateTime.Now.AddHours(-5),  ReviewedBy = (string?)null },
+        new { Id = 3, Type = "Debit",   InvoiceNumber = "INV-2025-0130", CustomerName = "Carol White",    Amount =  200.00m, Reason = "Additional labor charges — after-hours service",Status = "Pending",  SubmittedAt = DateTime.Now.AddDays(-1),   ReviewedBy = (string?)null },
+        new { Id = 10, Type = "Credit", InvoiceNumber = "INV-2025-0120", CustomerName = "Mike Johnson",   Amount =  -50.00m, Reason = "Service credit for inconvenience",             Status = "Approved", SubmittedAt = DateTime.Now.AddDays(-3),   ReviewedBy = "Maria Santos" },
+        new { Id = 9,  Type = "Refund", InvoiceNumber = "INV-2025-0115", CustomerName = "Sarah Chen",     Amount =  -30.00m, Reason = "Parts return — unused components",              Status = "Approved", SubmittedAt = DateTime.Now.AddDays(-5),   ReviewedBy = "Maria Santos" },
+        new { Id = 7,  Type = "Credit", InvoiceNumber = "INV-2025-0095", CustomerName = "Paolo Deleon",   Amount = -200.00m, Reason = "Bulk discount — 5 devices",                    Status = "Rejected", SubmittedAt = DateTime.Now.AddDays(-10),  ReviewedBy = "Maria Santos" }
+    };
+
+    var pendingCount  = myRequests.Count(r => r.Status == "Pending");
+    var approvedCount = myRequests.Count(r => r.Status == "Approved");
+    var rejectedCount = myRequests.Count(r => r.Status == "Rejected");
 }
 
-<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Adjustments", IsActive = true } } })" />
-
-<div class="page-header">
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
     <div>
         <h1 class="page-title">Adjustments</h1>
-        <p class="text-muted">Manage billing adjustments</p>
+        <p class="page-subtitle">Request billing adjustments for admin approval</p>
+    </div>
+    <button class="btn btn-primary btn-sm" id="openRequestModal" style="display: inline-flex; align-items: center; gap: 6px;">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+        Request Adjustment
+    </button>
+</div>
+
+<!-- ── Stat Badges (inline) ── -->
+<div class="bil-adj-stats" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+    <div class="bil-adj-stat-pill pending">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        @pendingCount Pending
+    </div>
+    <div class="bil-adj-stat-pill approved">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        @approvedCount Approved
+    </div>
+    <div class="bil-adj-stat-pill rejected">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        @rejectedCount Rejected
     </div>
 </div>
 
+<!-- ── My Requests Table ── -->
 <div class="card">
-    <div class="card-body text-center py-5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-        <h3 class="text-muted">Coming Soon</h3>
-        <p class="text-muted">This module is currently under development.</p>
+    <div class="card-body" style="padding: 0;">
+        <div style="padding: 20px 24px 12px; display: flex; align-items: center; justify-content: space-between;">
+            <h3 class="bil-adj-section-title">My Adjustment Requests</h3>
+            <div class="search-container" style="position: relative; width: 260px;">
+                <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" class="form-input" placeholder="Search requests..." style="padding-left: 36px; height: 36px; font-size: 13px;" />
+            </div>
+        </div>
+
+        <table class="data-table" style="margin: 0;">
+            <thead>
+                <tr>
+                    <th>TYPE</th>
+                    <th>INVOICE</th>
+                    <th>CUSTOMER</th>
+                    <th style="text-align: right;">AMOUNT</th>
+                    <th>REASON</th>
+                    <th>STATUS</th>
+                    <th>SUBMITTED</th>
+                    <th>REVIEWED BY</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var req in myRequests)
+                {
+                    var badgeClass = req.Type == "Credit" ? "badge-info" : req.Type == "Refund" ? "badge-warning" : "badge-purple";
+                    var statusBadge = req.Status == "Approved" ? "badge-success" : req.Status == "Rejected" ? "badge-destructive" : "badge-pending";
+                    var amountClass = req.Amount < 0 ? "bil-adj-amount-credit" : "bil-adj-amount-debit";
+                    <tr>
+                        <td><span class="badge @badgeClass">@req.Type</span></td>
+                        <td><span class="bil-adj-inv-link">@req.InvoiceNumber</span></td>
+                        <td><span class="bil-adj-customer">@req.CustomerName</span></td>
+                        <td style="text-align: right;"><span class="@amountClass">@(req.Amount < 0 ? "−" : "+")₱@(Math.Abs(req.Amount).ToString("N2"))</span></td>
+                        <td><span class="bil-adj-reason">@req.Reason</span></td>
+                        <td><span class="badge @statusBadge">@req.Status</span></td>
+                        <td><span class="bil-adj-date">@req.SubmittedAt.ToString("MMM dd, yyyy h:mm tt")</span></td>
+                        <td><span class="bil-adj-reviewer">@(req.ReviewedBy ?? "—")</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
 </div>
+
+<!-- ── Request Adjustment Modal ── -->
+<div class="bil-adj-overlay" id="requestOverlay"></div>
+<div class="bil-adj-modal" id="requestModal">
+    <div class="bil-adj-modal-header">
+        <h3 class="bil-adj-modal-title">Request Adjustment</h3>
+        <button class="bil-adj-modal-close" id="closeRequestModal">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+    </div>
+    <form>
+        <div class="bil-adj-modal-body">
+            <p class="bil-adj-modal-desc">Submit an adjustment request for admin review. The admin will be notified and must approve before the adjustment is applied.</p>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label class="form-label">Invoice <span style="color: var(--destructive);">*</span></label>
+                <select class="form-input">
+                    <option value="">Select an invoice...</option>
+                    <option value="INV-2025-0142">INV-2025-0142 — Alice Thompson (₱1,200.00)</option>
+                    <option value="INV-2025-0138">INV-2025-0138 — Bob Martinez (₱850.00)</option>
+                    <option value="INV-2025-0130">INV-2025-0130 — Carol White (₱640.00)</option>
+                    <option value="INV-2025-0120">INV-2025-0120 — Mike Johnson (₱2,150.00)</option>
+                </select>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div class="form-group">
+                    <label class="form-label">Adjustment Type <span style="color: var(--destructive);">*</span></label>
+                    <select class="form-input">
+                        <option value="">Select type...</option>
+                        <option value="Credit">Credit (reduce balance)</option>
+                        <option value="Debit">Debit (increase balance)</option>
+                        <option value="Refund">Refund</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Amount (₱) <span style="color: var(--destructive);">*</span></label>
+                    <input type="number" class="form-input" placeholder="0.00" min="0.01" step="0.01" />
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label class="form-label">Reason <span style="color: var(--destructive);">*</span></label>
+                <textarea class="form-input" rows="3" placeholder="Explain why this adjustment is needed..."></textarea>
+            </div>
+
+            <div class="bil-adj-notice">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span>This request will be sent to an admin for approval. You'll be notified once it's reviewed.</span>
+            </div>
+        </div>
+        <div class="bil-adj-modal-footer">
+            <button type="button" class="btn btn-outline btn-sm" id="cancelRequestModal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                Submit Request
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+    /* ── Stat Pills ── */
+    .bil-adj-stat-pill {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 14px; border-radius: 20px;
+        font-size: 13px; font-weight: 600;
+    }
+    .bil-adj-stat-pill.pending  { background: rgba(245,176,65,0.12); color: #d97706; }
+    .bil-adj-stat-pill.approved { background: rgba(16,185,129,0.12); color: #059669; }
+    .bil-adj-stat-pill.rejected { background: rgba(239,68,68,0.12);  color: #dc2626; }
+
+    /* ── Section ── */
+    .bil-adj-section-title { font-size: 16px; font-weight: 600; color: #1f2937; margin: 0; }
+
+    /* ── Table ── */
+    .bil-adj-inv-link { color: #3b82f6; font-weight: 500; font-size: 13px; cursor: pointer; }
+    .bil-adj-inv-link:hover { text-decoration: underline; }
+    .bil-adj-customer { font-weight: 600; color: #1f2937; font-size: 13px; }
+    .bil-adj-reason { color: #374151; font-size: 13px; max-width: 220px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bil-adj-date { color: #6b7280; font-size: 13px; white-space: nowrap; }
+    .bil-adj-reviewer { color: #6b7280; font-size: 13px; }
+    .bil-adj-amount-credit { color: #059669; font-weight: 600; font-size: 13px; }
+    .bil-adj-amount-debit  { color: #dc2626; font-weight: 600; font-size: 13px; }
+
+    /* ── Modal ── */
+    .bil-adj-overlay {
+        display: none; position: fixed; inset: 0;
+        background: rgba(0,0,0,0.45); z-index: 9998;
+    }
+    .bil-adj-overlay.active { display: block; }
+
+    .bil-adj-modal {
+        display: none; position: fixed;
+        top: 50%; left: 50%; transform: translate(-50%, -50%);
+        width: 520px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+        background: var(--card); border: 1px solid var(--gray-border);
+        border-radius: var(--radius-lg); box-shadow: var(--shadow-modal);
+        z-index: 9999;
+    }
+    .bil-adj-modal.active { display: block; }
+
+    .bil-adj-modal-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 20px 24px; border-bottom: 1px solid var(--gray-border);
+    }
+    .bil-adj-modal-title { font-size: 18px; font-weight: 700; color: #1f2937; margin: 0; }
+    .bil-adj-modal-close { background: none; border: none; cursor: pointer; padding: 4px; border-radius: 6px; color: var(--gray-500); }
+    .bil-adj-modal-close:hover { background: var(--gray-light); }
+
+    .bil-adj-modal-body { padding: 24px; }
+    .bil-adj-modal-desc { font-size: 13px; color: #6b7280; margin-bottom: 20px; line-height: 1.5; }
+
+    .bil-adj-notice {
+        display: flex; align-items: flex-start; gap: 10px;
+        padding: 12px 16px; border-radius: 8px;
+        background: rgba(59,130,246,0.08); color: #2563eb;
+        font-size: 13px; line-height: 1.5;
+    }
+
+    .bil-adj-modal-footer {
+        display: flex; justify-content: flex-end; gap: 10px;
+        padding: 16px 24px; border-top: 1px solid var(--gray-border);
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const openBtn   = document.getElementById('openRequestModal');
+        const closeBtn  = document.getElementById('closeRequestModal');
+        const cancelBtn = document.getElementById('cancelRequestModal');
+        const modal     = document.getElementById('requestModal');
+        const overlay   = document.getElementById('requestOverlay');
+
+        function openModal()  { modal.classList.add('active'); overlay.classList.add('active'); }
+        function closeModal() { modal.classList.remove('active'); overlay.classList.remove('active'); }
+
+        openBtn.addEventListener('click', openModal);
+        closeBtn.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+        overlay.addEventListener('click', closeModal);
+    });
+</script>

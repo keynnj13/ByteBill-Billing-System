@@ -188,6 +188,8 @@ public class AuditLogDetailViewModel
     public string UserEmail { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public string? IpAddress { get; set; }
+    public string? OldValues { get; set; }
+    public string? NewValues { get; set; }
 }
 
 // ============================================================

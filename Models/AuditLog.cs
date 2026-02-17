@@ -9,6 +9,9 @@ public class AuditLog
     public string EntityName { get; set; } = string.Empty;
     public long EntityId { get; set; }
     public string? Details { get; set; }
+    public string? IpAddress { get; set; }
+    public string? OldValues { get; set; }
+    public string? NewValues { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties

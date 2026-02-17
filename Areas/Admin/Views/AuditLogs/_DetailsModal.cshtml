@@ -70,6 +70,30 @@
             </div>
         </div>
     }
+
+    <!-- Old / New Values -->
+    @if (!string.IsNullOrEmpty(Model.OldValues) || !string.IsNullOrEmpty(Model.NewValues))
+    {
+        <div class="form-section" style="margin-top: 16px;">
+            <h4 class="form-section-title">Changes</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                @if (!string.IsNullOrEmpty(Model.OldValues))
+                {
+                    <div>
+                        <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #dc2626; margin-bottom: 6px;">Before</div>
+                        <pre style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; font-size: 12px; color: #991b1b; margin: 0; white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto;">@Model.OldValues</pre>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(Model.NewValues))
+                {
+                    <div>
+                        <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #059669; margin-bottom: 6px;">After</div>
+                        <pre style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 12px; font-size: 12px; color: #065f46; margin: 0; white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto;">@Model.NewValues</pre>
+                    </div>
+                }
+            </div>
+        </div>
+    }
 </div>
 
 <div class="modal-form-footer">

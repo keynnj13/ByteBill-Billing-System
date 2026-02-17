@@ -1,5 +1,6 @@
 using ByteBill_BS.Data;
 using ByteBill_BS.Models.Enums;
+using ByteBill_BS.Services;
 using ByteBill_BS.ViewModels.Auth;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -14,10 +15,12 @@ namespace ByteBill_BS.Controllers;
 public class AuthController : Controller
 {
     private readonly ApplicationDbContext _db;
+    private readonly IAuditService _audit;
 
-    public AuthController(ApplicationDbContext db)
+    public AuthController(ApplicationDbContext db, IAuditService audit)
     {
         _db = db;
+        _audit = audit;
     }
 
     // ── Account lockout tracking (in-memory) ────────────────────────────
@@ -97,24 +100,25 @@ public class AuthController : Controller
 
             var authProperties = new AuthenticationProperties
             {
-                IsPersistent = model.RememberMe,
-                ExpiresUtc = model.RememberMe ? DateTimeOffset.UtcNow.AddDays(30) : DateTimeOffset.UtcNow.AddHours(8)
+                IsPersistent = false,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8)
             };
 
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProperties);
 
-            // ── Audit log the login ──────────────────────────────────
-            _db.AuditLogs.Add(new Models.AuditLog
+            // ── Set theme cookie from user preference ────────────────
+            Response.Cookies.Append("ByteBillTheme", dbUser.ThemePreference ?? "light", new CookieOptions
             {
-                ShopId = dbUser.ShopId,
-                UserId = dbUser.UserId,
-                Action = "Login",
-                EntityName = "User",
-                EntityId = dbUser.UserId,
-                Details = $"User '{dbUser.UserName}' logged in successfully.",
-                CreatedAt = DateTime.UtcNow
+                HttpOnly = false,   // JS needs to read it
+                Expires = DateTimeOffset.UtcNow.AddDays(365),
+                SameSite = SameSiteMode.Lax,
+                Path = "/"
             });
-            await _db.SaveChangesAsync();
+
+            // ── Audit log the login ──────────────────────────────────
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+            await _audit.LogAsync(dbUser.ShopId, dbUser.UserId, "Login", "User", dbUser.UserId,
+                $"User '{dbUser.UserName}' logged in successfully.", ip);
 
             if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
             {
@@ -136,8 +140,7 @@ public class AuthController : Controller
         else
         {
             _loginAttempts[key] = (attempts, null);
-            var remaining = MaxFailedAttempts - attempts;
-            ModelState.AddModelError(string.Empty, $"Invalid username or password. {remaining} attempt{(remaining != 1 ? "s" : "")} remaining.");
+            ModelState.AddModelError(string.Empty, "The credentials you entered are incorrect. Please try again.");
         }
 
         return View(model);
@@ -151,17 +154,8 @@ public class AuthController : Controller
         var shopIdStr = User.FindFirstValue("ShopId");
         if (long.TryParse(userIdStr, out var userId) && long.TryParse(shopIdStr, out var shopId))
         {
-            _db.AuditLogs.Add(new Models.AuditLog
-            {
-                ShopId = shopId,
-                UserId = userId,
-                Action = "Logout",
-                EntityName = "User",
-                EntityId = userId,
-                Details = $"User logged out.",
-                CreatedAt = DateTime.UtcNow
-            });
-            await _db.SaveChangesAsync();
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+            await _audit.LogAsync(shopId, userId, "Logout", "User", userId, "User logged out.", ip);
         }
 
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);

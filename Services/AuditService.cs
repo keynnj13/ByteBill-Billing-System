@@ -5,7 +5,8 @@ namespace ByteBill_BS.Services;
 
 public interface IAuditService
 {
-    Task LogAsync(long shopId, long userId, string action, string entityName, long entityId, string? details = null);
+    Task LogAsync(long shopId, long userId, string action, string entityName, long entityId,
+        string? details = null, string? ipAddress = null, string? oldValues = null, string? newValues = null);
 }
 
 public class AuditService : IAuditService
@@ -17,7 +18,8 @@ public class AuditService : IAuditService
         _db = db;
     }
 
-    public async Task LogAsync(long shopId, long userId, string action, string entityName, long entityId, string? details = null)
+    public async Task LogAsync(long shopId, long userId, string action, string entityName, long entityId,
+        string? details = null, string? ipAddress = null, string? oldValues = null, string? newValues = null)
     {
         _db.AuditLogs.Add(new AuditLog
         {
@@ -27,6 +29,9 @@ public class AuditService : IAuditService
             EntityName = entityName,
             EntityId = entityId,
             Details = details?.Length > 500 ? details[..500] : details,
+            IpAddress = ipAddress?.Length > 45 ? ipAddress[..45] : ipAddress,
+            OldValues = oldValues?.Length > 2000 ? oldValues[..2000] : oldValues,
+            NewValues = newValues?.Length > 2000 ? newValues[..2000] : newValues,
             CreatedAt = DateTime.UtcNow
         });
 

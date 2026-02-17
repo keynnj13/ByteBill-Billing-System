@@ -2384,3 +2384,778 @@ a:hover {
 .wizard-connector.completed {
     background: var(--success);
 }
+
+/* =========================================================
+   DARK THEME
+   Apply via <html data-theme="dark">
+   ========================================================= */
+
+[data-theme="dark"] {
+    /* Background & Surface */
+    --background: hsl(222, 20%, 10%);
+    --foreground: hsl(210, 20%, 88%);
+    --card: hsl(222, 18%, 14%);
+
+    /* Grays (inverted / adjusted for dark) */
+    --gray-50: hsl(222, 16%, 16%);
+    --gray-100: hsl(222, 16%, 19%);
+    --gray-200: hsl(222, 14%, 24%);
+    --gray-300: hsl(222, 12%, 32%);
+    --gray-400: hsl(215, 10%, 42%);
+    --gray-500: hsl(215, 10%, 55%);
+    --gray-600: hsl(215, 10%, 68%);
+    --gray-700: hsl(215, 10%, 78%);
+    --gray-800: hsl(215, 10%, 86%);
+    --gray-900: hsl(215, 10%, 93%);
+    --gray-light: hsl(222, 16%, 19%);
+    --gray-border: hsl(222, 14%, 22%);
+    --gray-charcoal: hsl(210, 14%, 82%);
+    --muted: hsl(215, 10%, 50%);
+
+    /* Shadows – darker for dark mode */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+    --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+    /* Status Colors (slightly adjusted for dark) */
+    --red-light: hsl(4, 50%, 16%);
+    --amber-light: hsl(45, 50%, 16%);
+    --blue-light: hsl(213, 40%, 18%);
+    --purple-light: hsl(270, 35%, 18%);
+    --emerald-light: hsl(145, 40%, 14%);
+}
+
+/* ── Top Nav (dark) ── */
+[data-theme="dark"] .top-nav {
+    background: hsl(222, 18%, 12%);
+    border-bottom-color: var(--gray-border);
+}
+
+[data-theme="dark"] .nav-user:hover {
+    background: var(--gray-100);
+}
+
+[data-theme="dark"] .nav-user-name {
+    color: var(--foreground);
+}
+
+[data-theme="dark"] .nav-toggle {
+    border-color: var(--gray-border);
+    color: var(--gray-500);
+}
+
+[data-theme="dark"] .nav-toggle:hover {
+    background: var(--gray-100);
+    color: var(--foreground);
+}
+
+/* ── Sidebar (dark) ── */
+[data-theme="dark"] .side-nav {
+    background: linear-gradient(180deg, hsl(222, 24%, 10%) 0%, hsl(222, 24%, 7%) 100%);
+}
+
+[data-theme="dark"] .sidebar-brand {
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+/* ── Tables (dark) ── */
+[data-theme="dark"] .data-table th {
+    background: var(--gray-50);
+    color: var(--gray-600);
+    border-bottom-color: var(--gray-border);
+}
+
+[data-theme="dark"] .data-table td {
+    border-bottom-color: var(--gray-border);
+}
+
+[data-theme="dark"] .data-table tr:hover td {
+    background: var(--gray-50);
+}
+
+/* ── Forms (dark) ── */
+[data-theme="dark"] .form-input,
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .form-textarea {
+    background: var(--gray-50);
+    border-color: var(--gray-border);
+    color: var(--foreground);
+}
+
+[data-theme="dark"] .form-input::placeholder {
+    color: var(--muted);
+}
+
+[data-theme="dark"] .form-input:disabled,
+[data-theme="dark"] .form-select:disabled {
+    background: var(--gray-100);
+    color: var(--muted);
+}
+
+/* ── Badges (dark) ── */
+[data-theme="dark"] .badge-paid,
+[data-theme="dark"] .badge-success,
+[data-theme="dark"] .badge-completed {
+    background: hsl(145, 40%, 14%);
+    color: hsl(145, 60%, 60%);
+}
+
+[data-theme="dark"] .badge-partial {
+    background: hsl(25, 40%, 15%);
+    color: hsl(25, 80%, 65%);
+}
+
+[data-theme="dark"] .badge-overdue,
+[data-theme="dark"] .badge-destructive {
+    background: hsl(4, 40%, 16%);
+    color: hsl(4, 70%, 65%);
+}
+
+[data-theme="dark"] .badge-pending,
+[data-theme="dark"] .badge-warning {
+    background: hsl(45, 50%, 14%);
+    color: hsl(45, 80%, 60%);
+}
+
+[data-theme="dark"] .badge-void,
+[data-theme="dark"] .badge-muted {
+    background: var(--gray-100);
+    color: var(--gray-500);
+}
+
+[data-theme="dark"] .badge-info {
+    background: hsl(213, 40%, 16%);
+    color: hsl(213, 70%, 65%);
+}
+
+[data-theme="dark"] .badge-in-progress {
+    background: hsl(240, 40%, 16%);
+    color: hsl(240, 60%, 70%);
+}
+
+/* ── Buttons (dark) ── */
+[data-theme="dark"] .btn-secondary {
+    color: var(--foreground);
+    border-color: var(--gray-border);
+}
+
+[data-theme="dark"] .btn-secondary:hover:not(:disabled) {
+    background: var(--gray-100);
+}
+
+[data-theme="dark"] .btn-ghost:hover:not(:disabled) {
+    background: var(--gray-100);
+}
+
+/* ── Cards (dark) ── */
+[data-theme="dark"] .stat-card-icon.emerald {
+    background: rgba(46, 204, 113, 0.12);
+}
+
+[data-theme="dark"] .stat-card-icon.navy {
+    background: rgba(100, 140, 200, 0.12);
+    color: hsl(213, 60%, 65%);
+}
+
+[data-theme="dark"] .stat-card-icon.warning {
+    background: rgba(245, 176, 65, 0.12);
+}
+
+[data-theme="dark"] .stat-card-icon.destructive {
+    background: rgba(225, 95, 72, 0.12);
+}
+
+/* ── Modals (dark) ── */
+[data-theme="dark"] .modal-content {
+    background: var(--card);
+    border-color: var(--gray-border);
+}
+
+[data-theme="dark"] .modal-header {
+    border-bottom-color: var(--gray-border);
+}
+
+[data-theme="dark"] .modal-form-footer {
+    border-top-color: var(--gray-border);
+    background: var(--gray-50);
+}
+
+/* ── User Dropdown (dark) ── */
+[data-theme="dark"] .user-dropdown {
+    background: var(--card);
+    border-color: var(--gray-border);
+}
+
+[data-theme="dark"] .user-dropdown-header {
+    background: var(--gray-100);
+}
+
+[data-theme="dark"] .user-dropdown-item:hover {
+    background: var(--gray-100);
+}
+
+/* ── Pagination (dark) ── */
+[data-theme="dark"] .pagination-btn {
+    color: var(--foreground);
+    border-color: var(--gray-border);
+}
+
+[data-theme="dark"] .pagination-btn:hover:not(:disabled):not(.active) {
+    background: var(--gray-100);
+}
+
+/* ── Misc (dark) ── */
+[data-theme="dark"] .readonly-banner {
+    background: hsl(213, 40%, 16%);
+    border-color: hsl(213, 40%, 24%);
+    color: hsl(213, 60%, 70%);
+}
+
+[data-theme="dark"] .empty-state-icon {
+    background: var(--gray-100);
+    color: var(--gray-400);
+}
+
+/* ── Floating label (dark) ── */
+[data-theme="dark"] .floating-input {
+    background: var(--gray-50);
+    border-color: var(--gray-border);
+    color: var(--foreground);
+}
+
+[data-theme="dark"] .floating-label {
+    background: var(--gray-50);
+    color: var(--muted);
+}
+
+/* ── Toast (dark) ── */
+[data-theme="dark"] .toast {
+    background: var(--card);
+    border-color: var(--gray-border);
+    color: var(--foreground);
+}
+
+/* ── Scrollbar (dark) ── */
+[data-theme="dark"] ::-webkit-scrollbar-track {
+    background: var(--background);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: var(--gray-300);
+}
+
+/* =========================================================
+   DARK THEME — Per-page hardcoded color overrides
+   These override inline <style> blocks in views that use
+   hardcoded hex colors instead of CSS variables.
+   [data-theme="dark"] prefix gives higher specificity (0-2-0)
+   than a bare class selector (0-1-0), so these always win.
+   ========================================================= */
+
+/* ── Page Headers ── */
+[data-theme="dark"] .page-title {
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .page-subtitle {
+    color: var(--gray-500);
+}
+
+/* ── Primary Data Text (#1f2937, #111827 → soft white) ──
+   Customer names, stat values, titles, amounts, etc.     */
+[data-theme="dark"] .customer-name,
+[data-theme="dark"] .customer-text,
+[data-theme="dark"] .customer-result-name,
+[data-theme="dark"] .text-medium,
+[data-theme="dark"] .device-text,
+[data-theme="dark"] .device-option-name,
+[data-theme="dark"] .tech-name,
+[data-theme="dark"] .contact-email,
+[data-theme="dark"] .detail-value,
+[data-theme="dark"] .detail-item dd,
+[data-theme="dark"] .review-value,
+[data-theme="dark"] .info-value,
+[data-theme="dark"] .amount-value,
+[data-theme="dark"] .amount-text,
+[data-theme="dark"] .summary-value,
+[data-theme="dark"] .sidebar-value,
+[data-theme="dark"] .timeline-title,
+[data-theme="dark"] .section-title,
+[data-theme="dark"] .form-section-title,
+[data-theme="dark"] .form-label,
+[data-theme="dark"] .totals-row,
+[data-theme="dark"] .notes-text,
+[data-theme="dark"] .table td,
+[data-theme="dark"] .price-text,
+[data-theme="dark"] .pay-number,
+[data-theme="dark"] .pay-date,
+[data-theme="dark"] .low-stock-toggle,
+[data-theme="dark"] .inv-stat-value,
+[data-theme="dark"] .pay-stat-value,
+[data-theme="dark"] .usr-stat-value,
+[data-theme="dark"] .usr-user-name,
+[data-theme="dark"] .svc-stat-value,
+[data-theme="dark"] .svc-name,
+[data-theme="dark"] .item-name,
+[data-theme="dark"] .stock-qty,
+[data-theme="dark"] .stat-value,
+[data-theme="dark"] .aud-stat-value,
+[data-theme="dark"] .rpt-stat-value,
+[data-theme="dark"] .rpt-link-title,
+[data-theme="dark"] .rr-stat-value,
+[data-theme="dark"] .rr-section-title,
+[data-theme="dark"] .rr-title,
+[data-theme="dark"] .pr-stat-value,
+[data-theme="dark"] .pr-section-title,
+[data-theme="dark"] .pr-title,
+[data-theme="dark"] .sp-stat-value,
+[data-theme="dark"] .sp-section-title,
+[data-theme="dark"] .sp-title,
+[data-theme="dark"] .ir-stat-value,
+[data-theme="dark"] .ir-section-title,
+[data-theme="dark"] .ir-title,
+[data-theme="dark"] .ig-title,
+[data-theme="dark"] .ig-integration-name,
+[data-theme="dark"] .ig-stat-value,
+[data-theme="dark"] .ig-section-title,
+[data-theme="dark"] .sau-stat-value,
+[data-theme="dark"] .sau-user-name,
+[data-theme="dark"] .shp-stat-value,
+[data-theme="dark"] .shp-name,
+[data-theme="dark"] .shp-owner,
+[data-theme="dark"] .shp-email,
+[data-theme="dark"] .shp-count,
+[data-theme="dark"] .slog-stat-value,
+[data-theme="dark"] .slog-message,
+[data-theme="dark"] .stg-card-title,
+[data-theme="dark"] .stg-toggle-label,
+[data-theme="dark"] .rpt-activity-text,
+[data-theme="dark"] .combo-chevron-btn:hover {
+    color: #e2e8f0;
+}
+
+/* ── Secondary / Muted Text (#6b7280, #9ca3af → gray-500) ── */
+[data-theme="dark"] .contact-phone,
+[data-theme="dark"] .device-sub,
+[data-theme="dark"] .date-text,
+[data-theme="dark"] .unassigned,
+[data-theme="dark"] .empty-state,
+[data-theme="dark"] .empty-state h3,
+[data-theme="dark"] .customer-contact,
+[data-theme="dark"] .customer-result-detail,
+[data-theme="dark"] .customer-result-empty,
+[data-theme="dark"] .text-truncate-cell,
+[data-theme="dark"] .search-icon,
+[data-theme="dark"] .usr-search-icon,
+[data-theme="dark"] .sau-search-icon,
+[data-theme="dark"] .shp-search-icon,
+[data-theme="dark"] .slog-search-icon,
+[data-theme="dark"] .aud-search-icon,
+[data-theme="dark"] .inv-stat-label,
+[data-theme="dark"] .pay-stat-label,
+[data-theme="dark"] .usr-stat-label,
+[data-theme="dark"] .usr-email,
+[data-theme="dark"] .svc-stat-label,
+[data-theme="dark"] .svc-desc,
+[data-theme="dark"] .svc-duration,
+[data-theme="dark"] .item-brand,
+[data-theme="dark"] .stock-reorder,
+[data-theme="dark"] .sku-text,
+[data-theme="dark"] .stat-label,
+[data-theme="dark"] .cell-sub,
+[data-theme="dark"] .detail-label,
+[data-theme="dark"] .detail-item dt,
+[data-theme="dark"] .timeline-desc,
+[data-theme="dark"] .timeline-description,
+[data-theme="dark"] .timeline-time,
+[data-theme="dark"] .timeline-meta,
+[data-theme="dark"] .info-label,
+[data-theme="dark"] .review-label,
+[data-theme="dark"] .wizard-step-label,
+[data-theme="dark"] .wizard-step-number,
+[data-theme="dark"] .step-number,
+[data-theme="dark"] .step-label,
+[data-theme="dark"] .input-prefix,
+[data-theme="dark"] .summary-label,
+[data-theme="dark"] .sidebar-label,
+[data-theme="dark"] .amount-label,
+[data-theme="dark"] .form-hint,
+[data-theme="dark"] .text-muted,
+[data-theme="dark"] .text-sm,
+[data-theme="dark"] .inv-link,
+[data-theme="dark"] .pay-time,
+[data-theme="dark"] .aud-stat-label,
+[data-theme="dark"] .aud-details-text,
+[data-theme="dark"] .rpt-stat-label,
+[data-theme="dark"] .rpt-link-desc,
+[data-theme="dark"] .rpt-trend-text,
+[data-theme="dark"] .rpt-activity-time,
+[data-theme="dark"] .rr-stat-label,
+[data-theme="dark"] .pr-stat-label,
+[data-theme="dark"] .sp-stat-label,
+[data-theme="dark"] .ir-stat-label,
+[data-theme="dark"] .ir-sku,
+[data-theme="dark"] .ig-stat-label,
+[data-theme="dark"] .ig-subtitle,
+[data-theme="dark"] .ig-meta-text,
+[data-theme="dark"] .ig-ts,
+[data-theme="dark"] .ig-mono,
+[data-theme="dark"] .ig-msg,
+[data-theme="dark"] .ig-tab,
+[data-theme="dark"] .sau-stat-label,
+[data-theme="dark"] .sau-email,
+[data-theme="dark"] .sau-shop-badge,
+[data-theme="dark"] .shp-stat-label,
+[data-theme="dark"] .shp-date,
+[data-theme="dark"] .shp-phone,
+[data-theme="dark"] .slog-stat-label,
+[data-theme="dark"] .slog-timestamp,
+[data-theme="dark"] .slog-user,
+[data-theme="dark"] .slog-shop,
+[data-theme="dark"] .slog-date-sub,
+[data-theme="dark"] .slog-ip,
+[data-theme="dark"] .slog-source,
+[data-theme="dark"] .stg-card-desc,
+[data-theme="dark"] .stg-form-hint,
+[data-theme="dark"] .stg-form-label,
+[data-theme="dark"] .stg-toggle-desc,
+[data-theme="dark"] .stg-tab,
+[data-theme="dark"] .payment-amount-label,
+[data-theme="dark"] .text-line-through,
+[data-theme="dark"] .combo-chevron-btn,
+[data-theme="dark"] .btn-clear-customer,
+[data-theme="dark"] .btn-outline-secondary {
+    color: var(--gray-500);
+}
+
+/* ── Action Buttons ── */
+[data-theme="dark"] .btn-action {
+    color: var(--gray-500);
+}
+
+[data-theme="dark"] .btn-action:hover {
+    background: var(--gray-100);
+    color: #60a5fa;
+}
+
+/* ── White Background Elements → Dark Surface ── */
+[data-theme="dark"] .kpi-card,
+[data-theme="dark"] .inv-stat-card,
+[data-theme="dark"] .pay-stat-card,
+[data-theme="dark"] .svc-stat-card,
+[data-theme="dark"] .usr-stat-card,
+[data-theme="dark"] .aud-stat-card,
+[data-theme="dark"] .rpt-stat-card,
+[data-theme="dark"] .rpt-link-card,
+[data-theme="dark"] .rr-stat-card,
+[data-theme="dark"] .pr-stat-card,
+[data-theme="dark"] .sp-stat-card,
+[data-theme="dark"] .ir-stat-card,
+[data-theme="dark"] .ig-stat-card,
+[data-theme="dark"] .sau-stat-card,
+[data-theme="dark"] .shp-stat-card,
+[data-theme="dark"] .slog-stat-card,
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .stg-card,
+[data-theme="dark"] .info-card {
+    background: var(--card);
+    border-color: var(--gray-border);
+}
+
+/* ── Row Hovers ── */
+[data-theme="dark"] .clickable-row:hover {
+    background-color: var(--gray-50);
+}
+
+/* ── Category / Shop badges ── */
+[data-theme="dark"] .category-badge {
+    background: var(--gray-100);
+    color: var(--gray-600);
+}
+
+[data-theme="dark"] .sau-shop-badge {
+    background: var(--gray-100);
+}
+
+/* ── Search Inputs (per-page) ── */
+[data-theme="dark"] .search-input {
+    background: var(--gray-50);
+    border-color: var(--gray-border);
+    color: var(--foreground);
+}
+
+[data-theme="dark"] .search-input::placeholder {
+    color: var(--muted);
+}
+
+/* ── Customer Combo / Results Dropdown ── */
+[data-theme="dark"] .customer-combo-results {
+    background: var(--card);
+    border-color: var(--gray-border);
+}
+
+[data-theme="dark"] .customer-result-item:hover,
+[data-theme="dark"] .selected-customer-card {
+    background: var(--gray-100);
+}
+
+/* ── Device Options ── */
+[data-theme="dark"] .device-option {
+    background: var(--gray-50);
+    border-color: var(--gray-border);
+}
+
+[data-theme="dark"] .device-option:hover,
+[data-theme="dark"] .device-option.selected {
+    background: var(--gray-100);
+    border-color: var(--emerald);
+}
+
+/* ── Wizard Steps ── */
+[data-theme="dark"] .wizard-step.active .wizard-step-number,
+[data-theme="dark"] .wizard-step.completed .wizard-step-number,
+[data-theme="dark"] .step-number.active,
+[data-theme="dark"] .step-number.completed {
+    background: var(--emerald);
+    color: white;
+}
+
+[data-theme="dark"] .wizard-step.active .step-label,
+[data-theme="dark"] .wizard-step.active .wizard-step-label {
+    color: #e2e8f0;
+}
+
+/* ── Settings Page ── */
+[data-theme="dark"] .stg-tab-active {
+    background: var(--card);
+    color: #e2e8f0;
+    border-color: var(--gray-border);
+}
+
+[data-theme="dark"] .stg-tabs {
+    background: var(--gray-50);
+}
+
+[data-theme="dark"] .stg-form-input,
+[data-theme="dark"] .stg-form-select {
+    background: var(--gray-50);
+    border-color: var(--gray-border);
+    color: var(--foreground);
+}
+
+[data-theme="dark"] .stg-toggle-slider {
+    background: var(--gray-300);
+}
+
+/* ── Alerts (success / error) ── */
+[data-theme="dark"] .alert-success,
+[data-theme="dark"] .pf-alert-success,
+[data-theme="dark"] [style*="background: #ecfdf5"],
+[data-theme="dark"] [style*="background:#ecfdf5"] {
+    background: hsl(145, 40%, 14%) !important;
+    border-color: hsl(145, 40%, 22%) !important;
+    color: hsl(145, 60%, 60%) !important;
+}
+
+[data-theme="dark"] .alert-error,
+[data-theme="dark"] .alert-danger,
+[data-theme="dark"] .pf-alert-danger {
+    background: hsl(4, 40%, 14%);
+    border-color: hsl(4, 40%, 22%);
+    color: hsl(4, 70%, 65%);
+}
+
+/* ── Integrations Tabs ── */
+[data-theme="dark"] .ig-tab:hover {
+    background: var(--gray-100);
+    color: var(--foreground);
+}
+
+[data-theme="dark"] .ig-tab-active {
+    background: var(--gray-100);
+    border-color: var(--gray-border);
+    color: #e2e8f0;
+}
+
+/* ── Report Special Colors ── */
+[data-theme="dark"] .sp-rank {
+    background: var(--gray-100);
+}
+
+/* ── Warning / Low Stock Rows ── */
+[data-theme="dark"] .row-warning {
+    background: hsl(45, 50%, 14%);
+}
+
+[data-theme="dark"] .ir-alert-chip {
+    background: hsl(45, 50%, 14%);
+    color: hsl(45, 80%, 60%);
+}
+
+[data-theme="dark"] .low-stock-alert {
+    background: hsl(45, 50%, 14%);
+    border-color: hsl(45, 40%, 22%);
+    color: hsl(45, 80%, 60%);
+}
+
+/* ── Invoice Balance Boxes ── */
+[data-theme="dark"] .amount-total {
+    background: var(--gray-100);
+}
+
+[data-theme="dark"] .amount-paid {
+    background: hsl(145, 40%, 14%);
+}
+
+[data-theme="dark"] .amount-balance {
+    background: hsl(4, 40%, 14%);
+}
+
+/* ── Payment Methods ── */
+[data-theme="dark"] .method-cash {
+    background: hsl(145, 40%, 14%);
+    color: hsl(145, 60%, 60%);
+}
+
+[data-theme="dark"] .method-gcash {
+    background: hsl(213, 40%, 16%);
+    color: hsl(213, 70%, 65%);
+}
+
+[data-theme="dark"] .method-card {
+    background: hsl(200, 40%, 16%);
+    color: hsl(200, 70%, 65%);
+}
+
+[data-theme="dark"] .method-paymongo {
+    background: hsl(270, 35%, 16%);
+    color: hsl(270, 60%, 70%);
+}
+
+/* ── Table Header / Footer ── */
+[data-theme="dark"] .table th {
+    background: var(--gray-50);
+    color: var(--gray-600);
+    border-color: var(--gray-border);
+}
+
+[data-theme="dark"] .table tfoot td {
+    background: var(--gray-50);
+    border-color: var(--gray-border);
+}
+
+/* ── Timeline Dots ── */
+[data-theme="dark"] .timeline-dot {
+    border-color: var(--card);
+}
+
+/* ── Light Badges (per-page) that might override design-system ── */
+[data-theme="dark"] .badge-primary,
+[data-theme="dark"] .badge-partial {
+    background: hsl(213, 40%, 16%);
+    color: hsl(213, 70%, 65%);
+}
+
+[data-theme="dark"] .badge-purple {
+    background: hsl(270, 35%, 16%);
+    color: hsl(270, 60%, 70%);
+}
+
+[data-theme="dark"] .ig-badge-green {
+    background: hsl(145, 40%, 14%);
+    color: hsl(145, 60%, 60%);
+}
+
+/* ── Outline/Secondary Buttons ── */
+[data-theme="dark"] .btn-outline-secondary {
+    background: var(--gray-50);
+    border-color: var(--gray-border);
+}
+
+[data-theme="dark"] .btn-outline-secondary:hover {
+    background: var(--gray-100);
+}
+
+/* ── Invoice Paid Balance Box  ── */
+[data-theme="dark"] .invoice-balance-box {
+    background: hsl(45, 50%, 14%);
+    border-color: hsl(45, 40%, 22%);
+    color: hsl(45, 80%, 60%);
+}
+
+/* ── Validation Summary ── */
+[data-theme="dark"] .validation-summary-errors,
+[data-theme="dark"] .validation-summary {
+    background: hsl(4, 40%, 14%);
+    border-color: hsl(4, 40%, 22%);
+    color: hsl(4, 70%, 65%);
+}
+
+/* ── Avatar (initials circle) ── */
+[data-theme="dark"] .avatar {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+}
+
+/* ── Readonly Form Inputs ── */
+[data-theme="dark"] input[readonly],
+[data-theme="dark"] select[readonly] {
+    background: var(--gray-100);
+    border-color: var(--gray-border);
+    color: var(--gray-500);
+}
+
+/* ── Empty state boxes ── */
+[data-theme="dark"] .empty-box-sm {
+    background: var(--gray-50);
+    border-color: var(--gray-border);
+}
+
+/* =========================================================
+   DARK THEME — Adjustments Pages
+   ========================================================= */
+
+/* Admin Adjustments */
+[data-theme="dark"] .adj-stat-card {
+    background: var(--card);
+    border-color: var(--gray-border);
+}
+[data-theme="dark"] .adj-stat-label { color: var(--gray-500); }
+[data-theme="dark"] .adj-stat-value { color: #e2e8f0; }
+[data-theme="dark"] .adj-section-title { color: #e2e8f0; }
+[data-theme="dark"] .adj-section-desc { color: var(--gray-500); }
+[data-theme="dark"] .adj-customer { color: #e2e8f0; }
+[data-theme="dark"] .adj-reason { color: #cbd5e1; }
+[data-theme="dark"] .adj-requested-by { color: #cbd5e1; }
+[data-theme="dark"] .adj-reviewed-by { color: var(--gray-500); }
+[data-theme="dark"] .adj-date { color: var(--gray-500); }
+[data-theme="dark"] .adj-empty-title { color: var(--gray-500); }
+[data-theme="dark"] .adj-empty-desc { color: var(--gray-400); }
+[data-theme="dark"] .adj-btn-approve { border-color: #10b981; color: #34d399; }
+[data-theme="dark"] .adj-btn-approve:hover { background: #10b981; color: #fff; }
+[data-theme="dark"] .adj-btn-reject { border-color: #ef4444; color: #f87171; }
+[data-theme="dark"] .adj-btn-reject:hover { background: #ef4444; color: #fff; }
+[data-theme="dark"] .clickable-row:hover { background-color: rgba(59,130,246,0.06); }
+
+/* Billing Adjustments */
+[data-theme="dark"] .bil-adj-section-title { color: #e2e8f0; }
+[data-theme="dark"] .bil-adj-customer { color: #e2e8f0; }
+[data-theme="dark"] .bil-adj-reason { color: #cbd5e1; }
+[data-theme="dark"] .bil-adj-date { color: var(--gray-500); }
+[data-theme="dark"] .bil-adj-reviewer { color: var(--gray-500); }
+[data-theme="dark"] .bil-adj-modal-title { color: #e2e8f0; }
+[data-theme="dark"] .bil-adj-modal-desc { color: var(--gray-500); }
+[data-theme="dark"] .bil-adj-notice { background: rgba(59,130,246,0.08); color: #60a5fa; }
+[data-theme="dark"] .bil-adj-overlay { background: rgba(0,0,0,0.65); }
+
+/* Notification Dropdown */
+[data-theme="dark"] .notif-title { color: #e2e8f0; }
+[data-theme="dark"] .notif-desc { color: var(--gray-500); }
+[data-theme="dark"] .notif-time { color: var(--gray-400); }
+[data-theme="dark"] .notif-item.unread { background: rgba(59,130,246,0.06); }
+[data-theme="dark"] .notif-item:hover { background: rgba(255,255,255,0.04); }
+[data-theme="dark"] .notif-empty-title { color: var(--gray-500); }
+[data-theme="dark"] .notif-empty-desc { color: var(--gray-400); }
+

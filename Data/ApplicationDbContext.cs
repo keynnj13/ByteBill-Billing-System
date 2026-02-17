@@ -73,6 +73,11 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.LastName).HasMaxLength(50).IsRequired();
             entity.Property(e => e.UserName).HasMaxLength(100).IsRequired();
             entity.Property(e => e.PasswordHash).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Email).HasMaxLength(150);
+            entity.Property(e => e.Phone).HasMaxLength(20);
+            entity.Property(e => e.ThemePreference).HasMaxLength(10).HasDefaultValue("light");
+            entity.Property(e => e.EmailNotifications).HasDefaultValue(true);
+            entity.Property(e => e.InAppNotifications).HasDefaultValue(true);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime2(0)");
@@ -611,6 +616,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.EntityName).HasMaxLength(50).IsRequired();
             entity.Property(e => e.EntityId).HasColumnName("EntityID");
             entity.Property(e => e.Details).HasMaxLength(500);
+            entity.Property(e => e.IpAddress).HasMaxLength(45);
+            entity.Property(e => e.OldValues).HasMaxLength(2000);
+            entity.Property(e => e.NewValues).HasMaxLength(2000);
             entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
             entity.HasIndex(e => e.ShopId);
             entity.HasIndex(e => e.UserId);

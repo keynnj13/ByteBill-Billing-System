@@ -96,7 +96,8 @@ public class NavigationService : INavigationService
                     new NavigationItem { Title = "Customers", Icon = "users", Url = "/Admin/Customers" },
                     new NavigationItem { Title = "Job Orders", Icon = "clipboard-list", Url = "/Admin/JobOrders" },
                     new NavigationItem { Title = "Invoices", Icon = "file-invoice", Url = "/Admin/Invoices" },
-                    new NavigationItem { Title = "Payments", Icon = "credit-card", Url = "/Admin/Payments" }
+                    new NavigationItem { Title = "Payments", Icon = "credit-card", Url = "/Admin/Payments" },
+                    new NavigationItem { Title = "Adjustments", Icon = "sliders", Url = "/Admin/Adjustments" }
                 }
             },
             new NavigationSection

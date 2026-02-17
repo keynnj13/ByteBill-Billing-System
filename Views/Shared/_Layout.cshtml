@@ -22,11 +22,18 @@
     var isAuditor = userRole == UserRole.Auditor;
 }
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="@(Context.Request.Cookies["ByteBillTheme"] ?? "light")">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - ByteBill</title>
+    <script>
+        // Flicker-free theme: apply before paint
+        (function() {
+            var m = document.cookie.match(/ByteBillTheme=(light|dark)/);
+            if (m) document.documentElement.setAttribute('data-theme', m[1]);
+        })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">

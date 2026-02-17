@@ -1,0 +1,238 @@
+@model ByteBill_BS.Controllers.PreferencesViewModel
+@{
+    ViewData["Title"] = "Preferences";
+}
+
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+    <div>
+        <h1 class="page-title" style="font-size: 24px; font-weight: 700; color: var(--foreground); margin-bottom: 4px;">Preferences</h1>
+        <p class="page-subtitle" style="font-size: 14px; color: var(--muted);">Customize your experience</p>
+    </div>
+</div>
+
+<div class="prefs-page">
+    @if (ViewBag.SuccessMessage != null)
+    {
+        <div class="alert alert-success">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            @ViewBag.SuccessMessage
+        </div>
+    }
+
+    <form method="post" asp-action="UpdatePreferences" asp-controller="Profile">
+        @Html.AntiForgeryToken()
+
+        <!-- Appearance -->
+        <div class="card prefs-section">
+            <div class="card-body">
+                <h3 class="prefs-section-title">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path></svg>
+                    Appearance
+                </h3>
+                <p class="prefs-section-desc">Choose how ByteBill looks to you.</p>
+
+                <div class="theme-picker">
+                    <label class="theme-option @(Model.ThemePreference == "light" ? "active" : "")">
+                        <input type="radio" name="ThemePreference" value="light" @(Model.ThemePreference == "light" ? "checked" : "") />
+                        <div class="theme-preview theme-preview-light">
+                            <div class="tp-sidebar"></div>
+                            <div class="tp-content">
+                                <div class="tp-bar"></div>
+                                <div class="tp-lines">
+                                    <div class="tp-line"></div>
+                                    <div class="tp-line short"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="theme-label">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                            Light
+                        </span>
+                    </label>
+                    <label class="theme-option @(Model.ThemePreference == "dark" ? "active" : "")">
+                        <input type="radio" name="ThemePreference" value="dark" @(Model.ThemePreference == "dark" ? "checked" : "") />
+                        <div class="theme-preview theme-preview-dark">
+                            <div class="tp-sidebar"></div>
+                            <div class="tp-content">
+                                <div class="tp-bar"></div>
+                                <div class="tp-lines">
+                                    <div class="tp-line"></div>
+                                    <div class="tp-line short"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="theme-label">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
+                            Dark
+                        </span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="card prefs-section">
+            <div class="card-body">
+                <h3 class="prefs-section-title">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                    Notifications
+                </h3>
+                <p class="prefs-section-desc">Manage how you receive notifications.</p>
+
+                <div class="pref-toggle-list">
+                    <div class="pref-toggle-row">
+                        <div class="pref-toggle-info">
+                            <div class="pref-toggle-title">Email Notifications</div>
+                            <div class="pref-toggle-desc">Receive important updates and alerts via email</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="EmailNotifications" value="true" @(Model.EmailNotifications ? "checked" : "") />
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="pref-toggle-row">
+                        <div class="pref-toggle-info">
+                            <div class="pref-toggle-title">In-App Notifications</div>
+                            <div class="pref-toggle-desc">Show notification badges and alerts within ByteBill</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="InAppNotifications" value="true" @(Model.InAppNotifications ? "checked" : "") />
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save -->
+        <div style="display: flex; justify-content: flex-end; margin-top: 8px;">
+            <button type="submit" class="btn btn-primary">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                Save Preferences
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+    .prefs-page { max-width: 720px; }
+    .prefs-section { margin-bottom: 20px; }
+    .prefs-section-title { font-size: 16px; font-weight: 600; color: var(--foreground); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+    .prefs-section-desc { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+
+    .alert { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
+    .alert-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+
+    /* ── Theme Picker ── */
+    .theme-picker { display: flex; gap: 16px; }
+    .theme-option {
+        cursor: pointer;
+        position: relative;
+        border: 2px solid var(--gray-border);
+        border-radius: 12px;
+        padding: 12px;
+        transition: all 0.2s;
+        flex: 1;
+        max-width: 200px;
+    }
+    .theme-option input { position: absolute; opacity: 0; }
+    .theme-option.active, .theme-option:has(input:checked) {
+        border-color: var(--emerald);
+        box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.12);
+    }
+    .theme-preview {
+        border-radius: 8px;
+        height: 80px;
+        display: flex;
+        overflow: hidden;
+        margin-bottom: 10px;
+    }
+    .theme-preview-light { background: #f3f4f6; border: 1px solid #e5e7eb; }
+    .theme-preview-light .tp-sidebar { width: 24%; background: #1e3a5f; }
+    .theme-preview-light .tp-content { flex: 1; padding: 8px; }
+    .theme-preview-light .tp-bar { height: 8px; background: #e5e7eb; border-radius: 4px; margin-bottom: 8px; }
+    .theme-preview-light .tp-line { height: 6px; background: #d1d5db; border-radius: 3px; margin-bottom: 5px; }
+    .theme-preview-light .tp-line.short { width: 60%; }
+
+    .theme-preview-dark { background: #1e293b; border: 1px solid #334155; }
+    .theme-preview-dark .tp-sidebar { width: 24%; background: #0f172a; }
+    .theme-preview-dark .tp-content { flex: 1; padding: 8px; }
+    .theme-preview-dark .tp-bar { height: 8px; background: #334155; border-radius: 4px; margin-bottom: 8px; }
+    .theme-preview-dark .tp-line { height: 6px; background: #475569; border-radius: 3px; margin-bottom: 5px; }
+    .theme-preview-dark .tp-line.short { width: 60%; }
+
+    .theme-label {
+        display: flex; align-items: center; gap: 6px;
+        font-size: 13px; font-weight: 600; color: var(--foreground);
+        justify-content: center;
+    }
+
+    /* ── Toggle Switch ── */
+    .pref-toggle-list { display: flex; flex-direction: column; gap: 0; }
+    .pref-toggle-row {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 16px 0;
+        border-bottom: 1px solid var(--gray-light);
+    }
+    .pref-toggle-row:last-child { border-bottom: none; }
+    .pref-toggle-title { font-size: 14px; font-weight: 600; color: var(--foreground); }
+    .pref-toggle-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 48px;
+        height: 26px;
+        flex-shrink: 0;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background: #d1d5db;
+        border-radius: 26px;
+        transition: all 0.3s;
+    }
+    .toggle-slider::before {
+        content: '';
+        position: absolute;
+        width: 20px; height: 20px;
+        left: 3px; bottom: 3px;
+        background: white;
+        border-radius: 50%;
+        transition: all 0.3s;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .toggle-switch input:checked + .toggle-slider {
+        background: var(--emerald);
+    }
+    .toggle-switch input:checked + .toggle-slider::before {
+        transform: translateX(22px);
+    }
+
+    @@media (max-width: 768px) {
+        .theme-picker { flex-direction: column; }
+        .theme-option { max-width: 100%; }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Toggle active class on theme options + instant preview
+        var themeOptions = document.querySelectorAll('.theme-option');
+        themeOptions.forEach(function(opt) {
+            opt.addEventListener('click', function() {
+                themeOptions.forEach(function(o) { o.classList.remove('active'); });
+                this.classList.add('active');
+                var radio = this.querySelector('input[type="radio"]');
+                if (radio) {
+                    radio.checked = true;
+                    // Instant theme preview
+                    document.documentElement.setAttribute('data-theme', radio.value);
+                    document.cookie = 'ByteBillTheme=' + radio.value + ';path=/;max-age=31536000;SameSite=Lax';
+                }
+            });
+        });
+    });
+</script>
