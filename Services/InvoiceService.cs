@@ -31,7 +31,7 @@ public class InvoiceService : IInvoiceService
     public async Task<PagedResult<InvoiceListItemDto>> GetListAsync(long shopId, InvoicePagedRequest req)
     {
         var query = _db.Invoices
-            .Where(i => i.ShopId == shopId)
+            .Where(i => i.ShopId == shopId && !i.IsArchived)
             .AsNoTracking();
 
         // Status filter
@@ -144,7 +144,7 @@ public class InvoiceService : IInvoiceService
         var today = DateTime.UtcNow.Date;
 
         var invoices = _db.Invoices
-            .Where(i => i.ShopId == shopId)
+            .Where(i => i.ShopId == shopId && !i.IsArchived)
             .AsNoTracking();
 
         var totalInvoices = await invoices.CountAsync();

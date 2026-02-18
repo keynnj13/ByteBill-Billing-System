@@ -97,7 +97,8 @@ public class NavigationService : INavigationService
                     new NavigationItem { Title = "Job Orders", Icon = "clipboard-list", Url = "/Admin/JobOrders" },
                     new NavigationItem { Title = "Invoices", Icon = "file-invoice", Url = "/Admin/Invoices" },
                     new NavigationItem { Title = "Payments", Icon = "credit-card", Url = "/Admin/Payments" },
-                    new NavigationItem { Title = "Adjustments", Icon = "sliders", Url = "/Admin/Adjustments" }
+                    new NavigationItem { Title = "Adjustments", Icon = "sliders", Url = "/Admin/Adjustments" },
+                    new NavigationItem { Title = "Archive", Icon = "archive", Url = "/Archive" }
                 }
             },
             new NavigationSection
@@ -158,7 +159,8 @@ public class NavigationService : INavigationService
                     new NavigationItem { Title = "Job Orders", Icon = "clipboard-list", Url = "/Billing/JobOrders" },
                     new NavigationItem { Title = "Invoices", Icon = "file-invoice", Url = "/Billing/Invoices" },
                     new NavigationItem { Title = "Payments", Icon = "credit-card", Url = "/Billing/Payments" },
-                    new NavigationItem { Title = "Adjustments", Icon = "sliders", Url = "/Billing/Adjustments" }
+                    new NavigationItem { Title = "Adjustments", Icon = "sliders", Url = "/Billing/Adjustments" },
+                    new NavigationItem { Title = "Archive", Icon = "archive", Url = "/Archive" }
                 }
             },
             new NavigationSection

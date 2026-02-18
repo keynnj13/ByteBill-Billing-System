@@ -22,6 +22,8 @@ public class JobOrderDetailDto
     public string ProblemReported { get; set; } = string.Empty;
     public string? DiagnosisNotes { get; set; }
     public string Status { get; set; } = string.Empty;
+    public string Priority { get; set; } = "Normal";
+    public DateTime? EstimatedCompletionDate { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 
@@ -37,6 +39,7 @@ public class JobOrderDetailDto
     public string Brand { get; set; } = string.Empty;
     public string Model { get; set; } = string.Empty;
     public string? SerialNo { get; set; }
+    public string? DeviceAccessories { get; set; }
 
     // Assignment
     public string CreatedByName { get; set; } = string.Empty;
@@ -104,6 +107,9 @@ public class CreateJobOrderRequest
 
     /// <summary>Optional technician to assign at creation.</summary>
     public long? AssignedTechUserId { get; set; }
+
+    public string Priority { get; set; } = "Normal";
+    public DateTime? EstimatedCompletionDate { get; set; }
 
     /// <summary>Optional service lines to add at creation.</summary>
     public List<AddServiceLineDto>? Services { get; set; }

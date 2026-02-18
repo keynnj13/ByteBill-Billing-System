@@ -120,7 +120,6 @@ public class JobOrdersController : Controller
                     DeviceBrand = bmParts.Length > 0 ? bmParts[0] : null,
                     DeviceModel = bmParts.Length > 1 ? bmParts[1] : null,
                     Brand = bmParts.Length > 0 ? bmParts[0] : null,
-                    Model = bmParts.Length > 1 ? bmParts[1] : null,
                     Status = parsedStatus,
                     TechnicianName = j.TechnicianName,
                     AssignedTechnicianName = j.TechnicianName,
@@ -176,15 +175,18 @@ public class JobOrdersController : Controller
         var request = new CreateJobOrderRequest
         {
             CustomerId = model.CustomerId,
-            ProblemReported = model.ProblemDescription,
+            ProblemReported = model.ProblemDescription ?? model.IssueDescription ?? "",
             DiagnosisNotes = model.IssueDescription,
             AssignedTechUserId = model.AssignedTechnicianId,
+            Priority = model.Priority ?? "Normal",
+            EstimatedCompletionDate = model.EstimatedCompletionDate,
             NewDevice = new CreateDeviceDto
             {
                 DeviceType = model.DeviceType ?? "",
                 Brand = model.Brand ?? "N/A",
-                Model = model.Model ?? "N/A",
-                SerialNo = model.SerialNumber ?? model.DeviceSerial
+                Model = model.DeviceModel ?? "N/A",
+                SerialNo = model.SerialNumber ?? model.DeviceSerial,
+                Notes = model.DeviceAccessories
             }
         };
 
@@ -252,7 +254,6 @@ public class JobOrdersController : Controller
             DeviceId = dto.DeviceId,
             DeviceType = dto.DeviceType,
             Brand = dto.Brand,
-            Model = dto.Model,
             DeviceBrand = dto.Brand,
             DeviceModel = dto.Model,
             SerialNumber = dto.SerialNo,
@@ -267,7 +268,11 @@ public class JobOrdersController : Controller
             CreatedBy = dto.CreatedByName,
             ProblemDescription = dto.ProblemReported,
             ProblemReported = dto.ProblemReported,
+            IssueDescription = !string.IsNullOrWhiteSpace(dto.ProblemReported) ? dto.ProblemReported : dto.DiagnosisNotes ?? "",
             DiagnosisNotes = dto.DiagnosisNotes,
+            TechnicianNotes = dto.DiagnosisNotes,
+            Priority = dto.Priority,
+            EstimatedCompletionDate = dto.EstimatedCompletionDate,
             CreatedAt = dto.CreatedAt,
             UpdatedAt = dto.UpdatedAt,
             InvoiceId = dto.InvoiceId,
@@ -310,6 +315,22 @@ public class JobOrdersController : Controller
                 Total = p.LineTotal,
                 IsService = false
             })).ToList(),
+            LineItems = dto.Services.Select(s => new JobOrderDetailViewModel.LineItem
+            {
+                Description = s.ServiceName,
+                Type = "Service",
+                Quantity = s.Qty,
+                UnitPrice = s.UnitPrice,
+                Total = s.LineTotal
+            })
+            .Concat(dto.Parts.Select(p => new JobOrderDetailViewModel.LineItem
+            {
+                Description = p.ItemName,
+                Type = "Part",
+                Quantity = p.QtyUsed,
+                UnitPrice = p.UnitPrice,
+                Total = p.LineTotal
+            })).ToList(),
             Timeline = dto.Timeline.Select(t => new TimelineEventViewModel
             {
                 Title = $"Status → {t.NewStatus}",
@@ -322,12 +343,10 @@ public class JobOrdersController : Controller
                 {
                     "Pending" => "plus",
                     "CheckedIn" => "log-in",
-                    "Diagnosis" or "Diagnosed" => "search",
-                    "AwaitingApproval" => "clock",
-                    "Approved" => "check",
+                    "Diagnosis" => "search",
                     "InProgress" => "wrench",
+                    "WaitingForParts" => "pause",
                     "Completed" => "check-circle",
-                    "ReadyForPickup" => "package",
                     "Delivered" => "truck",
                     "Cancelled" => "x-circle",
                     _ => "activity"
@@ -372,10 +391,13 @@ public class JobOrdersController : Controller
             CustomerId = dto.CustomerId,
             DeviceType = dto.DeviceType,
             Brand = dto.Brand,
-            Model = dto.Model,
+            DeviceModel = dto.Model,
             SerialNumber = dto.SerialNo,
             DeviceSerial = dto.SerialNo,
-            ProblemDescription = dto.ProblemReported,
+            DeviceAccessories = dto.DeviceAccessories,
+            ProblemDescription = !string.IsNullOrWhiteSpace(dto.ProblemReported) ? dto.ProblemReported : dto.DiagnosisNotes ?? "",
+            Priority = dto.Priority,
+            EstimatedCompletionDate = dto.EstimatedCompletionDate,
             AssignedTechnicianId = dto.AssignedTechUserId
         };
 
@@ -415,6 +437,8 @@ public class JobOrdersController : Controller
         }
 
         jobOrder.ProblemReported = model.ProblemDescription?.Trim() ?? jobOrder.ProblemReported;
+        jobOrder.Priority = model.Priority ?? jobOrder.Priority;
+        jobOrder.EstimatedCompletionDate = model.EstimatedCompletionDate;
         jobOrder.CustomerId = model.CustomerId;
         jobOrder.UpdatedAt = DateTime.UtcNow;
 
@@ -424,8 +448,9 @@ public class JobOrdersController : Controller
         {
             device.DeviceType = model.DeviceType?.Trim() ?? device.DeviceType;
             device.Brand = model.Brand?.Trim() ?? device.Brand;
-            device.Model = model.Model?.Trim() ?? device.Model;
+            device.Model = model.DeviceModel?.Trim() ?? device.Model;
             device.SerialNo = model.SerialNumber?.Trim() ?? model.DeviceSerial?.Trim();
+            device.Notes = model.DeviceAccessories?.Trim();
         }
 
         // Reassign technician if changed
@@ -442,5 +467,104 @@ public class JobOrdersController : Controller
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = true, message = "Job order updated successfully!" });
         return RedirectToAction(nameof(Index));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  ARCHIVE
+    // ═══════════════════════════════════════════════════════════════════
+    [HttpGet]
+    public async Task<IActionResult> Archive(string? search, JobOrderStatus? status, int page = 1)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var query = _db.JobOrders
+            .Where(j => j.ShopId == shopId && j.IsArchived)
+            .AsNoTracking();
+
+        if (status.HasValue)
+            query = query.Where(j => j.Status == status.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(j =>
+                j.JobOrderNo.ToLower().Contains(term) ||
+                (j.Customer!.FirstName + " " + j.Customer.LastName).ToLower().Contains(term));
+        }
+
+        var totalCount = await query.CountAsync();
+        var pageSize = 10;
+        var items = await query
+            .OrderByDescending(j => j.ArchivedDate)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(j => new JobOrderItemViewModel
+            {
+                Id = j.JobOrderId,
+                JobNumber = j.JobOrderNo,
+                JobOrderNumber = j.JobOrderNo,
+                OrderNumber = j.JobOrderNo,
+                CustomerName = j.Customer!.FirstName + " " + j.Customer.LastName,
+                CustomerInitials = GetInitials(j.Customer!.FirstName + " " + j.Customer.LastName),
+                DeviceType = j.Device!.DeviceType,
+                DeviceInfo = j.Device.DeviceType + " - " + j.Device.Brand + " " + j.Device.Model,
+                DeviceBrand = j.Device.Brand,
+                DeviceModel = j.Device.Model,
+                Status = j.Status,
+                TechnicianName = j.AssignedTechUser != null
+                    ? j.AssignedTechUser.FirstName + " " + j.AssignedTechUser.LastName
+                    : null,
+                CreatedAt = j.CreatedAt
+            })
+            .ToListAsync();
+
+        var viewModel = new JobOrderListViewModel
+        {
+            SearchTerm = search,
+            StatusFilter = status,
+            CurrentPage = page,
+            TotalCount = totalCount,
+            PageSize = pageSize,
+            JobOrders = items
+        };
+
+        return View(viewModel);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ArchiveJobOrder(long id)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var jobOrder = await _db.JobOrders.FirstOrDefaultAsync(j => j.ShopId == shopId && j.JobOrderId == id);
+        if (jobOrder == null) return NotFound();
+
+        jobOrder.IsArchived = true;
+        jobOrder.ArchivedDate = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        TempData["Success"] = $"Job order {jobOrder.JobOrderNo} archived successfully.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RestoreJobOrder(long id)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var jobOrder = await _db.JobOrders.FirstOrDefaultAsync(j => j.ShopId == shopId && j.JobOrderId == id);
+        if (jobOrder == null) return NotFound();
+
+        jobOrder.IsArchived = false;
+        jobOrder.ArchivedDate = null;
+        await _db.SaveChangesAsync();
+
+        TempData["Success"] = $"Job order {jobOrder.JobOrderNo} restored successfully.";
+        return RedirectToAction(nameof(Archive));
     }
 }

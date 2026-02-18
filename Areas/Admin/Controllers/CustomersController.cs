@@ -258,7 +258,19 @@ public class CustomersController : Controller
             TotalJobOrders = customer.Orders,
             TotalSpent = customer.TotalSpent,
             OutstandingBalance = outstandingBalance,
-            RecentJobOrders = recentJobOrders
+            RecentJobOrders = recentJobOrders,
+            RecentOrders = recentJobOrders.Select(j => new OrderHistoryItem
+            {
+                Id = j.Id,
+                JobNumber = j.JobNumber,
+                OrderNumber = j.JobNumber,
+                DeviceType = j.DeviceType,
+                Status = j.Status,
+                StatusClass = j.StatusClass,
+                Total = j.Total,
+                Date = j.CreatedAt,
+                CreatedAt = j.CreatedAt
+            }).ToList()
         };
     }
 }

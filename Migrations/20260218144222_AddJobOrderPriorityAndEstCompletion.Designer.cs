@@ -4,6 +4,7 @@ using ByteBill_BS.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ByteBill_BS.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260218144222_AddJobOrderPriorityAndEstCompletion")]
+    partial class AddJobOrderPriorityAndEstCompletion
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -417,9 +420,6 @@ namespace ByteBill_BS.Migrations
                         .HasColumnType("decimal(18,2)")
                         .HasDefaultValue(0m);
 
-                    b.Property<DateTime?>("ArchivedDate")
-                        .HasColumnType("datetime2(0)");
-
                     b.Property<decimal>("Balance")
                         .ValueGeneratedOnAdd()
                         .HasPrecision(18, 2)
@@ -447,11 +447,6 @@ namespace ByteBill_BS.Migrations
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
-
-                    b.Property<bool>("IsArchived")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
 
                     b.Property<long>("JobOrderId")
                         .HasColumnType("bigint")
@@ -557,9 +552,6 @@ namespace ByteBill_BS.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("JobOrderId"));
 
-                    b.Property<DateTime?>("ArchivedDate")
-                        .HasColumnType("datetime2(0)");
-
                     b.Property<long?>("AssignedTechUserId")
                         .HasColumnType("bigint")
                         .HasColumnName("AssignedTechUserID");
@@ -588,11 +580,6 @@ namespace ByteBill_BS.Migrations
                     b.Property<DateTime?>("EstimatedCompletionDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<bool>("IsArchived")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
                     b.Property<string>("JobOrderNo")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -616,7 +603,7 @@ namespace ByteBill_BS.Migrations
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)")
-                        .HasDefaultValue("Pending");
+                        .HasDefaultValue("Created");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2(0)");

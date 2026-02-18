@@ -124,12 +124,22 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label asp-for="DeviceType" class="form-label">Device Type <span class="text-danger">*</span></label>
-                                <input asp-for="DeviceType" class="form-input" placeholder="e.g., MacBook Pro 2021, iPhone 14" />
+                                <input asp-for="DeviceType" class="form-input" placeholder="e.g., Laptop, Desktop, Phone" />
                                 <span asp-validation-for="DeviceType" class="text-danger text-sm"></span>
                             </div>
                             <div class="form-group">
-                                <label asp-for="DeviceSerial" class="form-label">Serial Number</label>
-                                <input asp-for="DeviceSerial" class="form-input" placeholder="Device serial number" />
+                                <label asp-for="Brand" class="form-label">Brand</label>
+                                <input asp-for="Brand" class="form-input" placeholder="e.g., Dell, HP, Apple" />
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                            <label asp-for="DeviceModel" class="form-label">Model</label>
+                            <input asp-for="DeviceModel" class="form-input" placeholder="e.g., XPS 15, Pavilion" />
+                            </div>
+                            <div class="form-group">
+                                <label asp-for="SerialNumber" class="form-label">Serial Number</label>
+                                <input asp-for="SerialNumber" class="form-input" placeholder="Device serial number" />
                             </div>
                         </div>
                         <div class="form-group">

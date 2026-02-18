@@ -1,0 +1,164 @@
+@model InvoiceListViewModel
+@{
+    ViewData["Title"] = "Invoices Archive";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Invoices", Url = Url.Action("Index", "Invoices") }, new() { Label = "Archive", IsActive = true } } })" />
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+            Invoices Archive
+        </h1>
+        <p class="page-subtitle">@Model.TotalCount archived invoices</p>
+    </div>
+    <div class="page-actions">
+        <a href="@Url.Action("Index", "Invoices", new { area = "Billing" })" class="btn btn-ghost">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+            Back to Invoices
+        </a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success" style="margin-bottom: 20px; padding: 12px 16px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; color: #065f46; font-size: 14px;">
+        @TempData["Success"]
+    </div>
+}
+
+<div class="card">
+    <div class="card-header">
+        <form method="get" class="filter-form">
+            <div class="search-input-wrapper">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" name="search" value="@Model.SearchTerm" placeholder="Search archived invoices..." class="form-input search-input" />
+            </div>
+            <select name="status" class="form-select" onchange="this.form.submit()">
+                <option value="">All Statuses</option>
+                @foreach (var s in Enum.GetValues<InvoiceStatus>())
+                {
+                    <option value="@s" selected="@(Model.StatusFilter == s)">@s</option>
+                }
+            </select>
+            <button type="submit" class="btn btn-outline-primary">Filter</button>
+        </form>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Invoices.Any())
+        {
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Invoice</th>
+                            <th>Customer</th>
+                            <th class="text-center">Job #</th>
+                            <th class="text-right">Total</th>
+                            <th class="text-right">Balance</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Due Date</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var inv in Model.Invoices)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="inv-cell">
+                                        <span class="inv-number">@inv.InvoiceNumber</span>
+                                        <span class="inv-date">@inv.CreatedAt.ToString("MMM d, yyyy")</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="customer-cell">
+                                        <div class="avatar-sm">@inv.CustomerInitials</div>
+                                        <span class="customer-name">@inv.CustomerName</span>
+                                    </div>
+                                </td>
+                                <td class="text-center"><span class="job-link">@(inv.JobNumber ?? "—")</span></td>
+                                <td class="text-right font-medium">@inv.Total.ToString("C")</td>
+                                <td class="text-right">
+                                    <span class="@(inv.Balance > 0 ? "text-danger font-medium" : "")">@inv.Balance.ToString("C")</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge @inv.StatusClass">@inv.StatusDisplay</span>
+                                </td>
+                                <td class="text-center">
+                                    @if (inv.DueDate.HasValue)
+                                    {
+                                        <span>@inv.DueDate.Value.ToString("MMM d, yyyy")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td class="text-right">
+                                    <form asp-action="RestoreInvoice" asp-controller="Invoices" asp-area="Billing" method="post" style="display: inline;">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@inv.Id" />
+                                        <button type="submit" class="btn-action restore-btn" title="Restore" onclick="return confirm('Restore this invoice?');">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel
+                {
+                    CurrentPage = Model.CurrentPage,
+                    TotalPages = Model.TotalPages,
+                    TotalItems = Model.TotalCount,
+                    PageSize = Model.PageSize,
+                    BaseUrl = Url.Action("Archive", "Invoices", new { area = "Billing", search = Model.SearchTerm, status = Model.StatusFilter })!
+                })" />
+            }
+        }
+        else
+        {
+            <div class="empty-state" style="padding: 60px 20px; text-align: center;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;">
+                    <polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line>
+                </svg>
+                <h3 style="color: #6b7280; font-size: 16px; margin-bottom: 4px;">No archived invoices</h3>
+                <p style="color: #9ca3af; font-size: 14px;">Archived invoices will appear here.</p>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: #6b7280; }
+    .filter-form { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .search-input-wrapper { position: relative; flex: 1; min-width: 200px; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
+    .search-input { padding-left: 40px; min-width: 240px; }
+    .inv-cell { display: flex; flex-direction: column; gap: 2px; }
+    .inv-number { font-weight: 500; color: #1f2937; font-size: 13px; }
+    .inv-date { font-size: 12px; color: #9ca3af; }
+    .customer-cell { display: flex; align-items: center; gap: 10px; }
+    .avatar-sm { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+    .customer-name { font-weight: 500; color: #1f2937; font-size: 13px; }
+    .job-link { font-size: 12px; color: #6b7280; font-weight: 500; }
+    .text-danger { color: #dc2626; }
+    .font-medium { font-weight: 500; }
+    .action-buttons { display: flex; gap: 4px; justify-content: flex-end; }
+    .btn-action { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: #6b7280; transition: all 0.15s; border: none; background: none; cursor: pointer; }
+    .restore-btn:hover { background: #ecfdf5; color: #16a34a; }
+    @@media (max-width: 768px) {
+        .page-header { flex-direction: column; gap: 12px; }
+        .filter-form { flex-direction: column; width: 100%; }
+        .search-input { min-width: 100%; }
+    }
+</style>

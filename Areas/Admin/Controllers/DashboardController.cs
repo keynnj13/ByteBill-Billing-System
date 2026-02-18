@@ -1,7 +1,10 @@
+using ByteBill_BS.Data;
+using ByteBill_BS.Extensions;
 using ByteBill_BS.Models.Enums;
 using ByteBill_BS.ViewModels.Dashboard;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ByteBill_BS.Areas.Admin.Controllers;
 
@@ -9,49 +12,197 @@ namespace ByteBill_BS.Areas.Admin.Controllers;
 [Authorize]
 public class DashboardController : Controller
 {
-    [HttpGet]
-    public IActionResult Index()
+    private readonly ApplicationDbContext _db;
+
+    public DashboardController(ApplicationDbContext db)
     {
-        var roleClaim = User.Claims.FirstOrDefault(c => c.Type == "Role")?.Value;
-        if (roleClaim != UserRole.Admin.ToString())
-        {
+        _db = db;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Index()
+    {
+        if (!User.IsInRoles("Admin"))
             return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var today = DateTime.UtcNow.Date;
+        var weekStart = today.AddDays(-(int)today.DayOfWeek);
+
+        // ── Shop name ──
+        var shopName = await _db.Shops
+            .Where(s => s.ShopId == shopId)
+            .Select(s => s.ShopName)
+            .FirstOrDefaultAsync() ?? "My Shop";
+
+        // ── Job Order counts ──
+        var jobOrders = await _db.JobOrders
+            .Where(j => j.ShopId == shopId)
+            .GroupBy(j => 1)
+            .Select(g => new
+            {
+                Total = g.Count(),
+                Pending = g.Count(j => j.Status == JobOrderStatus.Pending),
+                InProgress = g.Count(j => j.Status == JobOrderStatus.InProgress
+                                       || j.Status == JobOrderStatus.Diagnosis
+                                       || j.Status == JobOrderStatus.CheckedIn),
+                CompletedToday = g.Count(j => j.Status == JobOrderStatus.Completed && j.UpdatedAt != null && j.UpdatedAt.Value.Date == today)
+            })
+            .FirstOrDefaultAsync();
+
+        // ── Revenue (confirmed payments) ──
+        var todayRevenue = await _db.Payments
+            .Where(p => p.ShopId == shopId && p.Status == PaymentStatus.Confirmed && p.PaymentDate.Date == today)
+            .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+        var weekRevenue = await _db.Payments
+            .Where(p => p.ShopId == shopId && p.Status == PaymentStatus.Confirmed && p.PaymentDate.Date >= weekStart)
+            .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+        // ── Invoices ──
+        var invoiceStats = await _db.Invoices
+            .Where(i => i.ShopId == shopId)
+            .GroupBy(i => 1)
+            .Select(g => new
+            {
+                Unpaid = g.Count(i => i.Status == InvoiceStatus.Unpaid || i.Status == InvoiceStatus.Partial),
+                Outstanding = g.Where(i => i.Status == InvoiceStatus.Unpaid || i.Status == InvoiceStatus.Partial).Sum(i => (decimal?)i.Balance) ?? 0m
+            })
+            .FirstOrDefaultAsync();
+
+        // ── Low stock ──
+        var lowStockCount = await _db.InventoryItems
+            .Where(i => i.ShopId == shopId && i.IsActive && i.QtyOnHand <= i.ReorderLevel)
+            .CountAsync();
+
+        // ── Monthly Revenue chart (last 6 months) ──
+        var sixMonthsAgo = new DateTime(today.Year, today.Month, 1).AddMonths(-5);
+        var monthlyRevenue = await _db.Payments
+            .Where(p => p.ShopId == shopId && p.Status == PaymentStatus.Confirmed && p.PaymentDate >= sixMonthsAgo)
+            .GroupBy(p => new { p.PaymentDate.Year, p.PaymentDate.Month })
+            .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(p => p.Amount) })
+            .ToListAsync();
+
+        var revenueChart = new List<ChartDataPoint>();
+        for (int i = 0; i < 6; i++)
+        {
+            var dt = sixMonthsAgo.AddMonths(i);
+            var val = monthlyRevenue.FirstOrDefault(m => m.Year == dt.Year && m.Month == dt.Month);
+            revenueChart.Add(new ChartDataPoint
+            {
+                Label = dt.ToString("MMM yyyy"),
+                Value = val?.Total ?? 0m
+            });
         }
+
+        // ── Job Order Status distribution chart ──
+        var statusDistribution = await _db.JobOrders
+            .Where(j => j.ShopId == shopId)
+            .GroupBy(j => j.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var jobOrderChart = statusDistribution
+            .Select(s => new ChartDataPoint { Label = s.Status.ToString(), Value = s.Count })
+            .OrderByDescending(c => c.Value)
+            .ToList();
+
+        // ── Recent Job Orders (last 10) ──
+        var recentJobs = await _db.JobOrders
+            .Where(j => j.ShopId == shopId)
+            .OrderByDescending(j => j.CreatedAt)
+            .Take(10)
+            .Select(j => new JobOrderSummary
+            {
+                Id = j.JobOrderId,
+                JobNumber = j.JobOrderNo,
+                OrderNumber = j.JobOrderNo,
+                CustomerName = j.Customer!.FirstName + " " + j.Customer.LastName,
+                DeviceType = j.Device!.DeviceType,
+                Status = j.Status,
+                StatusBadgeClass = j.Status == JobOrderStatus.Completed || j.Status == JobOrderStatus.Delivered ? "success"
+                    : j.Status == JobOrderStatus.InProgress ? "primary"
+                    : j.Status == JobOrderStatus.Pending ? "warning"
+                    : j.Status == JobOrderStatus.Cancelled ? "danger"
+                    : j.Status == JobOrderStatus.WaitingForParts ? "secondary"
+                    : "info",
+                CreatedAt = j.CreatedAt,
+                TechnicianName = j.AssignedTechUser != null
+                    ? j.AssignedTechUser.FirstName + " " + j.AssignedTechUser.LastName
+                    : null
+            })
+            .ToListAsync();
+
+        // ── Recent Activity (from audit logs + status history, last 15) ──
+        var recentStatusChanges = await _db.JobOrderStatusHistories
+            .Where(h => _db.JobOrders.Any(j => j.ShopId == shopId && j.JobOrderId == h.JobOrderId))
+            .OrderByDescending(h => h.ChangedAt)
+            .Take(15)
+            .Select(h => new
+            {
+                h.NewStatus,
+                h.OldStatus,
+                h.ChangedAt,
+                h.Remarks,
+                UserName = h.ChangedByUser!.FirstName + " " + h.ChangedByUser.LastName,
+                JobOrderNo = h.JobOrder!.JobOrderNo
+            })
+            .ToListAsync();
+
+        var recentActivity = recentStatusChanges.Select(h =>
+        {
+            var (icon, color) = h.NewStatus switch
+            {
+                "Pending" => ("plus", "primary"),
+                "CheckedIn" => ("log-in", "info"),
+                "Diagnosis" => ("search", "info"),
+                "InProgress" => ("play", "primary"),
+                "Completed" => ("check-circle", "success"),
+                "Cancelled" => ("x-circle", "danger"),
+                "WaitingForParts" => ("pause", "warning"),
+                "Delivered" => ("package", "success"),
+                _ => ("activity", "primary")
+            };
+            return new RecentActivityItem
+            {
+                Icon = icon,
+                IconColor = color,
+                Title = $"{h.JobOrderNo} → {h.NewStatus}",
+                Description = $"By {h.UserName}" + (string.IsNullOrEmpty(h.Remarks) ? "" : $" — {h.Remarks}"),
+                TimeAgo = GetTimeAgo(h.ChangedAt)
+            };
+        }).ToList();
 
         var viewModel = new DashboardViewModel
         {
             UserRole = UserRole.Admin,
-            UserName = User.Claims.FirstOrDefault(c => c.Type == "FullName")?.Value ?? "Shop Owner",
-            ShopName = "ByteBill Main Shop", // TODO: Load from Shop table
-            
-            // KPI stats - TODO: Connect to API for real metrics
-            TotalJobOrders = 0,
-            PendingJobOrdersCount = 0,
-            InProgressJobOrders = 0,
-            CompletedToday = 0,
-            TodayRevenue = 0m,
-            WeekRevenue = 0m,
-            MonthRevenue = 0m,
-            PendingInvoices = 0,
-            OutstandingAmount = 0m,
-            LowStockItems = 0,
-            
-            // Monthly Revenue chart data (last 6 months)
-            RevenueChart = new List<ChartDataPoint>(),
-            
-            // Job Order status distribution
-            JobOrderChart = new List<ChartDataPoint>(),
-            
-            // Recent activity feed
-            RecentActivity = new List<RecentActivityItem>(),
-            
-            // Recent Job Orders
-            RecentJobOrders = new List<JobOrderSummary>(),
-            
-            // Pending Job Orders
-            PendingJobOrders = new List<JobOrderSummary>()
+            UserName = User.GetFullName(),
+            ShopName = shopName,
+            TotalJobOrders = jobOrders?.Total ?? 0,
+            PendingJobOrdersCount = jobOrders?.Pending ?? 0,
+            InProgressJobOrders = jobOrders?.InProgress ?? 0,
+            CompletedToday = jobOrders?.CompletedToday ?? 0,
+            TodayRevenue = todayRevenue,
+            WeekRevenue = weekRevenue,
+            PendingInvoices = invoiceStats?.Unpaid ?? 0,
+            OutstandingAmount = invoiceStats?.Outstanding ?? 0m,
+            LowStockItems = lowStockCount,
+            RevenueChart = revenueChart,
+            JobOrderChart = jobOrderChart,
+            RecentJobOrders = recentJobs,
+            RecentActivity = recentActivity
         };
-        
+
         return View(viewModel);
+    }
+
+    private static string GetTimeAgo(DateTime dt)
+    {
+        var span = DateTime.UtcNow - dt;
+        if (span.TotalMinutes < 1) return "Just now";
+        if (span.TotalMinutes < 60) return $"{(int)span.TotalMinutes}m ago";
+        if (span.TotalHours < 24) return $"{(int)span.TotalHours}h ago";
+        if (span.TotalDays < 7) return $"{(int)span.TotalDays}d ago";
+        return dt.ToString("MMM d");
     }
 }

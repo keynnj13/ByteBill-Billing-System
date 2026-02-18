@@ -1,0 +1,334 @@
+@using ByteBill_BS.Models.Enums
+@using ByteBill_BS.ViewModels.JobOrders
+@using ByteBill_BS.ViewModels.Invoices
+@using ByteBill_BS.ViewModels.Common
+@{
+    ViewData["Title"] = "Archive";
+    var tab = (string)ViewBag.ActiveTab;
+    var joModel = (JobOrderListViewModel)ViewBag.JobOrders;
+    var invModel = (InvoiceListViewModel)ViewBag.Invoices;
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Home") }, new() { Label = "Archive", IsActive = true } } })" />
+
+<div class="arc-page-header">
+    <div>
+        <h1 class="arc-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+            Archive
+        </h1>
+        <p class="arc-subtitle">Archived job orders and invoices</p>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success" style="margin-bottom: 20px; padding: 12px 16px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; color: #065f46; font-size: 14px;">
+        @TempData["Success"]
+    </div>
+}
+
+<!-- Tab Navigation -->
+<div class="arc-tabs no-print">
+    <button class="arc-tab @(tab == "joborders" ? "arc-tab-active" : "")" data-tab="joborders" onclick="switchArchiveTab('joborders')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+        Job Orders
+        <span class="arc-tab-badge">@joModel.TotalCount</span>
+    </button>
+    <button class="arc-tab @(tab == "invoices" ? "arc-tab-active" : "")" data-tab="invoices" onclick="switchArchiveTab('invoices')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path></svg>
+        Invoices
+        <span class="arc-tab-badge">@invModel.TotalCount</span>
+    </button>
+</div>
+
+<!-- ═══════ JOB ORDERS TAB ═══════ -->
+<div class="arc-tab-panel @(tab == "joborders" ? "arc-tab-panel-active" : "")" id="tab-joborders">
+    <div class="card">
+        <div class="card-header">
+            <form method="get" class="filter-form">
+                <input type="hidden" name="tab" value="joborders" />
+                <div class="search-input-wrapper">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" name="search" value="@joModel.SearchTerm" placeholder="Search archived orders..." class="form-input search-input" />
+                </div>
+                <select name="joStatus" class="form-select" onchange="this.form.submit()">
+                    <option value="">All Statuses</option>
+                    @foreach (JobOrderStatus s in Enum.GetValues(typeof(JobOrderStatus)))
+                    {
+                        <option value="@s" selected="@(joModel.StatusFilter == s)">@s</option>
+                    }
+                </select>
+                <button type="submit" class="btn btn-outline-primary">Filter</button>
+            </form>
+        </div>
+        <div class="card-body p-0">
+            @if (joModel.JobOrders.Any())
+            {
+                <div class="table-container">
+                    <table class="table" style="table-layout: fixed;">
+                        <colgroup>
+                            <col style="width: 13%;" />
+                            <col style="width: 20%;" />
+                            <col style="width: 17%;" />
+                            <col style="width: 13%;" />
+                            <col style="width: 14%;" />
+                            <col style="width: 13%;" />
+                            <col style="width: 10%;" />
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Customer</th>
+                                <th>Device</th>
+                                <th class="text-center">Status</th>
+                                <th>Technician</th>
+                                <th>Created</th>
+                                <th class="text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var order in joModel.JobOrders)
+                            {
+                                <tr>
+                                    <td><span class="order-link">@order.JobNumber</span></td>
+                                    <td>
+                                        <div class="customer-cell">
+                                            <div class="avatar-xs">@order.CustomerInitials</div>
+                                            <span class="customer-text">@order.CustomerName</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="device-cell">
+                                            <span class="device-text">@order.DeviceType</span>
+                                            @if (!string.IsNullOrEmpty(order.DeviceBrand))
+                                            {
+                                                <span class="device-sub">@order.DeviceBrand @order.DeviceModel</span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td class="text-center"><span class="status-indicator @order.StatusClass">@order.StatusDisplay</span></td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(order.TechnicianName))
+                                        {
+                                            <span class="tech-name">@order.TechnicianName</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="unassigned">Unassigned</span>
+                                        }
+                                    </td>
+                                    <td><span class="date-text">@order.CreatedAt.ToString("MMM d, yyyy")</span></td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <form asp-action="RestoreJobOrder" asp-controller="Archive" method="post" style="display: inline;">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@order.Id" />
+                                                <button type="submit" class="btn-action restore-btn" title="Restore" onclick="return confirm('Restore this job order?');">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (joModel.TotalPages > 1)
+                {
+                    <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel
+                    {
+                        CurrentPage = joModel.CurrentPage,
+                        TotalPages = joModel.TotalPages,
+                        TotalItems = joModel.TotalCount,
+                        PageSize = joModel.PageSize,
+                        BaseUrl = Url.Action("Index", "Archive", new { tab = "joborders", search = joModel.SearchTerm, joStatus = joModel.StatusFilter })!
+                    })" />
+                }
+            }
+            else
+            {
+                <div class="empty-state" style="padding: 60px 20px; text-align: center;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;">
+                        <polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line>
+                    </svg>
+                    <h3 style="color: #6b7280; font-size: 16px; margin-bottom: 4px;">No archived job orders</h3>
+                    <p style="color: #9ca3af; font-size: 14px;">Archived job orders will appear here.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- ═══════ INVOICES TAB ═══════ -->
+<div class="arc-tab-panel @(tab == "invoices" ? "arc-tab-panel-active" : "")" id="tab-invoices">
+    <div class="card">
+        <div class="card-header">
+            <form method="get" class="filter-form">
+                <input type="hidden" name="tab" value="invoices" />
+                <div class="search-input-wrapper">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" name="search" value="@invModel.SearchTerm" placeholder="Search archived invoices..." class="form-input search-input" />
+                </div>
+                <select name="invStatus" class="form-select" onchange="this.form.submit()">
+                    <option value="">All Statuses</option>
+                    @foreach (var s in Enum.GetValues<InvoiceStatus>())
+                    {
+                        <option value="@s" selected="@(invModel.StatusFilter == s)">@s</option>
+                    }
+                </select>
+                <button type="submit" class="btn btn-outline-primary">Filter</button>
+            </form>
+        </div>
+        <div class="card-body p-0">
+            @if (invModel.Invoices.Any())
+            {
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Invoice</th>
+                                <th>Customer</th>
+                                <th class="text-center">Job #</th>
+                                <th class="text-right">Total</th>
+                                <th class="text-right">Balance</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-center">Due Date</th>
+                                <th class="text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var inv in invModel.Invoices)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="inv-cell">
+                                            <span class="inv-number">@inv.InvoiceNumber</span>
+                                            <span class="inv-date">@inv.CreatedAt.ToString("MMM d, yyyy")</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="customer-cell">
+                                            <div class="avatar-sm">@inv.CustomerInitials</div>
+                                            <span class="customer-name">@inv.CustomerName</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center"><span class="job-link">@(inv.JobNumber ?? "—")</span></td>
+                                    <td class="text-right font-medium">@inv.Total.ToString("C")</td>
+                                    <td class="text-right">
+                                        <span class="@(inv.Balance > 0 ? "text-danger font-medium" : "")">@inv.Balance.ToString("C")</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="status-indicator @inv.StatusClass">@inv.StatusDisplay</span>
+                                    </td>
+                                    <td class="text-center">
+                                        @if (inv.DueDate.HasValue)
+                                        {
+                                            <span>@inv.DueDate.Value.ToString("MMM d, yyyy")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td class="text-right">
+                                        <form asp-action="RestoreInvoice" asp-controller="Archive" method="post" style="display: inline;">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@inv.Id" />
+                                            <button type="submit" class="btn-action restore-btn" title="Restore" onclick="return confirm('Restore this invoice?');">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (invModel.TotalPages > 1)
+                {
+                    <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel
+                    {
+                        CurrentPage = invModel.CurrentPage,
+                        TotalPages = invModel.TotalPages,
+                        TotalItems = invModel.TotalCount,
+                        PageSize = invModel.PageSize,
+                        BaseUrl = Url.Action("Index", "Archive", new { tab = "invoices", search = invModel.SearchTerm, invStatus = invModel.StatusFilter })!
+                    })" />
+                }
+            }
+            else
+            {
+                <div class="empty-state" style="padding: 60px 20px; text-align: center;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;">
+                        <polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line>
+                    </svg>
+                    <h3 style="color: #6b7280; font-size: 16px; margin-bottom: 4px;">No archived invoices</h3>
+                    <p style="color: #9ca3af; font-size: 14px;">Archived invoices will appear here.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<script>
+function switchArchiveTab(tab) {
+    document.querySelectorAll('.arc-tab').forEach(t => t.classList.remove('arc-tab-active'));
+    document.querySelector('[data-tab="' + tab + '"]').classList.add('arc-tab-active');
+    document.querySelectorAll('.arc-tab-panel').forEach(p => p.classList.remove('arc-tab-panel-active'));
+    document.getElementById('tab-' + tab).classList.add('arc-tab-panel-active');
+}
+</script>
+
+<style>
+    .arc-page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .arc-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .arc-subtitle { font-size: 14px; color: #6b7280; }
+
+    /* Tabs (pill style matching Integrations) */
+    .arc-tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 2px solid #e5e7eb; padding-bottom: 0; }
+    .arc-tab { display: flex; align-items: center; gap: 8px; padding: 12px 20px; font-size: 14px; font-weight: 500; color: #6b7280; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; cursor: pointer; transition: all 0.15s; border-radius: 8px 8px 0 0; }
+    .arc-tab:hover { color: #1f2937; background: #f9fafb; }
+    .arc-tab-active { color: #1e3a8a; border-bottom-color: #1e3a8a; background: #f0f4ff; }
+    .arc-tab-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; background: #f3f4f6; color: #6b7280; }
+    .arc-tab-active .arc-tab-badge { background: #dbeafe; color: #1e3a8a; }
+
+    /* Tab Panels */
+    .arc-tab-panel { display: none; }
+    .arc-tab-panel-active { display: block; }
+
+    .filter-form { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .search-input-wrapper { position: relative; flex: 1; min-width: 200px; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
+    .search-input { padding-left: 40px; min-width: 240px; }
+    .customer-cell { display: flex; align-items: center; gap: 8px; }
+    .avatar-xs { width: 28px; height: 28px; border-radius: 50%; background: rgba(59,130,246,0.1); color: #3b82f6; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 11px; flex-shrink: 0; }
+    .avatar-sm { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+    .customer-text { font-size: 13px; font-weight: 500; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .customer-name { font-weight: 500; color: #1f2937; font-size: 13px; }
+    .order-link { font-weight: 600; color: #3b82f6; font-size: 13px; }
+    .device-cell { display: flex; flex-direction: column; gap: 1px; }
+    .device-text { font-size: 13px; color: #374151; }
+    .device-sub { font-size: 12px; color: #9ca3af; }
+    .tech-name { font-size: 13px; color: #374151; }
+    .unassigned { font-size: 13px; color: #d1d5db; font-style: italic; }
+    .date-text { font-size: 13px; color: #6b7280; }
+    .inv-cell { display: flex; flex-direction: column; gap: 2px; }
+    .inv-number { font-weight: 500; color: #1f2937; font-size: 13px; }
+    .inv-date { font-size: 12px; color: #9ca3af; }
+    .job-link { font-size: 12px; color: #6b7280; font-weight: 500; }
+    .text-danger { color: #dc2626; }
+    .font-medium { font-weight: 500; }
+    .action-buttons { display: flex; gap: 4px; justify-content: flex-end; }
+    .btn-action { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: #6b7280; transition: all 0.15s; border: none; background: none; cursor: pointer; }
+    .restore-btn:hover { background: #ecfdf5; color: #16a34a; }
+    @@media (max-width: 768px) {
+        .arc-page-header { flex-direction: column; gap: 12px; }
+        .arc-tabs { flex-direction: column; }
+        .filter-form { flex-direction: column; width: 100%; }
+        .search-input { min-width: 100%; }
+    }
+</style>

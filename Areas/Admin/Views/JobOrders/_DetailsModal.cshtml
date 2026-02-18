@@ -8,20 +8,7 @@
             <p class="modal-detail-sub">Created @Model.CreatedAt.ToString("MMMM d, yyyy 'at' h:mm tt")</p>
         </div>
         <div class="modal-detail-actions">
-            @{
-                var statusClass = Model.Status switch
-                {
-                    JobOrderStatus.CheckedIn => "info",
-                    JobOrderStatus.Diagnosis => "warning",
-                    JobOrderStatus.WaitingForParts => "secondary",
-                    JobOrderStatus.InProgress => "primary",
-                    JobOrderStatus.Completed => "success",
-                    JobOrderStatus.ReadyForPickup => "info",
-                    JobOrderStatus.Delivered => "success",
-                    _ => "secondary"
-                };
-            }
-            <span class="badge badge-lg badge-@statusClass">@Model.Status</span>
+            <span class="status-indicator status-lg @Model.StatusClass">@Model.StatusDisplay</span>
         </div>
     </div>
 
@@ -37,6 +24,14 @@
                         <dd>@Model.DeviceType</dd>
                     </div>
                     <div class="modal-detail-item">
+                        <dt>Brand</dt>
+                        <dd>@(Model.Brand ?? "—")</dd>
+                    </div>
+                    <div class="modal-detail-item">
+                        <dt>Model</dt>
+                        <dd>@(Model.DeviceModel ?? "—")</dd>
+                    </div>
+                    <div class="modal-detail-item">
                         <dt>Serial Number</dt>
                         <dd>@(Model.DeviceSerial ?? "Not provided")</dd>
                     </div>
@@ -46,7 +41,19 @@
                     </div>
                     <div class="modal-detail-item">
                         <dt>Priority</dt>
-                        <dd><span class="badge badge-@(Model.Priority == "High" || Model.Priority == "Urgent" ? "danger" : "secondary")">@Model.Priority</span></dd>
+                        <dd>
+                            @{
+                                var priorityClass = (Model.Priority ?? "Normal") switch
+                                {
+                                    "Urgent" => "danger",
+                                    "High" => "warning",
+                                    "Normal" => "primary",
+                                    "Low" => "secondary",
+                                    _ => "secondary"
+                                };
+                            }
+                            <span class="badge badge-@priorityClass">@(Model.Priority ?? "Normal")</span>
+                        </dd>
                     </div>
                 </dl>
             </div>

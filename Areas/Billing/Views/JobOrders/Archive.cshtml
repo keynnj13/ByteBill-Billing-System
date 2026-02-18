@@ -1,20 +1,23 @@
 @model JobOrderListViewModel
 @{
-    ViewData["Title"] = "Job Orders";
+    ViewData["Title"] = "Job Orders Archive";
 }
 
-<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Job Orders", IsActive = true } } })" />
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Job Orders", Url = Url.Action("Index", "JobOrders") }, new() { Label = "Archive", IsActive = true } } })" />
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">Job Orders</h1>
-        <p class="page-subtitle">@Model.TotalCount total orders</p>
+        <h1 class="page-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+            Job Orders Archive
+        </h1>
+        <p class="page-subtitle">@Model.TotalCount archived job orders</p>
     </div>
     <div class="page-actions">
-        <button type="button" class="btn btn-primary" onclick="openAjaxModal('@Url.Action("CreateModal", "JobOrders", new { area = "Admin" })', 'New Job Order')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            New Job Order
-        </button>
+        <a href="@Url.Action("Index", "JobOrders", new { area = "Billing" })" class="btn btn-ghost">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+            Back to Job Orders
+        </a>
     </div>
 </div>
 
@@ -30,7 +33,7 @@
         <form method="get" class="filter-form">
             <div class="search-input-wrapper">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <input type="text" name="search" value="@Model.SearchTerm" placeholder="Search by order number, customer..." class="form-input search-input" />
+                <input type="text" name="search" value="@Model.SearchTerm" placeholder="Search archived orders..." class="form-input search-input" />
             </div>
             <select name="status" class="form-select" onchange="this.form.submit()">
                 <option value="">All Statuses</option>
@@ -49,12 +52,12 @@
                 <table class="table" style="table-layout: fixed;">
                     <colgroup>
                         <col style="width: 13%;" />
-                        <col style="width: 18%;" />
+                        <col style="width: 20%;" />
                         <col style="width: 17%;" />
                         <col style="width: 13%;" />
                         <col style="width: 14%;" />
                         <col style="width: 13%;" />
-                        <col style="width: 12%;" />
+                        <col style="width: 10%;" />
                     </colgroup>
                     <thead>
                         <tr>
@@ -70,10 +73,8 @@
                     <tbody>
                         @foreach (var order in Model.JobOrders)
                         {
-                            <tr class="clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "JobOrders", new { area = "Admin", id = order.Id })', '@order.JobNumber')">
-                                <td>
-                                    <span class="order-link">@order.JobNumber</span>
-                                </td>
+                            <tr>
+                                <td><span class="order-link">@order.JobNumber</span></td>
                                 <td>
                                     <div class="customer-cell">
                                         <div class="avatar-xs">@order.CustomerInitials</div>
@@ -103,14 +104,11 @@
                                 <td><span class="date-text">@order.CreatedAt.ToString("MMM d, yyyy")</span></td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button type="button" class="btn-action" title="Edit" onclick="event.stopPropagation(); openAjaxModal('@Url.Action("EditModal", "JobOrders", new { area = "Admin", id = order.Id })', 'Edit Job Order')">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                                        </button>
-                                        <form asp-action="ArchiveJobOrder" asp-controller="JobOrders" asp-area="Admin" method="post" style="display: inline;" onclick="event.stopPropagation();">
+                                        <form asp-action="RestoreJobOrder" asp-controller="JobOrders" asp-area="Billing" method="post" style="display: inline;">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="id" value="@order.Id" />
-                                            <button type="submit" class="btn-action" title="Archive" onclick="return confirm('Archive this job order?');">
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                                            <button type="submit" class="btn-action restore-btn" title="Restore" onclick="return confirm('Restore this job order?');">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
                                             </button>
                                         </form>
                                     </div>
@@ -120,10 +118,28 @@
                     </tbody>
                 </table>
             </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel
+                {
+                    CurrentPage = Model.CurrentPage,
+                    TotalPages = Model.TotalPages,
+                    TotalItems = Model.TotalCount,
+                    PageSize = Model.PageSize,
+                    BaseUrl = Url.Action("Archive", "JobOrders", new { area = "Billing", search = Model.SearchTerm, status = Model.StatusFilter })!
+                })" />
+            }
         }
         else
         {
-            <partial name="~/Views/Shared/_EmptyState.cshtml" model="@(new { Icon = "clipboard", Title = "No job orders found", Description = "Create your first job order to get started" })" />
+            <div class="empty-state" style="padding: 60px 20px; text-align: center;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;">
+                    <polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line>
+                </svg>
+                <h3 style="color: #6b7280; font-size: 16px; margin-bottom: 4px;">No archived job orders</h3>
+                <p style="color: #9ca3af; font-size: 14px;">Archived job orders will appear here.</p>
+            </div>
         }
     </div>
 </div>
@@ -139,8 +155,7 @@
     .customer-cell { display: flex; align-items: center; gap: 8px; }
     .avatar-xs { width: 28px; height: 28px; border-radius: 50%; background: rgba(59,130,246,0.1); color: #3b82f6; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 11px; flex-shrink: 0; }
     .customer-text { font-size: 13px; font-weight: 500; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .order-link { font-weight: 600; color: #3b82f6; text-decoration: none; font-size: 13px; }
-    .order-link:hover { text-decoration: underline; }
+    .order-link { font-weight: 600; color: #3b82f6; font-size: 13px; }
     .device-cell { display: flex; flex-direction: column; gap: 1px; }
     .device-text { font-size: 13px; color: #374151; }
     .device-sub { font-size: 12px; color: #9ca3af; }
@@ -148,15 +163,11 @@
     .unassigned { font-size: 13px; color: #d1d5db; font-style: italic; }
     .date-text { font-size: 13px; color: #6b7280; }
     .action-buttons { display: flex; gap: 4px; justify-content: flex-end; }
-    .btn-action { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: #6b7280; transition: all 0.15s; border: none; background: none; cursor: pointer; text-decoration: none; }
-    .btn-action:hover { background: #f3f4f6; color: #3b82f6; }
-    .clickable-row { cursor: pointer; transition: background-color 0.15s ease; }
-    .clickable-row:hover { background-color: #f0f7ff; }
-    .order-link { font-weight: 600; color: #3b82f6; font-size: 13px; }
+    .btn-action { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: #6b7280; transition: all 0.15s; border: none; background: none; cursor: pointer; }
+    .restore-btn:hover { background: #ecfdf5; color: #16a34a; }
     @@media (max-width: 768px) {
         .page-header { flex-direction: column; gap: 12px; }
         .filter-form { flex-direction: column; width: 100%; }
         .search-input { min-width: 100%; }
-        .table { table-layout: auto !important; }
     }
 </style>

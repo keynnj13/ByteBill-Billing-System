@@ -32,17 +32,12 @@ public class JobOrderService : IJobOrderService
     // ═══════════════════════════════════════════════════════════════════
     private static readonly Dictionary<JobOrderStatus, HashSet<JobOrderStatus>> ValidTransitions = new()
     {
-        [JobOrderStatus.Pending]           = new() { JobOrderStatus.CheckedIn, JobOrderStatus.Cancelled },
-        [JobOrderStatus.CheckedIn]         = new() { JobOrderStatus.Diagnosis, JobOrderStatus.Cancelled },
-        [JobOrderStatus.Diagnosis]         = new() { JobOrderStatus.Diagnosed, JobOrderStatus.Cancelled },
-        [JobOrderStatus.Diagnosed]         = new() { JobOrderStatus.AwaitingApproval, JobOrderStatus.Cancelled },
-        [JobOrderStatus.AwaitingApproval]  = new() { JobOrderStatus.Approved, JobOrderStatus.Cancelled },
-        [JobOrderStatus.Approved]          = new() { JobOrderStatus.InProgress, JobOrderStatus.Cancelled },
-        [JobOrderStatus.InProgress]        = new() { JobOrderStatus.WaitingForParts, JobOrderStatus.OnHold, JobOrderStatus.Completed, JobOrderStatus.Cancelled },
-        [JobOrderStatus.WaitingForParts]   = new() { JobOrderStatus.InProgress, JobOrderStatus.Cancelled },
-        [JobOrderStatus.OnHold]            = new() { JobOrderStatus.InProgress, JobOrderStatus.Cancelled },
-        [JobOrderStatus.Completed]         = new() { JobOrderStatus.ReadyForPickup },
-        [JobOrderStatus.ReadyForPickup]    = new() { JobOrderStatus.Delivered },
+        [JobOrderStatus.Pending]         = new() { JobOrderStatus.CheckedIn, JobOrderStatus.Cancelled },
+        [JobOrderStatus.CheckedIn]       = new() { JobOrderStatus.Diagnosis, JobOrderStatus.Cancelled },
+        [JobOrderStatus.Diagnosis]       = new() { JobOrderStatus.InProgress, JobOrderStatus.WaitingForParts, JobOrderStatus.Cancelled },
+        [JobOrderStatus.InProgress]      = new() { JobOrderStatus.WaitingForParts, JobOrderStatus.Completed, JobOrderStatus.Cancelled },
+        [JobOrderStatus.WaitingForParts] = new() { JobOrderStatus.InProgress, JobOrderStatus.Cancelled },
+        [JobOrderStatus.Completed]       = new() { JobOrderStatus.Delivered },
         // Terminal states: Delivered, Cancelled — no transitions out
     };
 
@@ -52,14 +47,14 @@ public class JobOrderService : IJobOrderService
     {
         ["Technician"] = new()
         {
-            JobOrderStatus.CheckedIn, JobOrderStatus.Diagnosis, JobOrderStatus.Diagnosed,
-            JobOrderStatus.InProgress, JobOrderStatus.WaitingForParts, JobOrderStatus.OnHold,
+            JobOrderStatus.CheckedIn, JobOrderStatus.Diagnosis,
+            JobOrderStatus.InProgress, JobOrderStatus.WaitingForParts,
             JobOrderStatus.Completed
         },
         ["Billing"] = new()
         {
-            JobOrderStatus.CheckedIn, JobOrderStatus.AwaitingApproval, JobOrderStatus.Approved,
-            JobOrderStatus.ReadyForPickup, JobOrderStatus.Delivered, JobOrderStatus.Cancelled
+            JobOrderStatus.CheckedIn,
+            JobOrderStatus.Delivered, JobOrderStatus.Cancelled
         }
     };
 
@@ -67,7 +62,7 @@ public class JobOrderService : IJobOrderService
     public async Task<PagedResult<JobOrderListItemDto>> GetListAsync(long shopId, JobOrderPagedRequest req)
     {
         var query = _db.JobOrders
-            .Where(j => j.ShopId == shopId)
+            .Where(j => j.ShopId == shopId && !j.IsArchived)
             .AsNoTracking();
 
         // Status filter
@@ -128,6 +123,8 @@ public class JobOrderService : IJobOrderService
                 ProblemReported = j.ProblemReported,
                 DiagnosisNotes = j.DiagnosisNotes,
                 Status = j.Status.ToString(),
+                Priority = j.Priority ?? "Normal",
+                EstimatedCompletionDate = j.EstimatedCompletionDate,
                 CreatedAt = j.CreatedAt,
                 UpdatedAt = j.UpdatedAt,
 
@@ -141,6 +138,7 @@ public class JobOrderService : IJobOrderService
                 Brand = j.Device.Brand,
                 Model = j.Device.Model,
                 SerialNo = j.Device.SerialNo,
+                DeviceAccessories = j.Device.Notes,
 
                 CreatedByName = j.CreatedByUser!.FirstName + " " + j.CreatedByUser.LastName,
                 TechnicianName = j.AssignedTechUser != null
@@ -252,6 +250,8 @@ public class JobOrderService : IJobOrderService
             JobOrderNo = jobOrderNo,
             ProblemReported = req.ProblemReported.Trim(),
             DiagnosisNotes = req.DiagnosisNotes?.Trim(),
+            Priority = req.Priority ?? "Normal",
+            EstimatedCompletionDate = req.EstimatedCompletionDate,
             Status = JobOrderStatus.Pending,
             CreatedAt = DateTime.UtcNow
         };

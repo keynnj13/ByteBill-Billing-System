@@ -27,24 +27,19 @@ public class JobOrderItemViewModel
     public string? DeviceBrand { get; set; }
     public string? DeviceModel { get; set; }
     public string? Brand { get; set; }
-    public string? Model { get; set; }
     public JobOrderStatus Status { get; set; }
     public string StatusDisplay => Status.ToString();
     public string StatusClass => Status switch
     {
-        JobOrderStatus.Created => "badge-muted",
-        JobOrderStatus.Pending => "badge-pending",
-        JobOrderStatus.CheckedIn => "badge-info",
-        JobOrderStatus.Diagnosis or JobOrderStatus.Diagnosed => "badge-info",
-        JobOrderStatus.AwaitingApproval => "badge-warning",
-        JobOrderStatus.Approved => "badge-primary",
-        JobOrderStatus.InProgress => "badge-primary",
-        JobOrderStatus.WaitingForParts or JobOrderStatus.OnHold => "badge-warning",
-        JobOrderStatus.Completed => "badge-success",
-        JobOrderStatus.ReadyForPickup => "badge-success",
-        JobOrderStatus.Delivered => "badge-paid",
-        JobOrderStatus.Cancelled => "badge-void",
-        _ => "badge-muted"
+        JobOrderStatus.Pending => "status-pending",
+        JobOrderStatus.CheckedIn => "status-info",
+        JobOrderStatus.Diagnosis => "status-info",
+        JobOrderStatus.InProgress => "status-primary",
+        JobOrderStatus.WaitingForParts => "status-warning",
+        JobOrderStatus.Completed => "status-success",
+        JobOrderStatus.Delivered => "status-delivered",
+        JobOrderStatus.Cancelled => "status-cancelled",
+        _ => "status-muted"
     };
     public string? Priority { get; set; }
     public decimal EstimatedCost { get; set; }
@@ -77,7 +72,6 @@ public class JobOrderDetailViewModel
     public long DeviceId { get; set; }
     public string DeviceType { get; set; } = string.Empty;
     public string? Brand { get; set; }
-    public string? Model { get; set; }
     public string? DeviceBrand { get; set; }
     public string? DeviceModel { get; set; }
     public string? SerialNumber { get; set; }
@@ -90,19 +84,15 @@ public class JobOrderDetailViewModel
     public string StatusDisplay => Status.ToString();
     public string StatusClass => Status switch
     {
-        JobOrderStatus.Created => "badge-muted",
-        JobOrderStatus.Pending => "badge-pending",
-        JobOrderStatus.CheckedIn => "badge-info",
-        JobOrderStatus.Diagnosis or JobOrderStatus.Diagnosed => "badge-info",
-        JobOrderStatus.AwaitingApproval => "badge-warning",
-        JobOrderStatus.Approved => "badge-primary",
-        JobOrderStatus.InProgress => "badge-primary",
-        JobOrderStatus.WaitingForParts or JobOrderStatus.OnHold => "badge-warning",
-        JobOrderStatus.Completed => "badge-success",
-        JobOrderStatus.ReadyForPickup => "badge-success",
-        JobOrderStatus.Delivered => "badge-paid",
-        JobOrderStatus.Cancelled => "badge-void",
-        _ => "badge-muted"
+        JobOrderStatus.Pending => "status-pending",
+        JobOrderStatus.CheckedIn => "status-info",
+        JobOrderStatus.Diagnosis => "status-info",
+        JobOrderStatus.InProgress => "status-primary",
+        JobOrderStatus.WaitingForParts => "status-warning",
+        JobOrderStatus.Completed => "status-success",
+        JobOrderStatus.Delivered => "status-delivered",
+        JobOrderStatus.Cancelled => "status-cancelled",
+        _ => "status-muted"
     };
     
     // Problem & Diagnosis
@@ -229,7 +219,7 @@ public class JobOrderCreateViewModel
     
     [StringLength(50)]
     [Display(Name = "Model")]
-    public string? Model { get; set; }
+    public string? DeviceModel { get; set; }
     
     [StringLength(100)]
     [Display(Name = "Serial Number")]
@@ -308,7 +298,7 @@ public class JobOrderFormViewModel
     
     [StringLength(50)]
     [Display(Name = "Model")]
-    public string? Model { get; set; }
+    public string? DeviceModel { get; set; }
     
     [StringLength(100)]
     [Display(Name = "Serial Number")]

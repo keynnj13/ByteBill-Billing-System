@@ -110,12 +110,21 @@
                                 </td>
                                 <td class="text-right"><span class="text-muted text-sm">@inv.CreatedAt.ToString("MMM dd")</span></td>
                                 <td>
-                                    @if (inv.Status == InvoiceStatus.Unpaid || inv.Status == InvoiceStatus.Partial)
-                                    {
-                                        <a href="@Url.Action("Create", "Payments", new { area = "Billing", invoiceId = inv.Id })" class="btn-action" title="Record Payment" onclick="event.stopPropagation();">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-                                        </a>
-                                    }
+                                    <div class="action-buttons" onclick="event.stopPropagation();">
+                                        @if (inv.Status == InvoiceStatus.Unpaid || inv.Status == InvoiceStatus.Partial)
+                                        {
+                                            <a href="@Url.Action("Create", "Payments", new { area = "Billing", invoiceId = inv.Id })" class="btn-action" title="Record Payment">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                                            </a>
+                                        }
+                                        <form asp-action="ArchiveInvoice" asp-controller="Invoices" asp-area="Billing" method="post" style="display: inline;">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@inv.Id" />
+                                            <button type="submit" class="btn-action archive-btn" title="Archive" onclick="return confirm('Archive this invoice?');">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                         }

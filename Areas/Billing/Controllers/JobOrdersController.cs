@@ -108,7 +108,6 @@ public class JobOrdersController : Controller
             DeviceId = dto.DeviceId,
             DeviceType = dto.DeviceType,
             Brand = dto.Brand,
-            Model = dto.Model,
             DeviceBrand = dto.Brand,
             DeviceModel = dto.Model,
             SerialNumber = dto.SerialNo,
@@ -125,6 +124,8 @@ public class JobOrdersController : Controller
             IssueDescription = dto.ProblemReported,
             DiagnosisNotes = dto.DiagnosisNotes,
             TechnicianNotes = dto.DiagnosisNotes,
+            Priority = dto.Priority,
+            EstimatedCompletionDate = dto.EstimatedCompletionDate,
             CreatedAt = dto.CreatedAt,
             UpdatedAt = dto.UpdatedAt,
             InvoiceId = dto.InvoiceId,
@@ -238,10 +239,12 @@ public class JobOrdersController : Controller
             {
                 DeviceType = viewModel.DeviceType,
                 Brand = viewModel.Brand ?? "",
-                Model = viewModel.Model ?? "",
+                Model = viewModel.DeviceModel ?? "",
                 SerialNo = viewModel.SerialNumber
             },
             ProblemReported = viewModel.ProblemDescription,
+            Priority = viewModel.Priority ?? "Normal",
+            EstimatedCompletionDate = viewModel.EstimatedCompletionDate,
             AssignedTechUserId = viewModel.AssignedTechnicianId
         };
 
@@ -310,5 +313,104 @@ public class JobOrdersController : Controller
             })
             .ToListAsync();
         model.Technicians = model.AvailableTechnicians;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  ARCHIVE
+    // ═══════════════════════════════════════════════════════════════════
+    [HttpGet]
+    public async Task<IActionResult> Archive(string? search, JobOrderStatus? status, int page = 1)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var query = _db.JobOrders
+            .Where(j => j.ShopId == shopId && j.IsArchived)
+            .AsNoTracking();
+
+        if (status.HasValue)
+            query = query.Where(j => j.Status == status.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(j =>
+                j.JobOrderNo.ToLower().Contains(term) ||
+                (j.Customer!.FirstName + " " + j.Customer.LastName).ToLower().Contains(term));
+        }
+
+        var totalCount = await query.CountAsync();
+        var pageSize = 10;
+        var items = await query
+            .OrderByDescending(j => j.ArchivedDate)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(j => new JobOrderItemViewModel
+            {
+                Id = j.JobOrderId,
+                JobNumber = j.JobOrderNo,
+                JobOrderNumber = j.JobOrderNo,
+                OrderNumber = j.JobOrderNo,
+                CustomerName = j.Customer!.FirstName + " " + j.Customer.LastName,
+                CustomerInitials = GetInitials(j.Customer!.FirstName + " " + j.Customer.LastName),
+                DeviceType = j.Device!.DeviceType,
+                DeviceInfo = j.Device.DeviceType + " - " + j.Device.Brand + " " + j.Device.Model,
+                DeviceBrand = j.Device.Brand,
+                DeviceModel = j.Device.Model,
+                Status = j.Status,
+                TechnicianName = j.AssignedTechUser != null
+                    ? j.AssignedTechUser.FirstName + " " + j.AssignedTechUser.LastName
+                    : null,
+                CreatedAt = j.CreatedAt
+            })
+            .ToListAsync();
+
+        var viewModel = new JobOrderListViewModel
+        {
+            SearchTerm = search,
+            StatusFilter = status,
+            CurrentPage = page,
+            TotalCount = totalCount,
+            PageSize = pageSize,
+            JobOrders = items
+        };
+
+        return View(viewModel);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ArchiveJobOrder(long id)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var jobOrder = await _db.JobOrders.FirstOrDefaultAsync(j => j.ShopId == shopId && j.JobOrderId == id);
+        if (jobOrder == null) return NotFound();
+
+        jobOrder.IsArchived = true;
+        jobOrder.ArchivedDate = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        TempData["Success"] = $"Job order {jobOrder.JobOrderNo} archived successfully.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RestoreJobOrder(long id)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var jobOrder = await _db.JobOrders.FirstOrDefaultAsync(j => j.ShopId == shopId && j.JobOrderId == id);
+        if (jobOrder == null) return NotFound();
+
+        jobOrder.IsArchived = false;
+        jobOrder.ArchivedDate = null;
+        await _db.SaveChangesAsync();
+
+        TempData["Success"] = $"Job order {jobOrder.JobOrderNo} restored successfully.";
+        return RedirectToAction(nameof(Archive));
     }
 }

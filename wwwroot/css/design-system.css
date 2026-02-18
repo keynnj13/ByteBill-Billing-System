@@ -445,6 +445,31 @@ a:hover {
 }
 
 /* =========================================================
+   Status Indicators (dot + colored text)
+   ========================================================= */
+
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.status-indicator.status-lg {
+    font-size: 14px;
+}
+
+.status-pending { color: #d97706; }
+.status-info { color: #2563eb; }
+.status-primary { color: #4f46e5; }
+.status-warning { color: #ea580c; }
+.status-success { color: #16a34a; }
+.status-delivered { color: #0d9488; }
+.status-cancelled { color: #dc2626; }
+.status-muted { color: #64748b; }
+
+/* =========================================================
    Forms
    ========================================================= */
 
@@ -2534,6 +2559,16 @@ a:hover {
     background: hsl(240, 40%, 16%);
     color: hsl(240, 60%, 70%);
 }
+
+/* ── Status Indicators (dark) ── */
+[data-theme="dark"] .status-pending { color: hsl(45, 80%, 60%); }
+[data-theme="dark"] .status-info { color: hsl(213, 70%, 65%); }
+[data-theme="dark"] .status-primary { color: hsl(240, 60%, 70%); }
+[data-theme="dark"] .status-warning { color: hsl(25, 80%, 65%); }
+[data-theme="dark"] .status-success { color: hsl(145, 60%, 60%); }
+[data-theme="dark"] .status-delivered { color: hsl(173, 60%, 55%); }
+[data-theme="dark"] .status-cancelled { color: hsl(4, 70%, 65%); }
+[data-theme="dark"] .status-muted { color: var(--gray-500); }
 
 /* ── Buttons (dark) ── */
 [data-theme="dark"] .btn-secondary {

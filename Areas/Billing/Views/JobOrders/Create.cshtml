@@ -191,8 +191,8 @@
                             <input asp-for="Brand" class="form-input" placeholder="e.g., Lenovo, HP, Samsung" />
                         </div>
                         <div class="form-group">
-                            <label asp-for="Model" class="form-label">Model</label>
-                            <input asp-for="Model" class="form-input" placeholder="e.g., ThinkPad X1 Carbon" />
+                            <label asp-for="DeviceModel" class="form-label">Model</label>
+                            <input asp-for="DeviceModel" class="form-input" placeholder="e.g., ThinkPad X1 Carbon" />
                         </div>
                     </div>
                     <div class="form-group">
@@ -438,7 +438,7 @@
 
         var deviceType = document.getElementById('DeviceType').value;
         var brand = document.getElementById('Brand').value;
-        var model = document.getElementById('Model').value;
+        var model = document.getElementById('DeviceModel').value;
         var serial = document.getElementById('SerialNumber').value;
         var deviceText = deviceType + (brand ? ' - ' + brand : '') + (model ? ' ' + model : '') + (serial ? ' (S/N: ' + serial + ')' : '');
         document.getElementById('reviewDevice').textContent = deviceText || '—';
@@ -642,7 +642,7 @@
         el.classList.add('selected');
         document.getElementById('DeviceType').value = device.deviceType;
         document.getElementById('Brand').value = device.brand;
-        document.getElementById('Model').value = device.model;
+        document.getElementById('DeviceModel').value = device.model;
         document.getElementById('SerialNumber').value = device.serialNo || '';
         document.getElementById('newDeviceForm').style.display = 'none';
     }
@@ -651,7 +651,7 @@
         document.querySelectorAll('.device-option').forEach(function (d) { d.classList.remove('selected'); });
         document.getElementById('DeviceType').value = '';
         document.getElementById('Brand').value = '';
-        document.getElementById('Model').value = '';
+        document.getElementById('DeviceModel').value = '';
         document.getElementById('SerialNumber').value = '';
         document.getElementById('newDeviceForm').style.display = 'block';
     }

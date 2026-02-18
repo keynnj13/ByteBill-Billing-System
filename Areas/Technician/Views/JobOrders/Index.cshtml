@@ -1,3 +1,4 @@
+@model JobOrderListViewModel
 @{
     ViewData["Title"] = "My Job Orders";
 }
@@ -7,14 +8,177 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">My Job Orders</h1>
-        <p class="text-muted">View and manage your assigned job orders</p>
+        <p class="page-subtitle">@Model.TotalCount assigned job orders</p>
     </div>
 </div>
 
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success" style="margin-bottom: 20px; padding: 12px 16px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; color: #065f46; font-size: 14px;">
+        @TempData["Success"]
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger" style="margin-bottom: 20px; padding: 12px 16px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #991b1b; font-size: 14px;">
+        @TempData["Error"]
+    </div>
+}
+
+<!-- Status Quick Filters -->
+<div class="status-filters" style="margin-bottom: 20px;">
+    <a href="@Url.Action("Index")" class="status-filter-btn @(Model.StatusFilter == null ? "active" : "")">
+        All <span class="filter-count">@Model.TotalCount</span>
+    </a>
+    @{
+        var statusFilters = new[] {
+            (Status: JobOrderStatus.Pending, Label: "Pending"),
+            (Status: JobOrderStatus.CheckedIn, Label: "Checked In"),
+            (Status: JobOrderStatus.Diagnosis, Label: "Diagnosis"),
+            (Status: JobOrderStatus.InProgress, Label: "In Progress"),
+            (Status: JobOrderStatus.WaitingForParts, Label: "Waiting Parts"),
+            (Status: JobOrderStatus.Completed, Label: "Completed"),
+            (Status: JobOrderStatus.Delivered, Label: "Delivered"),
+            (Status: JobOrderStatus.Cancelled, Label: "Cancelled")
+        };
+    }
+    @foreach (var sf in statusFilters)
+    {
+        <a href="@Url.Action("Index", new { status = sf.Status })" class="status-filter-btn @(Model.StatusFilter == sf.Status ? "active" : "")">
+            @sf.Label
+        </a>
+    }
+</div>
+
 <div class="card">
-    <div class="card-body text-center py-5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-        <h3 class="text-muted">Coming Soon</h3>
-        <p class="text-muted">This module is currently under development.</p>
+    <div class="card-body p-0">
+        @if (Model.JobOrders.Any())
+        {
+            <div class="table-container">
+                <table class="table" style="table-layout: fixed;">
+                    <colgroup>
+                        <col style="width: 14%;" />
+                        <col style="width: 20%;" />
+                        <col style="width: 18%;" />
+                        <col style="width: 13%;" />
+                        <col style="width: 15%;" />
+                        <col style="width: 10%;" />
+                        <col style="width: 10%;" />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Customer</th>
+                            <th>Device</th>
+                            <th class="text-center">Status</th>
+                            <th>Problem</th>
+                            <th>Created</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var order in Model.JobOrders)
+                        {
+                            <tr class="clickable-row" onclick="window.location.href='@Url.Action("Details", "JobOrders", new { area = "Technician", id = order.Id })'">
+                                <td>
+                                    <span class="order-link">@order.JobNumber</span>
+                                </td>
+                                <td>
+                                    <div class="customer-cell">
+                                        <div class="avatar-xs">@order.CustomerInitials</div>
+                                        <span class="customer-text">@order.CustomerName</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="device-cell">
+                                        <span class="device-text">@order.DeviceType</span>
+                                        @if (!string.IsNullOrEmpty(order.DeviceBrand))
+                                        {
+                                            <span class="device-sub">@order.DeviceBrand @order.DeviceModel</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="text-center"><span class="status-indicator @order.StatusClass">@order.StatusDisplay</span></td>
+                                <td>
+                                    <span class="problem-text" title="@order.ProblemDescription">@(order.ProblemDescription?.Length > 40 ? order.ProblemDescription[..40] + "..." : order.ProblemDescription ?? "")</span>
+                                </td>
+                                <td><span class="date-text">@order.CreatedAt.ToString("MMM d")</span></td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="@Url.Action("Details", "JobOrders", new { area = "Technician", id = order.Id })" class="btn-action" title="View Details" onclick="event.stopPropagation();">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel
+                {
+                    CurrentPage = Model.CurrentPage,
+                    TotalPages = Model.TotalPages,
+                    TotalItems = Model.TotalCount,
+                    PageSize = Model.PageSize,
+                    BaseUrl = Url.Action("Index", "JobOrders", new { area = "Technician", status = Model.StatusFilter })!
+                })" />
+            }
+        }
+        else
+        {
+            <div class="empty-state" style="padding: 60px 20px; text-align: center;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;">
+                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"></path>
+                    <rect x="9" y="3" width="6" height="4" rx="1"></rect>
+                    <path d="M9 14l2 2 4-4"></path>
+                </svg>
+                <h3 style="color: #6b7280; font-size: 16px; margin-bottom: 4px;">No job orders found</h3>
+                <p style="color: #9ca3af; font-size: 14px;">
+                    @if (Model.StatusFilter.HasValue)
+                    {
+                        <span>No @Model.StatusFilter.Value orders assigned to you.</span>
+                    }
+                    else
+                    {
+                        <span>You don't have any assigned job orders yet.</span>
+                    }
+                </p>
+            </div>
+        }
     </div>
 </div>
+
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: #6b7280; }
+    .status-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+    .status-filter-btn { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; color: #6b7280; background: #f3f4f6; border: 1px solid transparent; text-decoration: none; transition: all 0.15s; }
+    .status-filter-btn:hover { background: #e5e7eb; color: #374151; }
+    .status-filter-btn.active { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; font-weight: 600; }
+    .filter-count { background: rgba(0,0,0,0.08); padding: 1px 6px; border-radius: 10px; font-size: 11px; margin-left: 4px; }
+    .status-filter-btn.active .filter-count { background: rgba(37,99,235,0.12); }
+    .customer-cell { display: flex; align-items: center; gap: 8px; }
+    .avatar-xs { width: 28px; height: 28px; border-radius: 50%; background: rgba(59,130,246,0.1); color: #3b82f6; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 11px; flex-shrink: 0; }
+    .customer-text { font-size: 13px; font-weight: 500; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .order-link { font-weight: 600; color: #3b82f6; font-size: 13px; }
+    .device-cell { display: flex; flex-direction: column; gap: 1px; }
+    .device-text { font-size: 13px; color: #374151; }
+    .device-sub { font-size: 12px; color: #9ca3af; }
+    .problem-text { font-size: 12px; color: #6b7280; }
+    .date-text { font-size: 13px; color: #6b7280; }
+    .action-buttons { display: flex; gap: 4px; justify-content: flex-end; }
+    .btn-action { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: #6b7280; transition: all 0.15s; border: none; background: none; cursor: pointer; text-decoration: none; }
+    .btn-action:hover { background: #f3f4f6; color: #3b82f6; }
+    .clickable-row { cursor: pointer; transition: background-color 0.15s ease; }
+    .clickable-row:hover { background-color: #f0f7ff; }
+    @@media (max-width: 768px) {
+        .page-header { flex-direction: column; gap: 12px; }
+        .table { table-layout: auto !important; }
+        .status-filters { overflow-x: auto; flex-wrap: nowrap; }
+    }
+</style>

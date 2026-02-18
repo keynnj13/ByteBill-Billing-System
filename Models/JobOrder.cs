@@ -13,9 +13,13 @@ public class JobOrder
     public string JobOrderNo { get; set; } = string.Empty;
     public string ProblemReported { get; set; } = string.Empty;
     public string? DiagnosisNotes { get; set; }
-    public JobOrderStatus Status { get; set; } = JobOrderStatus.Created;
+    public string Priority { get; set; } = "Normal";
+    public DateTime? EstimatedCompletionDate { get; set; }
+    public JobOrderStatus Status { get; set; } = JobOrderStatus.Pending;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+    public bool IsArchived { get; set; } = false;
+    public DateTime? ArchivedDate { get; set; }
 
     // Navigation properties
     public Shop? Shop { get; set; }

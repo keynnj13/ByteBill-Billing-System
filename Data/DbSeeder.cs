@@ -322,7 +322,7 @@ public static class DbSeeder
             (6, 6,  "iPad charging port loose, intermittent charging",                    JobOrderStatus.Diagnosis,         7),
             (7, 7,  "Printer head clogged, prints with streaks",                          JobOrderStatus.WaitingForParts,   5),
             (8, 8,  "Blue screen errors after Windows update",                            JobOrderStatus.Pending,           3),
-            (9, 9,  "Phone stuck on boot loop after software update",                     JobOrderStatus.Created,           1),
+            (9, 9,  "Phone stuck on boot loop after software update",                     JobOrderStatus.Pending,           1),
         };
 
         var jobOrders = new List<JobOrder>();
@@ -339,7 +339,7 @@ public static class DbSeeder
                 AssignedTechUserId = techUser.UserId,
                 JobOrderNo = $"JO-2026-{(i + 1).ToString("D4")}",
                 ProblemReported = problem,
-                DiagnosisNotes = status >= JobOrderStatus.Diagnosed ? "Diagnosed: " + problem : null,
+                DiagnosisNotes = status >= JobOrderStatus.InProgress ? "Diagnosed: " + problem : null,
                 Status = status,
                 CreatedAt = DateTime.UtcNow.AddDays(-daysAgo),
                 UpdatedAt = DateTime.UtcNow.AddDays(-daysAgo + 1)
@@ -389,7 +389,7 @@ public static class DbSeeder
             db.JobOrderStatusHistories.Add(new JobOrderStatusHistory
             {
                 JobOrderId = jo.JobOrderId,
-                OldStatus = JobOrderStatus.Created.ToString(),
+                OldStatus = JobOrderStatus.Pending.ToString(),
                 NewStatus = JobOrderStatus.Completed.ToString(),
                 ChangedByUserId = techUser.UserId,
                 ChangedAt = jo.CreatedAt.AddDays(2),

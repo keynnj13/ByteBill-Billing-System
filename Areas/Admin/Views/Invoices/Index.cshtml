@@ -88,6 +88,7 @@
                             <th class="text-right">Balance</th>
                             <th class="text-center">Status</th>
                             <th class="text-center">Due Date</th>
+                            <th class="text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -126,6 +127,15 @@
                                     {
                                         <span class="text-muted">—</span>
                                     }
+                                </td>
+                                <td class="text-right">
+                                    <form asp-action="ArchiveInvoice" asp-controller="Invoices" asp-area="Admin" method="post" style="display: inline;" onclick="event.stopPropagation();">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@inv.Id" />
+                                        <button type="submit" class="btn-action" title="Archive" onclick="return confirm('Archive this invoice?');">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                         }

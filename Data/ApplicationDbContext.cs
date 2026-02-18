@@ -294,10 +294,12 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.JobOrderNo).HasMaxLength(30).IsRequired();
             entity.Property(e => e.ProblemReported).HasMaxLength(255).IsRequired();
             entity.Property(e => e.DiagnosisNotes).HasMaxLength(255);
-            entity.Property(e => e.Status).HasMaxLength(30).IsRequired().HasDefaultValue(JobOrderStatus.Created)
+            entity.Property(e => e.Status).HasMaxLength(30).IsRequired().HasDefaultValue(JobOrderStatus.Pending)
                   .HasConversion<string>();
             entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime2(0)");
+            entity.Property(e => e.IsArchived).HasDefaultValue(false);
+            entity.Property(e => e.ArchivedDate).HasColumnType("datetime2(0)");
             entity.HasIndex(e => new { e.ShopId, e.JobOrderNo }).IsUnique();
             entity.HasIndex(e => e.ShopId);
             entity.HasIndex(e => e.CustomerId);
@@ -438,6 +440,8 @@ public class ApplicationDbContext : DbContext
                   .HasConversion<string>();
             entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
             entity.Property(e => e.DueDate).HasColumnType("datetime2(0)");
+            entity.Property(e => e.IsArchived).HasDefaultValue(false);
+            entity.Property(e => e.ArchivedDate).HasColumnType("datetime2(0)");
             entity.HasIndex(e => new { e.ShopId, e.InvoiceNo }).IsUnique();
             entity.HasIndex(e => e.JobOrderId).IsUnique(); // 1:1 with JOB_ORDERS
             entity.HasIndex(e => e.ShopId);

@@ -18,6 +18,8 @@ public class Invoice
     public InvoiceStatus Status { get; set; } = InvoiceStatus.Unpaid;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? DueDate { get; set; }
+    public bool IsArchived { get; set; } = false;
+    public DateTime? ArchivedDate { get; set; }
 
     // Navigation properties
     public Shop? Shop { get; set; }

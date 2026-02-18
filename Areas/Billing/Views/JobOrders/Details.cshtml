@@ -9,7 +9,7 @@
     <div>
         <h1 class="page-title">@Model.JobNumber</h1>
         <p class="page-subtitle">
-            <span class="badge @Model.StatusClass">@Model.StatusDisplay</span>
+            <span class="status-indicator @Model.StatusClass">@Model.StatusDisplay</span>
             <span class="text-muted" style="margin-left: 8px;">Created @Model.CreatedAt.ToString("MMM dd, yyyy")</span>
         </p>
     </div>
@@ -67,11 +67,29 @@
                     </div>
                     <div class="detail-field">
                         <span class="detail-label">Model</span>
-                        <span class="detail-value">@(Model.Model ?? "—")</span>
+                        <span class="detail-value">@(Model.DeviceModel ?? "—")</span>
                     </div>
                     <div class="detail-field">
                         <span class="detail-label">Serial Number</span>
                         <span class="detail-value">@(Model.SerialNumber ?? "—")</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">Accessories</span>
+                        <span class="detail-value">@(Model.DeviceAccessories ?? "None")</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">Priority</span>
+                        @{
+                            var prClass = (Model.Priority ?? "Normal") switch
+                            {
+                                "Urgent" => "danger",
+                                "High" => "warning",
+                                "Normal" => "primary",
+                                "Low" => "secondary",
+                                _ => "secondary"
+                            };
+                        }
+                        <span class="badge badge-@prClass">@(Model.Priority ?? "Normal")</span>
                     </div>
                 </div>
             </div>

@@ -120,7 +120,6 @@ public class InvoicesController : Controller
                 .Include(j => j.Customer)
                 .Where(j => j.ShopId == shopId &&
                        (j.Status == Models.Enums.JobOrderStatus.Completed ||
-                        j.Status == Models.Enums.JobOrderStatus.ReadyForPickup ||
                         j.Status == Models.Enums.JobOrderStatus.Delivered) &&
                        !_db.Invoices.Any(i => i.JobOrderId == j.JobOrderId && i.Status != Models.Enums.InvoiceStatus.Void))
                 .OrderByDescending(j => j.CreatedAt)
@@ -308,5 +307,100 @@ public class InvoicesController : Controller
                 };
             }).ToList()
         };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  ARCHIVE
+    // ═══════════════════════════════════════════════════════════════════
+    [HttpGet]
+    public async Task<IActionResult> Archive(string? search, InvoiceStatus? status, int page = 1)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var query = _db.Invoices
+            .Where(i => i.ShopId == shopId && i.IsArchived)
+            .AsNoTracking();
+
+        if (status.HasValue)
+            query = query.Where(i => i.Status == status.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(i =>
+                i.InvoiceNo.ToLower().Contains(term) ||
+                (i.Customer!.FirstName + " " + i.Customer.LastName).ToLower().Contains(term));
+        }
+
+        var totalCount = await query.CountAsync();
+        var pageSize = 10;
+        var items = await query
+            .OrderByDescending(i => i.ArchivedDate)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(i => new InvoiceItemViewModel
+            {
+                Id = i.InvoiceId,
+                InvoiceNumber = i.InvoiceNo,
+                CustomerName = i.Customer!.FirstName + " " + i.Customer.LastName,
+                CustomerInitials = GetInitials(i.Customer!.FirstName + " " + i.Customer.LastName),
+                JobNumber = i.JobOrder!.JobOrderNo,
+                Status = i.Status,
+                Total = i.TotalAmount,
+                AmountPaid = i.AmountPaid,
+                Balance = i.Balance,
+                CreatedAt = i.InvoiceDate,
+                DueDate = i.DueDate
+            })
+            .ToListAsync();
+
+        var viewModel = new InvoiceListViewModel
+        {
+            SearchTerm = search,
+            StatusFilter = status,
+            CurrentPage = page,
+            TotalCount = totalCount,
+            PageSize = pageSize,
+            Invoices = items
+        };
+
+        return View(viewModel);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ArchiveInvoice(long id)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var invoice = await _db.Invoices.FirstOrDefaultAsync(i => i.ShopId == shopId && i.InvoiceId == id);
+        if (invoice == null) return NotFound();
+
+        invoice.IsArchived = true;
+        invoice.ArchivedDate = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        TempData["Success"] = $"Invoice {invoice.InvoiceNo} archived successfully.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RestoreInvoice(long id)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var invoice = await _db.Invoices.FirstOrDefaultAsync(i => i.ShopId == shopId && i.InvoiceId == id);
+        if (invoice == null) return NotFound();
+
+        invoice.IsArchived = false;
+        invoice.ArchivedDate = null;
+        await _db.SaveChangesAsync();
+
+        TempData["Success"] = $"Invoice {invoice.InvoiceNo} restored successfully.";
+        return RedirectToAction(nameof(Archive));
     }
 }

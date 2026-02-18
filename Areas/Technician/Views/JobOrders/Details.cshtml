@@ -1,0 +1,325 @@
+@model JobOrderDetailViewModel
+@{
+    ViewData["Title"] = Model.OrderNumber;
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "My Job Orders", Url = Url.Action("Index", "JobOrders") }, new() { Label = Model.OrderNumber, IsActive = true } } })" />
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success" style="margin-bottom: 20px; padding: 12px 16px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; color: #065f46; font-size: 14px;">
+        @TempData["Success"]
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger" style="margin-bottom: 20px; padding: 12px 16px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #991b1b; font-size: 14px;">
+        @TempData["Error"]
+    </div>
+}
+
+<!-- Header -->
+<div class="detail-header">
+    <div class="detail-header-left">
+        <h1 class="detail-title">@Model.OrderNumber</h1>
+        <p class="detail-subtitle">Created @Model.CreatedAt.ToString("MMMM d, yyyy 'at' h:mm tt")</p>
+    </div>
+    <div class="detail-header-right">
+        <span class="status-indicator status-lg @Model.StatusClass">@Model.StatusDisplay</span>
+    </div>
+</div>
+
+<!-- Main Content Grid -->
+<div class="detail-grid">
+    <!-- Left Column: Main Info -->
+    <div class="detail-main">
+        <!-- Device Information -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                    Device Information
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Device Type</span>
+                        <span class="info-value">@Model.DeviceType</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Brand</span>
+                        <span class="info-value">@(Model.Brand ?? "N/A")</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Model</span>
+                        <span class="info-value">@(Model.DeviceModel ?? "N/A")</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Serial Number</span>
+                        <span class="info-value">@(Model.DeviceSerial ?? "Not provided")</span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.DeviceAccessories))
+                    {
+                        <div class="info-item full-width">
+                            <span class="info-label">Accessories</span>
+                            <span class="info-value">@Model.DeviceAccessories</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Issue Description -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                    Issue Description
+                </h3>
+            </div>
+            <div class="card-body">
+                <p class="issue-text">@(Model.IssueDescription ?? Model.ProblemReported ?? "No description provided")</p>
+            </div>
+        </div>
+
+        <!-- Diagnosis Notes -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    Diagnosis Notes
+                </h3>
+            </div>
+            <div class="card-body">
+                @if (!string.IsNullOrWhiteSpace(Model.TechnicianNotes))
+                {
+                    <pre class="notes-text">@Model.TechnicianNotes</pre>
+                }
+                else
+                {
+                    <p class="text-muted" style="font-size: 14px;">No diagnosis notes yet.</p>
+                }
+
+                <!-- Add Notes Form -->
+                @if (Model.Status != JobOrderStatus.Completed && Model.Status != JobOrderStatus.Delivered && Model.Status != JobOrderStatus.Cancelled)
+                {
+                    <form asp-action="AddNotes" asp-controller="JobOrders" asp-area="Technician" method="post" style="margin-top: 16px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <textarea name="notes" class="form-input" rows="3" placeholder="Add your diagnosis notes, findings, or repair updates..." required style="font-size: 13px;"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-outline-primary btn-sm">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            Add Notes
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+
+        <!-- Services & Parts -->
+        @if (Model.LineItems.Any())
+        {
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                        Services & Parts
+                    </h3>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-container">
+                        <table class="table table-compact">
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Type</th>
+                                    <th class="text-right">Qty</th>
+                                    <th class="text-right">Price</th>
+                                    <th class="text-right">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.LineItems)
+                                {
+                                    <tr>
+                                        <td>@item.Description</td>
+                                        <td><span class="badge @(item.Type == "Service" ? "badge-primary" : "badge-muted")">@item.Type</span></td>
+                                        <td class="text-right">@item.Quantity</td>
+                                        <td class="text-right">@item.UnitPrice.ToString("C")</td>
+                                        <td class="text-right">@item.Total.ToString("C")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="4" class="text-right"><strong>Total</strong></td>
+                                    <td class="text-right"><strong>@Model.Total.ToString("C")</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Right Column: Sidebar -->
+    <div class="detail-sidebar">
+        <!-- Update Status -->
+        @if (Model.Status != JobOrderStatus.Completed && Model.Status != JobOrderStatus.Delivered && Model.Status != JobOrderStatus.Cancelled)
+        {
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Update Status</h3>
+                </div>
+                <div class="card-body">
+                    <form asp-action="UpdateStatus" asp-controller="JobOrders" asp-area="Technician" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <select name="status" class="form-select">
+                                @{
+                                    var allowedTransitions = Model.Status switch
+                                    {
+                                        JobOrderStatus.Pending => new[] { JobOrderStatus.CheckedIn },
+                                        JobOrderStatus.CheckedIn => new[] { JobOrderStatus.Diagnosis },
+                                        JobOrderStatus.Diagnosis => new[] { JobOrderStatus.InProgress, JobOrderStatus.WaitingForParts },
+                                        JobOrderStatus.InProgress => new[] { JobOrderStatus.Completed, JobOrderStatus.WaitingForParts },
+                                        JobOrderStatus.WaitingForParts => new[] { JobOrderStatus.InProgress },
+                                        _ => Array.Empty<JobOrderStatus>()
+                                    };
+                                }
+                                @foreach (var s in allowedTransitions)
+                                {
+                                    <option value="@s">@s</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <textarea name="notes" class="form-input" rows="2" placeholder="Optional notes..." style="font-size: 13px;"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm" style="width: 100%;">
+                            Update Status
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+
+        <!-- Customer Info -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Customer</h3>
+            </div>
+            <div class="card-body">
+                <div class="sidebar-customer">
+                    <div class="avatar-md">@Model.CustomerInitials</div>
+                    <div>
+                        <p class="customer-name-lg">@Model.CustomerName</p>
+                        @if (!string.IsNullOrEmpty(Model.CustomerEmail))
+                        {
+                            <p class="customer-contact"><a href="mailto:@Model.CustomerEmail">@Model.CustomerEmail</a></p>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.CustomerPhone))
+                        {
+                            <p class="customer-contact">@Model.CustomerPhone</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Timeline</h3>
+            </div>
+            <div class="card-body">
+                @if (Model.Timeline.Any())
+                {
+                    <div class="timeline">
+                        @foreach (var entry in Model.Timeline)
+                        {
+                            <div class="timeline-item">
+                                <div class="timeline-marker"></div>
+                                <div class="timeline-content">
+                                    <p class="timeline-title">@entry.Title</p>
+                                    <p class="timeline-desc">@entry.Description</p>
+                                    <p class="timeline-meta">@entry.Timestamp.ToString("MMM d, h:mm tt")</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted" style="font-size: 13px;">No timeline events yet.</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Back Button -->
+<div style="margin-top: 24px;">
+    <a href="@Url.Action("Index", "JobOrders", new { area = "Technician" })" class="btn btn-ghost">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+        Back to My Job Orders
+    </a>
+</div>
+
+<style>
+    .detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .detail-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .detail-subtitle { font-size: 14px; color: #6b7280; }
+    .badge-lg { font-size: 14px; padding: 6px 16px; }
+
+    .detail-grid { display: grid; grid-template-columns: 1fr 340px; gap: 24px; }
+    .detail-main { display: flex; flex-direction: column; gap: 20px; }
+    .detail-sidebar { display: flex; flex-direction: column; gap: 20px; }
+
+    .card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid #f3f4f6; }
+    .card-title { font-size: 14px; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 8px; margin: 0; }
+    .card-body { padding: 20px; }
+    .card-body.p-0 { padding: 0; }
+
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .info-item { display: flex; flex-direction: column; gap: 4px; }
+    .info-item.full-width { grid-column: 1 / -1; }
+    .info-label { font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; }
+    .info-value { font-size: 14px; color: #1f2937; font-weight: 500; }
+
+    .issue-text { font-size: 14px; color: #374151; line-height: 1.6; margin: 0; }
+    .notes-text { font-size: 13px; color: #374151; line-height: 1.6; background: #f9fafb; padding: 12px 16px; border-radius: 8px; border: 1px solid #e5e7eb; white-space: pre-wrap; font-family: inherit; margin: 0; }
+
+    .sidebar-customer { display: flex; align-items: center; gap: 12px; }
+    .avatar-md { width: 40px; height: 40px; border-radius: 50%; background: rgba(59,130,246,0.1); color: #3b82f6; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; flex-shrink: 0; }
+    .customer-name-lg { font-size: 15px; font-weight: 600; color: #1f2937; margin: 0; }
+    .customer-contact { font-size: 13px; color: #6b7280; margin: 2px 0 0 0; }
+    .customer-contact a { color: #3b82f6; text-decoration: none; }
+    .customer-contact a:hover { text-decoration: underline; }
+
+    .timeline { position: relative; }
+    .timeline-item { display: flex; gap: 12px; padding-bottom: 16px; position: relative; }
+    .timeline-item:last-child { padding-bottom: 0; }
+    .timeline-item:not(:last-child)::before { content: ''; position: absolute; left: 5px; top: 14px; bottom: 0; width: 2px; background: #e5e7eb; }
+    .timeline-marker { width: 12px; height: 12px; border-radius: 50%; background: #3b82f6; flex-shrink: 0; margin-top: 2px; }
+    .timeline-content { flex: 1; }
+    .timeline-title { font-size: 13px; font-weight: 600; color: #374151; margin: 0; }
+    .timeline-desc { font-size: 12px; color: #6b7280; margin: 2px 0 0 0; }
+    .timeline-meta { font-size: 11px; color: #9ca3af; margin: 4px 0 0 0; }
+
+    .btn-outline-primary { background: white; color: #3b82f6; border: 1px solid #3b82f6; border-radius: 8px; padding: 6px 14px; font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; }
+    .btn-outline-primary:hover { background: #eff6ff; }
+    .btn-sm { padding: 6px 14px; font-size: 13px; }
+
+    @@media (max-width: 768px) {
+        .detail-grid { grid-template-columns: 1fr; }
+        .detail-header { flex-direction: column; gap: 12px; }
+        .info-grid { grid-template-columns: 1fr; }
+    }
+</style>

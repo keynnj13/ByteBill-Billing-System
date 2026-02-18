@@ -11,20 +11,7 @@
         <p class="text-muted">Created @Model.CreatedAt.ToString("MMMM d, yyyy 'at' h:mm tt")</p>
     </div>
     <div class="page-actions">
-        @{
-            var statusClass = Model.Status switch
-            {
-                JobOrderStatus.CheckedIn => "info",
-                JobOrderStatus.Diagnosis => "warning",
-                JobOrderStatus.WaitingForParts => "secondary",
-                JobOrderStatus.InProgress => "primary",
-                JobOrderStatus.Completed => "success",
-                JobOrderStatus.ReadyForPickup => "info",
-                JobOrderStatus.Delivered => "success",
-                _ => "secondary"
-            };
-        }
-        <span class="badge badge-lg badge-@statusClass">@Model.Status</span>
+        <span class="status-indicator status-lg @Model.StatusClass">@Model.StatusDisplay</span>
         @if (Model.Status == JobOrderStatus.Completed && !Model.HasInvoice)
         {
             <a asp-action="Create" asp-controller="Invoices" asp-route-jobOrderId="@Model.Id" class="btn btn-primary">Create Invoice</a>

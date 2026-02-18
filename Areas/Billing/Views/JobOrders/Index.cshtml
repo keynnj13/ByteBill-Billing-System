@@ -48,12 +48,13 @@
             <div class="table-container">
                 <table class="table" style="table-layout: fixed;">
                     <colgroup>
-                        <col style="width: 13%;" />
-                        <col style="width: 22%;" />
+                        <col style="width: 12%;" />
                         <col style="width: 20%;" />
-                        <col style="width: 13%;" />
-                        <col style="width: 17%;" />
+                        <col style="width: 18%;" />
+                        <col style="width: 12%;" />
                         <col style="width: 15%;" />
+                        <col style="width: 13%;" />
+                        <col style="width: 10%;" />
                     </colgroup>
                     <thead>
                         <tr>
@@ -63,6 +64,7 @@
                             <th class="text-center">Status</th>
                             <th>Technician</th>
                             <th class="text-right">Created</th>
+                            <th class="text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -77,9 +79,18 @@
                                     </div>
                                 </td>
                                 <td><span class="text-truncate-cell">@jo.DeviceInfo</span></td>
-                                <td class="text-center"><span class="badge @jo.StatusClass">@jo.StatusDisplay</span></td>
+                                <td class="text-center"><span class="status-indicator @jo.StatusClass">@jo.StatusDisplay</span></td>
                                 <td><span class="text-muted">@(jo.TechnicianName ?? "Unassigned")</span></td>
                                 <td class="text-right"><span class="text-muted text-sm">@jo.CreatedAt.ToString("MMM dd, yyyy")</span></td>
+                                <td class="text-right">
+                                    <form asp-action="ArchiveJobOrder" asp-controller="JobOrders" asp-area="Billing" method="post" style="display: inline;" onclick="event.stopPropagation();">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@jo.Id" />
+                                        <button type="submit" class="btn-action archive-btn" title="Archive" onclick="return confirm('Archive this job order?');">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                                        </button>
+                                    </form>
+                                </td>
                             </tr>
                         }
                     </tbody>

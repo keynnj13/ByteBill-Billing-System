@@ -50,14 +50,16 @@
                 }
             }
             
-            <a href="@(Model.BaseUrl)?page=@(Model.CurrentPage + 1)@searchQuery" 
-               class="pagination-btn @(!Model.HasNextPage ? "disabled" : "")"
-               @(!Model.HasNextPage ? "aria-disabled=true tabindex=-1" : "")
-               aria-label="Next page">
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                </svg>
-            </a>
+            @if (Model.HasNextPage)
+            {
+                <a href="@(Model.BaseUrl)?page=@(Model.CurrentPage + 1)@searchQuery" 
+                   class="pagination-btn"
+                   aria-label="Next page">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </a>
+            }
         </nav>
     </div>
 }
