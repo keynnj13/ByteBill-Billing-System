@@ -29,11 +29,11 @@ public class PaymentItemViewModel
     public string MethodDisplay => Method.ToString();
     public string MethodClass => Method switch
     {
-        PaymentMethod.Cash => "badge-success",
-        PaymentMethod.GCash => "badge-primary",
-        PaymentMethod.Card => "badge-info",
-        PaymentMethod.PayMongo => "badge-purple",
-        _ => "badge-muted"
+        PaymentMethod.Cash => "status-success",
+        PaymentMethod.GCash => "status-primary",
+        PaymentMethod.Card => "status-info",
+        PaymentMethod.PayMongo => "status-purple",
+        _ => "status-muted"
     };
     public decimal Amount { get; set; }
     public DateTime PaidAt { get; set; }

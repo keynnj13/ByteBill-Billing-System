@@ -2,6 +2,7 @@ using ByteBill_BS.Data;
 using ByteBill_BS.DTOs.Common;
 using ByteBill_BS.DTOs.Customers;
 using ByteBill_BS.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace ByteBill_BS.Services;
@@ -19,12 +20,16 @@ public class CustomerService : ICustomerService
 {
     private readonly ApplicationDbContext _db;
     private readonly IAuditService _audit;
+    private readonly IHttpContextAccessor _httpCtx;
 
-    public CustomerService(ApplicationDbContext db, IAuditService audit)
+    public CustomerService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx)
     {
         _db = db;
         _audit = audit;
+        _httpCtx = httpCtx;
     }
+
+    private string? ClientIp => _httpCtx.HttpContext?.Connection.RemoteIpAddress?.ToString();
 
     // ── List / Search ────────────────────────────────────────────────────
     public async Task<PagedResult<CustomerListItemDto>> GetListAsync(long shopId, PagedRequest req)
@@ -160,7 +165,7 @@ public class CustomerService : ICustomerService
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(shopId, userId, "Create", "Customer", customer.CustomerId,
-            $"Created customer '{customer.FullName}'.");
+            $"Created customer '{customer.FullName}'.", ClientIp);
 
         return new CustomerListItemDto
         {
@@ -215,7 +220,7 @@ public class CustomerService : ICustomerService
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(shopId, userId, "Update", "Customer", customer.CustomerId,
-            $"Updated customer '{customer.FullName}'.");
+            $"Updated customer '{customer.FullName}'.", ClientIp);
 
         // Re-read with computed fields
         return await GetListItemAsync(shopId, customerId);
@@ -234,7 +239,7 @@ public class CustomerService : ICustomerService
 
         await _audit.LogAsync(shopId, userId, customer.IsActive ? "Activate" : "Deactivate",
             "Customer", customer.CustomerId,
-            $"Customer '{customer.FullName}' set to {(customer.IsActive ? "Active" : "Inactive")}.");
+            $"Customer '{customer.FullName}' set to {(customer.IsActive ? "Active" : "Inactive")}.", ClientIp);
 
         return true;
     }

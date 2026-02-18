@@ -40,7 +40,7 @@ public class InventoryItemViewModel
     public bool IsLowStock { get; set; }
     
     public string StockStatus => IsLowStock ? "Low Stock" : "In Stock";
-    public string StockStatusClass => IsLowStock ? "badge-warning" : "badge-success";
+    public string StockStatusClass => IsLowStock ? "status-warning" : "status-success";
 }
 
 public class InventoryFormViewModel

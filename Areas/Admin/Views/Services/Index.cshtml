@@ -116,7 +116,7 @@
                                 <td><span class="svc-desc">@(service.Description ?? "—")</span></td>
                                 <td class="text-right"><span class="price-text price-bold">@service.Price.ToString("C")</span></td>
                                 <td class="text-center">
-                                    <span class="badge @(service.IsActive ? "badge-success" : "badge-muted")">
+                                    <span class="status-indicator @(service.IsActive ? "status-success" : "status-muted")">
                                         @(service.IsActive ? "Active" : "Inactive")
                                     </span>
                                 </td>

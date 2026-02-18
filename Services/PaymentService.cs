@@ -3,6 +3,7 @@ using ByteBill_BS.DTOs.Common;
 using ByteBill_BS.DTOs.Payments;
 using ByteBill_BS.Models;
 using ByteBill_BS.Models.Enums;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace ByteBill_BS.Services;
@@ -19,12 +20,16 @@ public class PaymentService : IPaymentService
 {
     private readonly ApplicationDbContext _db;
     private readonly IAuditService _audit;
+    private readonly IHttpContextAccessor _httpCtx;
 
-    public PaymentService(ApplicationDbContext db, IAuditService audit)
+    public PaymentService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx)
     {
         _db = db;
         _audit = audit;
+        _httpCtx = httpCtx;
     }
+
+    private string? ClientIp => _httpCtx.HttpContext?.Connection.RemoteIpAddress?.ToString();
 
     // ── List / Search / Filter ───────────────────────────────────────────
     public async Task<PagedResult<PaymentListItemDto>> GetListAsync(long shopId, PaymentPagedRequest req)
@@ -230,7 +235,7 @@ public class PaymentService : IPaymentService
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(shopId, userId, "Create", "Payment", payment.PaymentId,
-            $"Recorded payment of {req.Amount:C} via {method}. Allocated to {req.Allocations.Count} invoice(s).");
+            $"Recorded payment of {req.Amount:C} via {method}. Allocated to {req.Allocations.Count} invoice(s).", ClientIp);
 
         var detail = await GetDetailAsync(shopId, payment.PaymentId);
         return ApiResponse<PaymentDetailDto>.Ok(detail!);

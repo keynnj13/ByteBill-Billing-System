@@ -61,15 +61,15 @@ public class NavigationService : INavigationService
                 Items = new[]
                 {
                     new NavigationItem { Title = "Shops", Icon = "store", Url = "/SuperAdmin/Shops" },
-                    new NavigationItem { Title = "Users", Icon = "users", Url = "/SuperAdmin/Users" },
-                    new NavigationItem { Title = "System Logs", Icon = "file-text", Url = "/SuperAdmin/SystemLogs" }
+                    new NavigationItem { Title = "Users", Icon = "users", Url = "/SuperAdmin/Users" }
                 }
             },
             new NavigationSection
             {
-                Title = "Settings",
+                Title = "System",
                 Items = new[]
                 {
+                    new NavigationItem { Title = "System Logs", Icon = "file-text", Url = "/SuperAdmin/SystemLogs" },
                     new NavigationItem { Title = "Settings", Icon = "settings", Url = "/SuperAdmin/Settings" }
                 }
             }
@@ -123,15 +123,15 @@ public class NavigationService : INavigationService
                 Title = "Insights",
                 Items = new[]
                 {
-                    new NavigationItem { Title = "Reports", Icon = "bar-chart-2", Url = "/Admin/Reports" },
-                    new NavigationItem { Title = "Audit Logs", Icon = "shield", Url = "/Admin/AuditLogs" }
+                    new NavigationItem { Title = "Reports", Icon = "bar-chart-2", Url = "/Admin/Reports" }
                 }
             },
             new NavigationSection
             {
-                Title = "Settings",
+                Title = "System",
                 Items = new[]
                 {
+                    new NavigationItem { Title = "Audit Logs", Icon = "shield", Url = "/Admin/AuditLogs" },
                     new NavigationItem { Title = "Integrations", Icon = "plug", Url = "/Admin/Integrations" }
                 }
             }
@@ -225,7 +225,14 @@ public class NavigationService : INavigationService
                 Title = "Insights",
                 Items = new[]
                 {
-                    new NavigationItem { Title = "Reports", Icon = "bar-chart-2", Url = "/Auditor/Reports" },
+                    new NavigationItem { Title = "Reports", Icon = "bar-chart-2", Url = "/Auditor/Reports" }
+                }
+            },
+            new NavigationSection
+            {
+                Title = "System",
+                Items = new[]
+                {
                     new NavigationItem { Title = "Audit Logs", Icon = "shield", Url = "/Auditor/AuditLogs" }
                 }
             }

@@ -121,7 +121,7 @@
                         <tr>
                             <td class="ir-sku">@item.SKU</td>
                             <td class="fw-medium">@item.ItemName</td>
-                            <td><span class="badge badge-muted">@item.Category</span></td>
+                            <td><span class="status-indicator status-muted">@item.Category</span></td>
                             <td class="text-center ir-qty @(item.QtyOnHand == 0 ? "ir-qty-danger" : item.IsLowStock ? "ir-qty-warn" : "")">@item.QtyOnHand</td>
                             <td class="text-center text-muted">@item.ReorderLevel</td>
                             <td class="text-right">&#8369;@item.UnitCost.ToString("N2")</td>
@@ -129,15 +129,15 @@
                             <td>
                                 @if (item.QtyOnHand == 0)
                                 {
-                                    <span class="badge badge-danger">Out of Stock</span>
+                                    <span class="status-indicator status-danger">Out of Stock</span>
                                 }
                                 else if (item.IsLowStock)
                                 {
-                                    <span class="badge badge-warning">Low Stock</span>
+                                    <span class="status-indicator status-warning">Low Stock</span>
                                 }
                                 else
                                 {
-                                    <span class="badge badge-success">In Stock</span>
+                                    <span class="status-indicator status-success">In Stock</span>
                                 }
                             </td>
                         </tr>

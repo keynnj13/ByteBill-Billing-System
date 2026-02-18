@@ -1,6 +1,10 @@
+using ByteBill_BS.Data;
+using ByteBill_BS.Extensions;
 using ByteBill_BS.Models.Enums;
+using ByteBill_BS.ViewModels.Admin;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ByteBill_BS.Areas.Auditor.Controllers;
 
@@ -8,6 +12,13 @@ namespace ByteBill_BS.Areas.Auditor.Controllers;
 [Authorize]
 public class AuditLogsController : Controller
 {
+    private readonly ApplicationDbContext _db;
+
+    public AuditLogsController(ApplicationDbContext db)
+    {
+        _db = db;
+    }
+
     private bool IsAuthorized()
     {
         var roleClaim = User.Claims.FirstOrDefault(c => c.Type == "Role")?.Value;
@@ -15,59 +26,195 @@ public class AuditLogsController : Controller
     }
 
     [HttpGet]
-    public IActionResult Index(string? action, string? user, DateTime? startDate, DateTime? endDate, int page = 1)
+    public async Task<IActionResult> Index(string? search, string? entity, string? logAction, DateTime? dateFrom, DateTime? dateTo, int page = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
-        var logs = new[]
+        var shopId = User.GetShopId();
+        const int pageSize = 5;
+
+        var query = _db.AuditLogs
+            .Where(a => a.ShopId == shopId)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
         {
-            new { Id = 1, Action = "Invoice Created", Entity = "Invoice", EntityId = "INV-2024-0143", User = "Emily Brown", Role = "Billing", IpAddress = "192.168.1.105", Timestamp = DateTime.Now.AddMinutes(-30), Details = "Created invoice for Sarah Chen - $320.00" },
-            new { Id = 2, Action = "Payment Received", Entity = "Payment", EntityId = "PAY-2024-0142", User = "Emily Brown", Role = "Billing", IpAddress = "192.168.1.105", Timestamp = DateTime.Now.AddMinutes(-5), Details = "Recorded payment $450.00 via Credit Card for INV-2024-0142" },
-            new { Id = 3, Action = "Invoice Voided", Entity = "Invoice", EntityId = "INV-2024-0138", User = "John Anderson", Role = "Admin", IpAddress = "192.168.1.100", Timestamp = DateTime.Now.AddHours(-1), Details = "Voided invoice - Reason: Customer dispute" },
-            new { Id = 4, Action = "Job Order Updated", Entity = "JobOrder", EntityId = "JO-2024-0156", User = "David Lee", Role = "Technician", IpAddress = "192.168.1.110", Timestamp = DateTime.Now.AddHours(-2), Details = "Status changed from InProgress to Completed" },
-            new { Id = 5, Action = "Discount Applied", Entity = "Invoice", EntityId = "INV-2024-0140", User = "Emily Brown", Role = "Billing", IpAddress = "192.168.1.105", Timestamp = DateTime.Now.AddDays(-1), Details = "Applied $50.00 discount - loyal customer" },
-            new { Id = 6, Action = "User Login", Entity = "Auth", EntityId = "-", User = "John Anderson", Role = "Admin", IpAddress = "192.168.1.100", Timestamp = DateTime.Now.AddDays(-1), Details = "Successful login" },
-            new { Id = 7, Action = "Customer Created", Entity = "Customer", EntityId = "CUST-0157", User = "Emily Brown", Role = "Billing", IpAddress = "192.168.1.105", Timestamp = DateTime.Now.AddDays(-2), Details = "Created customer: Sarah Chen" }
+            var s = search.Trim().ToLower();
+            query = query.Where(a =>
+                a.EntityName.ToLower().Contains(s) ||
+                a.Action.ToLower().Contains(s) ||
+                (a.Details != null && a.Details.ToLower().Contains(s)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(entity))
+            query = query.Where(a => a.EntityName == entity);
+
+        if (!string.IsNullOrWhiteSpace(logAction))
+            query = query.Where(a => a.Action == logAction);
+
+        if (dateFrom.HasValue)
+            query = query.Where(a => a.CreatedAt >= dateFrom.Value);
+
+        if (dateTo.HasValue)
+            query = query.Where(a => a.CreatedAt <= dateTo.Value.AddDays(1));
+
+        var totalCount = await query.CountAsync();
+
+        var now = DateTime.UtcNow;
+        var todayStart = now.Date;
+        var weekStart = todayStart.AddDays(-7);
+
+        var allShopLogs = _db.AuditLogs.Where(a => a.ShopId == shopId);
+        var todayCount = await allShopLogs.CountAsync(a => a.CreatedAt >= todayStart);
+        var weekCount = await allShopLogs.CountAsync(a => a.CreatedAt >= weekStart);
+
+        var logs = await query
+            .OrderByDescending(a => a.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(a => new AuditLogItemViewModel
+            {
+                Id = a.AuditLogId,
+                Action = a.Action,
+                EntityName = a.EntityName,
+                EntityId = a.EntityId,
+                Details = a.Details,
+                IpAddress = a.IpAddress,
+                UserName = a.User != null ? a.User.FirstName + " " + a.User.LastName : "System",
+                UserInitials = a.User != null
+                    ? (a.User.FirstName.Length > 0 ? a.User.FirstName.Substring(0, 1) : "") +
+                      (a.User.LastName.Length > 0 ? a.User.LastName.Substring(0, 1) : "")
+                    : "SY",
+                CreatedAt = a.CreatedAt
+            })
+            .ToListAsync();
+
+        var entityNames = await _db.AuditLogs
+            .Where(a => a.ShopId == shopId)
+            .Select(a => a.EntityName)
+            .Distinct()
+            .OrderBy(e => e)
+            .ToListAsync();
+
+        var actionTypes = await _db.AuditLogs
+            .Where(a => a.ShopId == shopId)
+            .Select(a => a.Action)
+            .Distinct()
+            .OrderBy(a => a)
+            .ToListAsync();
+
+        var viewModel = new AuditLogListViewModel
+        {
+            SearchTerm = search,
+            EntityFilter = entity,
+            ActionFilter = logAction,
+            DateFrom = dateFrom,
+            DateTo = dateTo,
+            CurrentPage = page,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            TodayCount = todayCount,
+            ThisWeekCount = weekCount,
+            EntityNames = entityNames,
+            ActionTypes = actionTypes,
+            Logs = logs
         };
-        
-        ViewBag.Logs = logs;
-        ViewBag.ActionFilter = action;
-        ViewBag.UserFilter = user;
-        ViewBag.StartDate = startDate;
-        ViewBag.EndDate = endDate;
-        ViewBag.CurrentPage = page;
-        ViewBag.TotalCount = 1250;
-        
-        var actions = new[] { "Invoice Created", "Invoice Voided", "Payment Received", "Payment Voided", "Job Order Created", "Job Order Updated", "Customer Created", "Customer Updated", "User Login", "User Logout", "Discount Applied", "Refund Processed" };
-        var users = new[] { "John Anderson", "Emily Brown", "David Lee", "Emily Chen", "Robert Taylor" };
-        
-        ViewBag.Actions = actions;
-        ViewBag.Users = users;
-        
-        return View();
+
+        return View(viewModel);
     }
 
     [HttpGet]
-    public IActionResult Details(long id)
+    public async Task<IActionResult> Poll(string? search, string? entity, string? logAction, DateTime? dateFrom, DateTime? dateTo, int page = 1)
     {
-        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
-        ViewBag.Log = new
+        if (!IsAuthorized()) return Forbid();
+
+        var shopId = User.GetShopId();
+        const int pageSize = 5;
+
+        var query = _db.AuditLogs.Where(a => a.ShopId == shopId).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
         {
-            Id = id,
-            Action = "Invoice Voided",
-            Entity = "Invoice",
-            EntityId = "INV-2024-0138",
-            User = "John Anderson",
-            Role = "Admin",
-            IpAddress = "192.168.1.100",
-            UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
-            Timestamp = DateTime.Now.AddHours(-1),
-            Details = "Voided invoice - Reason: Customer dispute",
-            OldValues = "{ \"Status\": \"Sent\", \"Balance\": 150.00 }",
-            NewValues = "{ \"Status\": \"Void\", \"Balance\": 0.00, \"VoidReason\": \"Customer dispute\" }"
-        };
-        
-        return View();
+            var s = search.Trim().ToLower();
+            query = query.Where(a =>
+                a.EntityName.ToLower().Contains(s) ||
+                a.Action.ToLower().Contains(s) ||
+                (a.Details != null && a.Details.ToLower().Contains(s)));
+        }
+        if (!string.IsNullOrWhiteSpace(entity))
+            query = query.Where(a => a.EntityName == entity);
+        if (!string.IsNullOrWhiteSpace(logAction))
+            query = query.Where(a => a.Action == logAction);
+        if (dateFrom.HasValue)
+            query = query.Where(a => a.CreatedAt >= dateFrom.Value);
+        if (dateTo.HasValue)
+            query = query.Where(a => a.CreatedAt <= dateTo.Value.AddDays(1));
+
+        var totalCount = await query.CountAsync();
+        var now = DateTime.UtcNow;
+        var allShopLogs = _db.AuditLogs.Where(a => a.ShopId == shopId);
+        var todayCount = await allShopLogs.CountAsync(a => a.CreatedAt >= now.Date);
+        var weekCount = await allShopLogs.CountAsync(a => a.CreatedAt >= now.Date.AddDays(-7));
+
+        var logs = await query
+            .OrderByDescending(a => a.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(a => new
+            {
+                id = a.AuditLogId,
+                action = a.Action,
+                entityName = a.EntityName,
+                entityId = a.EntityId,
+                details = a.Details ?? "—",
+                ipAddress = a.IpAddress ?? "—",
+                userName = a.User != null ? a.User.FirstName + " " + a.User.LastName : "System",
+                createdAt = a.CreatedAt.ToString("MMM dd, h:mm tt"),
+                year = a.CreatedAt.ToString("yyyy"),
+                actionClass = GetActionClass(a.Action)
+            })
+            .ToListAsync();
+
+        return Json(new { totalCount, todayCount, weekCount, logs, totalPages = (int)Math.Ceiling(totalCount / (double)pageSize), currentPage = page });
+    }
+
+    private static string GetActionClass(string action) => action switch
+    {
+        "Login" or "Logout" => "status-info",
+        "Create" => "status-success",
+        "Update" or "Adjustment" => "status-warning",
+        "Archive" or "Deactivate" or "Delete" => "status-danger",
+        "Restore" or "Activate" => "status-purple",
+        "StatusChange" or "AssignTechnician" => "status-primary",
+        _ => "status-default"
+    };
+
+    [HttpGet]
+    public async Task<IActionResult> DetailsModal(long id)
+    {
+        if (!IsAuthorized()) return Forbid();
+
+        var shopId = User.GetShopId();
+        var log = await _db.AuditLogs
+            .Where(a => a.AuditLogId == id && a.ShopId == shopId)
+            .Select(a => new AuditLogDetailViewModel
+            {
+                Id = a.AuditLogId,
+                Action = a.Action,
+                EntityName = a.EntityName,
+                EntityId = a.EntityId,
+                Details = a.Details,
+                UserName = a.User != null ? a.User.FirstName + " " + a.User.LastName : "System",
+                UserEmail = a.User != null ? a.User.Email : "—",
+                CreatedAt = a.CreatedAt,
+                IpAddress = a.IpAddress,
+                OldValues = a.OldValues,
+                NewValues = a.NewValues
+            })
+            .FirstOrDefaultAsync();
+
+        if (log is null) return NotFound();
+
+        return PartialView("_DetailsModal", log);
     }
 }

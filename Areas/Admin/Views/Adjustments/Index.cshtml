@@ -104,10 +104,10 @@
                 <tbody>
                     @foreach (var req in pendingRequests)
                     {
-                        var badgeClass = req.Type == "Credit" ? "badge-info" : req.Type == "Refund" ? "badge-warning" : "badge-purple";
+                        var badgeClass = req.Type == "Credit" ? "status-info" : req.Type == "Refund" ? "status-warning" : "status-purple";
                         var amountClass = req.Amount < 0 ? "adj-amount-credit" : "adj-amount-debit";
                         <tr>
-                            <td><span class="badge @badgeClass">@req.Type</span></td>
+                            <td><span class="status-indicator @badgeClass">@req.Type</span></td>
                             <td><span class="adj-inv-link">@req.InvoiceNumber</span></td>
                             <td><span class="adj-customer">@req.CustomerName</span></td>
                             <td style="text-align: right;"><span class="@amountClass">@(req.Amount < 0 ? "−" : "+")₱@(Math.Abs(req.Amount).ToString("N2"))</span></td>
@@ -167,18 +167,18 @@
             <tbody>
                 @foreach (var adj in allAdjustments)
                 {
-                    var badgeClass = adj.Type == "Credit" ? "badge-info" : adj.Type == "Refund" ? "badge-warning" : "badge-purple";
-                    var statusBadge = adj.Status == "Approved" ? "badge-success" : adj.Status == "Rejected" ? "badge-destructive" : "badge-pending";
+                    var badgeClass = adj.Type == "Credit" ? "status-info" : adj.Type == "Refund" ? "status-warning" : "status-purple";
+                    var statusBadge = adj.Status == "Approved" ? "status-success" : adj.Status == "Rejected" ? "status-danger" : "status-pending";
                     var amountClass = adj.Amount < 0 ? "adj-amount-credit" : "adj-amount-debit";
                     <tr class="clickable-row">
-                        <td><span class="badge @badgeClass">@adj.Type</span></td>
+                        <td><span class="status-indicator @badgeClass">@adj.Type</span></td>
                         <td><span class="adj-inv-link">@adj.InvoiceNumber</span></td>
                         <td><span class="adj-customer">@adj.CustomerName</span></td>
                         <td style="text-align: right;"><span class="@amountClass">@(adj.Amount < 0 ? "−" : "+")₱@(Math.Abs(adj.Amount).ToString("N2"))</span></td>
                         <td><span class="adj-reason">@adj.Reason</span></td>
                         <td><span class="adj-requested-by">@adj.RequestedBy</span></td>
                         <td><span class="adj-reviewed-by">@adj.ApprovedBy</span></td>
-                        <td><span class="badge @statusBadge">@adj.Status</span></td>
+                        <td><span class="status-indicator @statusBadge">@adj.Status</span></td>
                         <td><span class="adj-date">@adj.CreatedAt.ToString("MMM dd, yyyy")</span></td>
                     </tr>
                 }

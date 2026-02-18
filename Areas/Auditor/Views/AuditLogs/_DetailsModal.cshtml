@@ -1,0 +1,101 @@
+@model AuditLogDetailViewModel
+@using ByteBill_BS.ViewModels.Admin
+
+<div class="modal-detail-body">
+    <!-- Header -->
+    <div style="display: flex; align-items: center; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 20px;">
+        <div style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            background: @(Model.Action.ToLower() switch { "create" or "insert" => "#ecfdf5", "update" or "edit" => "#e0f2fe", "delete" or "remove" => "#fef2f2", _ => "#f8fafc" });
+            color: @(Model.Action.ToLower() switch { "create" or "insert" => "#059669", "update" or "edit" => "#0284c7", "delete" or "remove" => "#dc2626", _ => "#64748b" });">
+            @if (Model.Action.ToLower() is "create" or "insert")
+            {
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            }
+            else if (Model.Action.ToLower() is "update" or "edit")
+            {
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="m18.5 2.5 2.5 2.5L12 14l-4 1 1-4 9-9.5z"></path></svg>
+            }
+            else if (Model.Action.ToLower() is "delete" or "remove")
+            {
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            }
+            else
+            {
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            }
+        </div>
+        <div>
+            <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: var(--text-primary);">@Model.Action — @Model.EntityName</h3>
+            <div style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">
+                @Model.CreatedAt.ToString("MMMM dd, yyyy 'at' h:mm:ss tt")
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Details -->
+    <div class="detail-grid" style="margin-bottom: 20px;">
+        <div class="detail-item">
+            <span class="detail-label">Action</span>
+            <span class="detail-value">@Model.Action</span>
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Entity</span>
+            <span class="detail-value">@Model.EntityName @(Model.EntityId.HasValue ? $"#{Model.EntityId}" : "")</span>
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Performed By</span>
+            <span class="detail-value">@Model.UserName</span>
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Email</span>
+            <span class="detail-value">@Model.UserEmail</span>
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">IP Address</span>
+            <span class="detail-value">@(Model.IpAddress ?? "—")</span>
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Event ID</span>
+            <span class="detail-value">#@Model.Id</span>
+        </div>
+    </div>
+
+    <!-- Details / Description -->
+    @if (!string.IsNullOrEmpty(Model.Details))
+    {
+        <div class="form-section">
+            <h4 class="form-section-title">Description</h4>
+            <div style="background: #f8fafc; border-radius: 8px; padding: 14px; font-size: 13px; color: var(--text-secondary); line-height: 1.6; border: 1px solid #e2e8f0;">
+                @Model.Details
+            </div>
+        </div>
+    }
+
+    <!-- Old / New Values -->
+    @if (!string.IsNullOrEmpty(Model.OldValues) || !string.IsNullOrEmpty(Model.NewValues))
+    {
+        <div class="form-section" style="margin-top: 16px;">
+            <h4 class="form-section-title">Changes</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                @if (!string.IsNullOrEmpty(Model.OldValues))
+                {
+                    <div>
+                        <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #dc2626; margin-bottom: 6px;">Before</div>
+                        <pre style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; font-size: 12px; color: #991b1b; margin: 0; white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto;">@Model.OldValues</pre>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(Model.NewValues))
+                {
+                    <div>
+                        <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #059669; margin-bottom: 6px;">After</div>
+                        <pre style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 12px; font-size: 12px; color: #065f46; margin: 0; white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto;">@Model.NewValues</pre>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<div class="modal-form-footer">
+    <button type="button" class="btn btn-secondary" onclick="closeAjaxModal()">Close</button>
+</div>

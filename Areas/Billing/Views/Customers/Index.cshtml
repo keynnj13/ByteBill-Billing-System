@@ -74,7 +74,7 @@
                                 <td class="text-center"><span class="text-medium">@customer.TotalOrders</span></td>
                                 <td class="text-right"><span class="text-medium">@customer.TotalSpent.ToString("C")</span></td>
                                 <td class="text-center">
-                                    <span class="badge @(customer.IsActive ? "badge-success" : "badge-muted")">
+                                    <span class="status-indicator @(customer.IsActive ? "status-success" : "status-muted")">
                                         @(customer.IsActive ? "Active" : "Inactive")
                                     </span>
                                 </td>

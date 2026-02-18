@@ -76,7 +76,7 @@
                                     <span class="cell-sub">@order.CreatedAt.ToString("MMM d, yyyy")</span>
                                 </td>
                                 <td>@order.DeviceType</td>
-                                <td><span class="badge badge-@order.StatusClass">@order.Status</span></td>
+                                <td><span class="status-indicator status-@order.StatusClass">@order.Status</span></td>
                                 <td class="text-right font-medium">@order.Total.ToString("C")</td>
                             </tr>
                         }

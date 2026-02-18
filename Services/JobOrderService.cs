@@ -3,6 +3,7 @@ using ByteBill_BS.DTOs.Common;
 using ByteBill_BS.DTOs.JobOrders;
 using ByteBill_BS.Models;
 using ByteBill_BS.Models.Enums;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace ByteBill_BS.Services;
@@ -20,12 +21,16 @@ public class JobOrderService : IJobOrderService
 {
     private readonly ApplicationDbContext _db;
     private readonly IAuditService _audit;
+    private readonly IHttpContextAccessor _httpCtx;
 
-    public JobOrderService(ApplicationDbContext db, IAuditService audit)
+    public JobOrderService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx)
     {
         _db = db;
         _audit = audit;
+        _httpCtx = httpCtx;
     }
+
+    private string? ClientIp => _httpCtx.HttpContext?.Connection.RemoteIpAddress?.ToString();
 
     // ═══════════════════════════════════════════════════════════════════
     //  Valid status transitions
@@ -304,7 +309,7 @@ public class JobOrderService : IJobOrderService
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(shopId, userId, "Create", "JobOrder", jobOrder.JobOrderId,
-            $"Created job order '{jobOrderNo}'.");
+            $"Created job order '{jobOrderNo}'.", ClientIp);
 
         var detail = await GetDetailAsync(shopId, jobOrder.JobOrderId);
         return ApiResponse<JobOrderDetailDto>.Ok(detail!);
@@ -351,7 +356,7 @@ public class JobOrderService : IJobOrderService
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(shopId, userId, "StatusChange", "JobOrder", jobOrderId,
-            $"Status changed from '{oldStatus}' to '{newStatus}'. {req.Remarks}");
+            $"Status changed from '{oldStatus}' to '{newStatus}'. {req.Remarks}", ClientIp);
 
         return ApiResponse<bool>.Ok(true);
     }
@@ -381,7 +386,7 @@ public class JobOrderService : IJobOrderService
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(shopId, userId, "AssignTechnician", "JobOrder", jobOrderId,
-            $"Technician (UserID={req.TechnicianUserId}) assigned.");
+            $"Technician (UserID={req.TechnicianUserId}) assigned.", ClientIp);
 
         return ApiResponse<bool>.Ok(true);
     }

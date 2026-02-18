@@ -9,7 +9,7 @@
         <div style="flex: 1;">
             <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1f2937;">@Model.Name</h3>
             <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-                <span class="badge @Model.StatusClass">@Model.Status</span>
+                <span class="status-indicator @Model.StatusClass">@Model.Status</span>
                 <span style="font-size: 12px; color: #9ca3af;">Since @Model.CreatedAt.ToString("MMM yyyy")</span>
             </div>
         </div>
@@ -90,15 +90,15 @@
                             <tr>
                                 <td><span style="font-weight: 500; color: #1f2937;">@user.FullName</span></td>
                                 <td style="font-size: 13px; color: #6b7280;">@user.Email</td>
-                                <td class="text-center"><span class="badge @user.RoleClass">@user.RoleName</span></td>
+                                <td class="text-center"><span class="status-indicator @user.RoleClass">@user.RoleName</span></td>
                                 <td class="text-center">
                                     @if (user.IsActive)
                                     {
-                                        <span class="badge badge-success">Active</span>
+                                        <span class="status-indicator status-success">Active</span>
                                     }
                                     else
                                     {
-                                        <span class="badge badge-muted">Inactive</span>
+                                        <span class="status-indicator status-muted">Inactive</span>
                                     }
                                 </td>
                             </tr>

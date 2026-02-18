@@ -1,3 +1,5 @@
+@model AuditLogListViewModel
+@using ByteBill_BS.ViewModels.Admin
 @{
     ViewData["Title"] = "Audit Logs";
 }
@@ -7,14 +9,315 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Audit Logs</h1>
-        <p class="text-muted">View audit trail and activity logs</p>
+        <p class="page-subtitle">@Model.TotalCount recorded events</p>
+    </div>
+    <span class="slog-live-label"><span class="slog-live-dot"></span>Live</span>
+</div>
+
+<!-- Quick Stats -->
+<div class="slog-stats" style="grid-template-columns: repeat(3, 1fr);">
+    <div class="slog-stat-card">
+        <div class="slog-stat-icon slog-icon-blue">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+        </div>
+        <div class="slog-stat-content">
+            <span class="slog-stat-value">@Model.TotalCount</span>
+            <span class="slog-stat-label">TOTAL EVENTS</span>
+        </div>
+    </div>
+    <div class="slog-stat-card">
+        <div class="slog-stat-icon slog-icon-cyan">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </div>
+        <div class="slog-stat-content">
+            <span class="slog-stat-value">@Model.TodayCount</span>
+            <span class="slog-stat-label">TODAY</span>
+        </div>
+    </div>
+    <div class="slog-stat-card">
+        <div class="slog-stat-icon slog-icon-amber">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        </div>
+        <div class="slog-stat-content">
+            <span class="slog-stat-value">@Model.ThisWeekCount</span>
+            <span class="slog-stat-label">THIS WEEK</span>
+        </div>
     </div>
 </div>
 
+<!-- Logs Table -->
 <div class="card">
-    <div class="card-body text-center py-5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-        <h3 class="text-muted">Coming Soon</h3>
-        <p class="text-muted">This module is currently under development.</p>
+    <div class="card-header">
+        <form method="get" asp-action="Index" class="slog-filter-form">
+            <div class="slog-search-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="slog-search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" name="search" value="@Model.SearchTerm" placeholder="Search logs..." class="form-input slog-search-input" />
+            </div>
+            <select name="logAction" class="form-select" onchange="this.form.submit()">
+                <option value="">All Actions</option>
+                @foreach (var a in Model.ActionTypes)
+                {
+                    <option value="@a" selected="@(Model.ActionFilter == a)">@a</option>
+                }
+            </select>
+            <select name="entity" class="form-select" onchange="this.form.submit()">
+                <option value="">All Sources</option>
+                @foreach (var e in Model.EntityNames)
+                {
+                    <option value="@e" selected="@(Model.EntityFilter == e)">@e</option>
+                }
+            </select>
+            <input type="date" name="dateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" class="form-input slog-date-input" placeholder="From" title="Date from" />
+            <input type="date" name="dateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" class="form-input slog-date-input" placeholder="To" title="Date to" />
+            <button type="submit" class="btn btn-outline-primary">Filter</button>
+            @if (!string.IsNullOrWhiteSpace(Model.SearchTerm) || !string.IsNullOrWhiteSpace(Model.EntityFilter) || !string.IsNullOrWhiteSpace(Model.ActionFilter) || Model.DateFrom.HasValue || Model.DateTo.HasValue)
+            {
+                <a asp-action="Index" class="btn btn-ghost">Clear</a>
+            }
+        </form>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Logs.Any())
+        {
+            <div class="table-container">
+                <table class="table" style="table-layout: fixed;">
+                    <colgroup>
+                        <col style="width: 14%;" />
+                        <col style="width: 9%;" />
+                        <col style="width: 33%;" />
+                        <col style="width: 14%;" />
+                        <col style="width: 14%;" />
+                        <col style="width: 16%;" />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th class="text-center">Action</th>
+                            <th>Message</th>
+                            <th>User</th>
+                            <th>IP Address</th>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var log in Model.Logs)
+                        {
+                            <tr class="clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "AuditLogs", new { area = "Auditor", id = log.Id })', 'Audit Log Detail')">
+                                <td>
+                                    <span class="slog-timestamp">@log.CreatedAt.ToString("MMM dd, h:mm tt")</span>
+                                    <span class="slog-date-sub">@log.CreatedAt.ToString("yyyy")</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="status-indicator @log.ActionClass">@log.Action</span>
+                                </td>
+                                <td>
+                                    <span class="slog-message">@(log.Details ?? "—")</span>
+                                </td>
+                                <td><span class="slog-user">@log.UserName</span></td>
+                                <td><span class="slog-ip">@(log.IpAddress ?? "—")</span></td>
+                                <td>
+                                    <span class="slog-source">@log.EntityName</span>
+                                    @if (log.EntityId.HasValue && log.EntityId.Value > 0)
+                                    {
+                                        <span class="slog-date-sub"> #@log.EntityId</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <div class="slog-pagination">
+                    @* Previous Button *@
+                    @if (Model.CurrentPage > 1)
+                    {
+                        <a asp-action="Index"
+                           asp-route-search="@Model.SearchTerm"
+                           asp-route-entity="@Model.EntityFilter"
+                           asp-route-logAction="@Model.ActionFilter"
+                           asp-route-dateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")"
+                           asp-route-dateTo="@Model.DateTo?.ToString("yyyy-MM-dd")"
+                           asp-route-page="@(Model.CurrentPage - 1)"
+                           class="btn btn-ghost slog-page-btn" title="Previous">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </a>
+                    }
+
+                    @{
+                        var pagesToShow = new List<int>();
+                        var current = Model.CurrentPage;
+                        var total = Model.TotalPages;
+
+                        // Always show first page
+                        pagesToShow.Add(1);
+
+                        // Show pages around current (2 on each side)
+                        for (int i = Math.Max(2, current - 2); i <= Math.Min(total - 1, current + 2); i++)
+                        {
+                            if (!pagesToShow.Contains(i)) pagesToShow.Add(i);
+                        }
+
+                        // Always show last page
+                        if (total > 1 && !pagesToShow.Contains(total)) pagesToShow.Add(total);
+
+                        pagesToShow.Sort();
+                    }
+
+                    @for (int idx = 0; idx < pagesToShow.Count; idx++)
+                    {
+                        var pageNum = pagesToShow[idx];
+
+                        @* Show ellipsis if there's a gap *@
+                        @if (idx > 0 && pageNum > pagesToShow[idx - 1] + 1)
+                        {
+                            <span class="slog-pagination-ellipsis">...</span>
+                        }
+
+                        <a asp-action="Index"
+                           asp-route-search="@Model.SearchTerm"
+                           asp-route-entity="@Model.EntityFilter"
+                           asp-route-logAction="@Model.ActionFilter"
+                           asp-route-dateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")"
+                           asp-route-dateTo="@Model.DateTo?.ToString("yyyy-MM-dd")"
+                           asp-route-page="@pageNum"
+                           class="btn @(pageNum == Model.CurrentPage ? "btn-primary" : "btn-ghost") slog-page-btn">
+                            @pageNum
+                        </a>
+                    }
+
+                    @* Next Button *@
+                    @if (Model.CurrentPage < Model.TotalPages)
+                    {
+                        <a asp-action="Index"
+                           asp-route-search="@Model.SearchTerm"
+                           asp-route-entity="@Model.EntityFilter"
+                           asp-route-logAction="@Model.ActionFilter"
+                           asp-route-dateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")"
+                           asp-route-dateTo="@Model.DateTo?.ToString("yyyy-MM-dd")"
+                           asp-route-page="@(Model.CurrentPage + 1)"
+                           class="btn btn-ghost slog-page-btn" title="Next">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </a>
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            <div style="padding: 60px 0; text-align: center;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                <p style="margin-top: 12px; color: #9ca3af; font-size: 14px;">No audit logs found</p>
+            </div>
+        }
     </div>
 </div>
+
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: #6b7280; }
+    .slog-stats { display: grid; gap: 16px; margin-bottom: 24px; }
+    .slog-stat-card { display: flex; align-items: center; gap: 14px; padding: 18px 20px; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: box-shadow 0.2s, border-color 0.2s; }
+    .slog-stat-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.07); border-color: #d1d5db; }
+    .slog-stat-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .slog-icon-blue  { background: rgba(59,130,246,0.10); color: #3b82f6; }
+    .slog-icon-cyan  { background: rgba(6,182,212,0.10);  color: #06b6d4; }
+    .slog-icon-amber { background: rgba(245,158,11,0.10); color: #f59e0b; }
+    .slog-stat-content { display: flex; flex-direction: column; }
+    .slog-stat-value { font-size: 22px; font-weight: 700; color: #1f2937; line-height: 1.2; }
+    .slog-stat-label { font-size: 12px; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+    .slog-filter-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; width: 100%; }
+    .slog-search-wrapper { position: relative; flex: 1; min-width: 160px; }
+    .slog-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; }
+    .slog-search-input { padding-left: 40px !important; width: 100%; }
+    .slog-date-input { width: 140px; font-size: 13px; }
+    .slog-timestamp { font-size: 13px; font-weight: 500; color: #374151; display: block; }
+    .slog-date-sub { font-size: 11px; color: #9ca3af; }
+    .slog-message { font-size: 13px; color: #1f2937; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .slog-user { font-size: 13px; color: #374151; font-weight: 500; }
+    .slog-ip { font-size: 12px; color: #9ca3af; font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace; }
+    .slog-source { font-size: 12px; color: #9ca3af; font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace; }
+    .clickable-row { cursor: pointer; transition: background-color 0.15s ease; }
+    .clickable-row:hover { background-color: #f0f7ff; }
+    .slog-pagination { display: flex; justify-content: center; padding: 16px 0; gap: 4px; align-items: center; }
+    .slog-page-btn { min-width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+    .slog-pagination-ellipsis { color: #9ca3af; font-size: 13px; padding: 0 4px; user-select: none; }
+    @@media (max-width: 768px) {
+        .slog-stats { grid-template-columns: 1fr !important; }
+        .slog-filter-form { flex-direction: column; }
+        .slog-date-input { width: 100%; }
+    }
+    .slog-live-dot { width: 8px; height: 8px; background: #22c55e; border-radius: 50%; display: inline-block; margin-right: 6px; animation: slog-pulse 2s infinite; }
+    @@keyframes slog-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .slog-live-label { font-size: 12px; color: #6b7280; display: flex; align-items: center; }
+    .slog-fade-in { animation: slogFadeIn 0.4s ease; }
+    @@keyframes slogFadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+@section Scripts {
+<script>
+(function () {
+    const POLL_INTERVAL = 15000;
+    const AREA = 'Auditor';
+    const pollUrl = '@Url.Action("Poll", "AuditLogs", new { area = "Auditor" })';
+    let lastTotal = @Model.TotalCount;
+
+    function getFilterParams() {
+        const form = document.querySelector('.slog-filter-form');
+        if (!form) return '';
+        const fd = new FormData(form);
+        const params = new URLSearchParams();
+        for (const [k, v] of fd.entries()) { if (v) params.set(k, v); }
+        const pageMatch = window.location.search.match(/[?&]page=(\d+)/);
+        if (pageMatch) params.set('page', pageMatch[1]);
+        return '?' + params.toString();
+    }
+
+    function escapeHtml(s) {
+        const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+    }
+
+    function renderRow(log) {
+        const entityIdHtml = log.entityId && log.entityId > 0
+            ? `<span class="slog-date-sub"> #${log.entityId}</span>` : '';
+        return `<tr class="clickable-row slog-fade-in" onclick="openAjaxModal('/${AREA}/AuditLogs/DetailsModal?id=${log.id}', 'Audit Log Detail')">
+            <td><span class="slog-timestamp">${escapeHtml(log.createdAt)}</span><span class="slog-date-sub">${escapeHtml(log.year)}</span></td>
+            <td class="text-center"><span class="status-indicator ${log.actionClass}">${escapeHtml(log.action)}</span></td>
+            <td><span class="slog-message">${escapeHtml(log.details)}</span></td>
+            <td><span class="slog-user">${escapeHtml(log.userName)}</span></td>
+            <td><span class="slog-ip">${escapeHtml(log.ipAddress)}</span></td>
+            <td><span class="slog-source">${escapeHtml(log.entityName)}</span>${entityIdHtml}</td>
+        </tr>`;
+    }
+
+    async function poll() {
+        try {
+            const res = await fetch(pollUrl + getFilterParams());
+            if (!res.ok) return;
+            const data = await res.json();
+
+            const stats = document.querySelectorAll('.slog-stat-value');
+            if (stats[0]) stats[0].textContent = data.totalCount;
+            if (stats[1]) stats[1].textContent = data.todayCount;
+            if (stats[2]) stats[2].textContent = data.weekCount;
+
+            const sub = document.querySelector('.page-subtitle');
+            if (sub) sub.textContent = data.totalCount + ' recorded events';
+
+            if (data.totalCount !== lastTotal) {
+                const tbody = document.querySelector('.table tbody');
+                if (tbody && data.logs.length) {
+                    tbody.innerHTML = data.logs.map(renderRow).join('');
+                }
+                lastTotal = data.totalCount;
+            }
+        } catch (e) { /* silent */ }
+    }
+
+    setInterval(poll, POLL_INTERVAL);
+})();
+</script>
+}

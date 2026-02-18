@@ -4,7 +4,7 @@ public class AuditLog
 {
     public long AuditLogId { get; set; }
     public long ShopId { get; set; }
-    public long UserId { get; set; }
+    public long? UserId { get; set; }
     public string Action { get; set; } = string.Empty;
     public string EntityName { get; set; } = string.Empty;
     public long EntityId { get; set; }

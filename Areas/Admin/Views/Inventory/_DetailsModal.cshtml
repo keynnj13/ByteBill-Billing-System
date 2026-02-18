@@ -10,7 +10,7 @@
             <h3 class="modal-detail-name">@Model.Name</h3>
             <p class="modal-detail-sub">
                 <span style="font-family: monospace; font-size: 12px; color: #6b7280;">@Model.SKU</span>
-                <span class="badge @(Model.IsActive ? "badge-success" : "badge-muted")" style="margin-left: 8px;">@(Model.IsActive ? "Active" : "Inactive")</span>
+                <span class="status-indicator @(Model.IsActive ? "status-success" : "status-muted")" style="margin-left: 8px;">@(Model.IsActive ? "Active" : "Inactive")</span>
             </p>
         </div>
     </div>
@@ -104,7 +104,7 @@
                         {
                             <tr>
                                 <td>
-                                    <span class="badge @(txn.TxnType == "In" ? "badge-success" : "badge-warning")">@txn.TxnType</span>
+                                    <span class="status-indicator @(txn.TxnType == "In" ? "status-success" : "status-warning")">@txn.TxnType</span>
                                 </td>
                                 <td class="text-center font-medium">@txn.Quantity</td>
                                 <td class="text-sm">@(txn.Remarks ?? "—")</td>
@@ -141,7 +141,4 @@
     .low-stock-alert { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; color: #92400e; font-size: 13px; font-weight: 500; margin-bottom: 16px; }
     .empty-box-sm { padding: 20px; text-align: center; background: #f9fafb; border-radius: 8px; }
     .text-muted { color: #9ca3af; }
-    .badge-success { background: #d1fae5; color: #065f46; }
-    .badge-warning { background: #fef3c7; color: #92400e; }
-    .badge-muted { background: #f3f4f6; color: #6b7280; }
 </style>

@@ -127,7 +127,7 @@
                                 </td>
                                 <td class="text-right"><span class="price-text">@item.CostPrice.ToString("C")</span></td>
                                 <td class="text-right"><span class="price-text price-bold">@item.SellingPrice.ToString("C")</span></td>
-                                <td class="text-center"><span class="badge @item.StockStatusClass">@item.StockStatus</span></td>
+                                <td class="text-center"><span class="status-indicator @item.StockStatusClass">@item.StockStatus</span></td>
                                 <td>
                                     <div class="action-buttons">
                                         <button type="button" class="btn-action" title="Edit" onclick="openAjaxModal('@Url.Action("EditModal", "Inventory", new { area = "Admin", id = item.Id })', 'Edit Inventory Item')">

@@ -36,12 +36,12 @@ public class UserItemViewModel
     public UserRole Role { get; set; }
     public string RoleClass => Role switch
     {
-        UserRole.SuperAdmin  => "badge-purple",
-        UserRole.Admin       => "badge-primary",
-        UserRole.Billing     => "badge-success",
-        UserRole.Technician  => "badge-info",
-        UserRole.Auditor     => "badge-warning",
-        _                    => "badge-muted"
+        UserRole.SuperAdmin  => "status-purple",
+        UserRole.Admin       => "status-primary",
+        UserRole.Billing     => "status-success",
+        UserRole.Technician  => "status-info",
+        UserRole.Auditor     => "status-warning",
+        _                    => "status-muted"
     };
     public bool IsActive { get; set; }
     public DateTime? LastLoginAt { get; set; }
@@ -107,12 +107,12 @@ public class UserDetailViewModel
     public string RoleName { get; set; } = string.Empty;
     public string RoleClass => Role switch
     {
-        UserRole.SuperAdmin  => "badge-purple",
-        UserRole.Admin       => "badge-primary",
-        UserRole.Billing     => "badge-success",
-        UserRole.Technician  => "badge-info",
-        UserRole.Auditor     => "badge-warning",
-        _                    => "badge-muted"
+        UserRole.SuperAdmin  => "status-purple",
+        UserRole.Admin       => "status-primary",
+        UserRole.Billing     => "status-success",
+        UserRole.Technician  => "status-info",
+        UserRole.Auditor     => "status-warning",
+        _                    => "status-muted"
     };
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -154,6 +154,10 @@ public class AuditLogListViewModel
     // Stats
     public int TodayCount { get; set; }
     public int ThisWeekCount { get; set; }
+
+    // SuperAdmin cross-shop support (optional)
+    public long? ShopFilter { get; set; }
+    public List<(long Id, string Name)> ShopNames { get; set; } = new();
 }
 
 public class AuditLogItemViewModel
@@ -162,18 +166,20 @@ public class AuditLogItemViewModel
     public string Action { get; set; } = string.Empty;
     public string ActionClass => Action.ToLower() switch
     {
-        "create" or "insert" => "badge-success",
-        "update" or "edit"   => "badge-info",
-        "delete" or "remove" => "badge-danger",
-        "login"              => "badge-primary",
-        "logout"             => "badge-muted",
-        _                    => "badge-warning"
+        "create" or "insert" => "status-success",
+        "update" or "edit"   => "status-info",
+        "delete" or "remove" => "status-danger",
+        "login"              => "status-primary",
+        "logout"             => "status-muted",
+        _                    => "status-warning"
     };
     public string EntityName { get; set; } = string.Empty;
     public long? EntityId { get; set; }
     public string? Details { get; set; }
     public string UserName { get; set; } = string.Empty;
     public string UserInitials { get; set; } = string.Empty;
+    public string? ShopName { get; set; }
+    public string? IpAddress { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 
@@ -368,10 +374,10 @@ public class XeroSyncLogItem
     public string Status { get; set; } = string.Empty;     // Success, Failed, Pending
     public string StatusClass => Status.ToLower() switch
     {
-        "success"  => "badge-success",
-        "failed"   => "badge-danger",
-        "pending"  => "badge-warning",
-        _          => "badge-muted"
+        "success"  => "status-success",
+        "failed"   => "status-danger",
+        "pending"  => "status-warning",
+        _          => "status-muted"
     };
     public string? EntityReference { get; set; }
     public string? XeroRecordId { get; set; }
@@ -388,11 +394,11 @@ public class PayMongoTxnItem
     public string Status { get; set; } = string.Empty;       // Paid, Pending, Failed, Refunded
     public string StatusClass => Status.ToLower() switch
     {
-        "paid"     => "badge-success",
-        "pending"  => "badge-warning",
-        "failed"   => "badge-danger",
-        "refunded" => "badge-info",
-        _          => "badge-muted"
+        "paid"     => "status-success",
+        "pending"  => "status-warning",
+        "failed"   => "status-danger",
+        "refunded" => "status-info",
+        _          => "status-muted"
     };
     public decimal Amount { get; set; }
     public string? CustomerName { get; set; }

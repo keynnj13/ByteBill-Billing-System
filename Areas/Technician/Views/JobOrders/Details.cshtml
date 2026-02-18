@@ -146,7 +146,7 @@
                                 {
                                     <tr>
                                         <td>@item.Description</td>
-                                        <td><span class="badge @(item.Type == "Service" ? "badge-primary" : "badge-muted")">@item.Type</span></td>
+                                        <td><span class="status-indicator @(item.Type == "Service" ? "status-primary" : "status-muted")">@item.Type</span></td>
                                         <td class="text-right">@item.Quantity</td>
                                         <td class="text-right">@item.UnitPrice.ToString("C")</td>
                                         <td class="text-right">@item.Total.ToString("C")</td>
@@ -275,7 +275,6 @@
     .detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
     .detail-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
     .detail-subtitle { font-size: 14px; color: #6b7280; }
-    .badge-lg { font-size: 14px; padding: 6px 16px; }
 
     .detail-grid { display: grid; grid-template-columns: 1fr 340px; gap: 24px; }
     .detail-main { display: flex; flex-direction: column; gap: 20px; }

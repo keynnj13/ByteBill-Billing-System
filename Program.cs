@@ -63,6 +63,7 @@ builder.Services.AddAuthorization(options =>
 });
 
 // ── Register application services ────────────────────────────────────
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<INavigationService, NavigationService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();

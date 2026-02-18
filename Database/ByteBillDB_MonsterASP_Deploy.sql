@@ -958,8 +958,16 @@ GO
 
 
 -- Seed: Demo Users with Real Names
--- Password: 'Password123!' (BCrypt hash using cost factor 12)
-DECLARE @PwdHash NVARCHAR(100) = '$2a$12$LJ3m4ys3Lk0TSwHleDJruOEGCxCXOGyGqoLNaHPbBMp7c8.hgy7G6';
+-- Each user has a unique password hashed with BCrypt (cost factor 12)
+-- ┌──────────────┬────────────────────┐
+-- │ Username      │ Password           │
+-- ├──────────────┼────────────────────┤
+-- │ vkpadao       │ Superadmin123!     │
+-- │ admin         │ Admin123!          │
+-- │ billing       │ Billing123!        │
+-- │ technician    │ Technician123!     │
+-- │ auditor       │ Auditor123!        │
+-- └──────────────┴────────────────────┘
 
 IF NOT EXISTS (SELECT 1 FROM USERS WHERE UserID = 1)
 BEGIN
@@ -967,11 +975,11 @@ BEGIN
 
     INSERT INTO USERS (UserID, ShopID, FirstName, MiddleName, LastName, UserName, PasswordHash, Email, Phone, ThemePreference, IsActive)
     VALUES
-        (1, 1, 'Vaness',  NULL, 'Padao',  'vkpadao',     @PwdHash, 'vkpadao@bytebill.com', '+63-917-123-4567', 'light', 1),
-        (2, 1, 'Maria',   NULL, 'Santos', 'admin',       @PwdHash, 'admin@bytebill.com',   '+63-917-234-5678', 'light', 1),
-        (3, 1, 'Juan',    NULL, 'Cruz',   'billing',     @PwdHash, 'billing@bytebill.com', '+63-917-345-6789', 'light', 1),
-        (4, 1, 'Carlos',  NULL, 'Reyes',  'technician',  @PwdHash, 'tech@bytebill.com',    '+63-917-456-7890', 'light', 1),
-        (5, 1, 'Ana',     NULL, 'Garcia', 'auditor',     @PwdHash, 'audit@bytebill.com',   '+63-917-567-8901', 'light', 1);
+        (1, 1, 'Vaness',  NULL, 'Padao',  'vkpadao',     '$2a$12$RMVVCzlpcg7ckzii6W9aG.dJMpjq57OjNM3S3kdNGXzJaQCtciHA.', 'vkpadao@bytebill.com', '+63-917-123-4567', 'light', 1),
+        (2, 1, 'Maria',   NULL, 'Santos', 'admin',       '$2a$12$8ModjUcaRtWQCsW7c8RGeufnBMPihYnf6lHE9p5H0ApkkQEckrdEK', 'admin@bytebill.com',   '+63-917-234-5678', 'light', 1),
+        (3, 1, 'Juan',    NULL, 'Cruz',   'billing',     '$2a$12$4rVvnj4wroAuJkOORA3uT.IALBEXp5gi5/865MfgKZ/AWzmrYAiWi', 'billing@bytebill.com', '+63-917-345-6789', 'light', 1),
+        (4, 1, 'Carlos',  NULL, 'Reyes',  'technician',  '$2a$12$dBtT/QFYy2ScGvTdykBbD.l5ZqVp2DxdjXsPoktyyTnRwqJ0vtcPm', 'tech@bytebill.com',    '+63-917-456-7890', 'light', 1),
+        (5, 1, 'Ana',     NULL, 'Garcia', 'auditor',     '$2a$12$qibG2sU9lwoTTN0q1KUECe5u8REijfmScUV8d8Q5tt67avJEnCqjK', 'audit@bytebill.com',   '+63-917-567-8901', 'light', 1);
 
     SET IDENTITY_INSERT USERS OFF;
     PRINT '✓ Inserted 5 demo users (vkpadao, admin, billing, technician, auditor)';
@@ -1016,11 +1024,11 @@ PRINT '│  DEFAULT LOGIN CREDENTIALS                                 │';
 PRINT '├──────────────┬───────────────────┬────────────────────────┤';
 PRINT '│ Username      │ Full Name         │ Password               │';
 PRINT '├──────────────┼───────────────────┼────────────────────────┤';
-PRINT '│ vkpadao       │ Vaness Padao      │ Password123!           │';
-PRINT '│ admin         │ Maria Santos      │ Password123!           │';
-PRINT '│ billing       │ Juan Cruz         │ Password123!           │';
-PRINT '│ technician    │ Carlos Reyes      │ Password123!           │';
-PRINT '│ auditor       │ Ana Garcia        │ Password123!           │';
+PRINT '│ vkpadao       │ Vaness Padao      │ Superadmin123!         │';
+PRINT '│ admin         │ Maria Santos      │ Admin123!              │';
+PRINT '│ billing       │ Juan Cruz         │ Billing123!            │';
+PRINT '│ technician    │ Carlos Reyes      │ Technician123!         │';
+PRINT '│ auditor       │ Ana Garcia        │ Auditor123!            │';
 PRINT '└──────────────┴───────────────────┴────────────────────────┘';
 PRINT '';
 PRINT '⚠️  IMPORTANT: Change these default passwords after first login!';

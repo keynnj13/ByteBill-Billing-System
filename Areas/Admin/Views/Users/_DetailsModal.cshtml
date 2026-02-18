@@ -10,14 +10,14 @@
         <div style="flex: 1;">
             <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: var(--text-primary);">@Model.FullName</h3>
             <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-                <span class="badge @Model.RoleClass">@Model.RoleName</span>
+                <span class="status-indicator @Model.RoleClass">@Model.RoleName</span>
                 @if (Model.IsActive)
                 {
-                    <span class="badge badge-success">Active</span>
+                    <span class="status-indicator status-success">Active</span>
                 }
                 else
                 {
-                    <span class="badge badge-muted">Inactive</span>
+                    <span class="status-indicator status-muted">Inactive</span>
                 }
             </div>
         </div>

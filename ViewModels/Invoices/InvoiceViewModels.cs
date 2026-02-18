@@ -28,11 +28,11 @@ public class InvoiceItemViewModel
     public string StatusDisplay => Status.ToString();
     public string StatusClass => Status switch
     {
-        InvoiceStatus.Unpaid => "badge-pending",
-        InvoiceStatus.Partial => "badge-partial",
-        InvoiceStatus.Paid => "badge-paid",
-        InvoiceStatus.Void => "badge-void",
-        _ => "badge-muted"
+        InvoiceStatus.Unpaid => "status-pending",
+        InvoiceStatus.Partial => "status-partial",
+        InvoiceStatus.Paid => "status-success",
+        InvoiceStatus.Void => "status-muted",
+        _ => "status-muted"
     };
     public decimal Total { get; set; }
     public decimal AmountPaid { get; set; }
@@ -70,11 +70,11 @@ public class InvoiceDetailViewModel
     public string StatusDisplay => Status.ToString();
     public string StatusClass => Status switch
     {
-        InvoiceStatus.Unpaid => "badge-pending",
-        InvoiceStatus.Partial => "badge-partial",
-        InvoiceStatus.Paid => "badge-paid",
-        InvoiceStatus.Void => "badge-void",
-        _ => "badge-muted"
+        InvoiceStatus.Unpaid => "status-pending",
+        InvoiceStatus.Partial => "status-partial",
+        InvoiceStatus.Paid => "status-success",
+        InvoiceStatus.Void => "status-muted",
+        _ => "status-muted"
     };
     
     // Amounts

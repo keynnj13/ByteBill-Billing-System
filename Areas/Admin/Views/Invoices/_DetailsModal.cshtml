@@ -12,7 +12,7 @@
                 <p class="modal-detail-sub">Issued @Model.CreatedAt.ToString("MMMM d, yyyy")</p>
             </div>
         </div>
-        <span class="badge @Model.StatusClass" style="font-size: 13px; padding: 6px 14px;">@Model.StatusDisplay</span>
+        <span class="status-indicator @Model.StatusClass">@Model.StatusDisplay</span>
     </div>
 
     <!-- Summary Stats -->
@@ -177,8 +177,4 @@
     .text-line-through { text-decoration: line-through; }
     .text-muted { color: #9ca3af; }
     .empty-box-sm { padding: 20px; text-align: center; background: #f9fafb; border-radius: 8px; }
-    .badge-pending { background: #fef3c7; color: #92400e; }
-    .badge-partial { background: #dbeafe; color: #1e40af; }
-    .badge-paid { background: #d1fae5; color: #065f46; }
-    .badge-void { background: #f3f4f6; color: #6b7280; }
 </style>

@@ -3,6 +3,7 @@ using ByteBill_BS.DTOs.Common;
 using ByteBill_BS.DTOs.Invoices;
 using ByteBill_BS.Models;
 using ByteBill_BS.Models.Enums;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace ByteBill_BS.Services;
@@ -20,12 +21,16 @@ public class InvoiceService : IInvoiceService
 {
     private readonly ApplicationDbContext _db;
     private readonly IAuditService _audit;
+    private readonly IHttpContextAccessor _httpCtx;
 
-    public InvoiceService(ApplicationDbContext db, IAuditService audit)
+    public InvoiceService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx)
     {
         _db = db;
         _audit = audit;
+        _httpCtx = httpCtx;
     }
+
+    private string? ClientIp => _httpCtx.HttpContext?.Connection.RemoteIpAddress?.ToString();
 
     // ── List / Search / Filter ───────────────────────────────────────────
     public async Task<PagedResult<InvoiceListItemDto>> GetListAsync(long shopId, InvoicePagedRequest req)
@@ -248,7 +253,7 @@ public class InvoiceService : IInvoiceService
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(shopId, userId, "Create", "Invoice", invoice.InvoiceId,
-            $"Created invoice '{invoiceNo}' from job order '{jobOrder.JobOrderNo}'. Total: {subtotal:C}.");
+            $"Created invoice '{invoiceNo}' from job order '{jobOrder.JobOrderNo}'. Total: {subtotal:C}.", ClientIp);
 
         var detail = await GetDetailAsync(shopId, invoice.InvoiceId);
         return ApiResponse<InvoiceDetailDto>.Ok(detail!);
@@ -313,7 +318,7 @@ public class InvoiceService : IInvoiceService
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(shopId, userId, "Adjustment", "Invoice", invoiceId,
-            $"{adjType} adjustment of {req.Amount:C}. Reason: {req.Reason}. New balance: {invoice.Balance:C}.");
+            $"{adjType} adjustment of {req.Amount:C}. Reason: {req.Reason}. New balance: {invoice.Balance:C}.", ClientIp);
 
         return ApiResponse<AdjustmentDto>.Ok(new AdjustmentDto
         {

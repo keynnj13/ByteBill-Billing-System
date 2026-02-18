@@ -1,6 +1,7 @@
 using ByteBill_BS.Data;
 using ByteBill_BS.Extensions;
 using ByteBill_BS.Models.Enums;
+using ByteBill_BS.Services;
 using ByteBill_BS.ViewModels.Invoices;
 using ByteBill_BS.ViewModels.JobOrders;
 using Microsoft.AspNetCore.Authorization;
@@ -13,8 +14,13 @@ namespace ByteBill_BS.Controllers;
 public class ArchiveController : Controller
 {
     private readonly ApplicationDbContext _db;
+    private readonly IAuditService _audit;
 
-    public ArchiveController(ApplicationDbContext db) => _db = db;
+    public ArchiveController(ApplicationDbContext db, IAuditService audit)
+    {
+        _db = db;
+        _audit = audit;
+    }
 
     private bool IsAuthorized() => User.IsInRoles("Admin", "Billing", "SuperAdmin");
 
@@ -159,6 +165,10 @@ public class ArchiveController : Controller
         jo.ArchivedDate = null;
         await _db.SaveChangesAsync();
 
+        await _audit.LogAsync(shopId, User.GetUserId(), "Restore", "JobOrder", jo.JobOrderId,
+            $"Restored job order {jo.JobOrderNo} from archive",
+            HttpContext.Connection.RemoteIpAddress?.ToString());
+
         TempData["Success"] = $"Job order {jo.JobOrderNo} restored.";
         return RedirectToAction(nameof(Index), new { tab = "joborders" });
     }
@@ -174,6 +184,10 @@ public class ArchiveController : Controller
         inv.IsArchived = false;
         inv.ArchivedDate = null;
         await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(shopId, User.GetUserId(), "Restore", "Invoice", inv.InvoiceId,
+            $"Restored invoice {inv.InvoiceNo} from archive",
+            HttpContext.Connection.RemoteIpAddress?.ToString());
 
         TempData["Success"] = $"Invoice {inv.InvoiceNo} restored.";
         return RedirectToAction(nameof(Index), new { tab = "invoices" });

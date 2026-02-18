@@ -17,11 +17,13 @@ public class InvoicesController : Controller
 {
     private readonly IInvoiceService _invoiceService;
     private readonly ApplicationDbContext _db;
+    private readonly IAuditService _audit;
 
-    public InvoicesController(IInvoiceService invoiceService, ApplicationDbContext db)
+    public InvoicesController(IInvoiceService invoiceService, ApplicationDbContext db, IAuditService audit)
     {
         _invoiceService = invoiceService;
         _db = db;
+        _audit = audit;
     }
 
     private bool IsAuthorized() => User.IsInRoles("Admin", "SuperAdmin");
@@ -382,6 +384,10 @@ public class InvoicesController : Controller
         invoice.ArchivedDate = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
+        await _audit.LogAsync(shopId, User.GetUserId(), "Archive", "Invoice", invoice.InvoiceId,
+            $"Archived invoice {invoice.InvoiceNo}",
+            HttpContext.Connection.RemoteIpAddress?.ToString());
+
         TempData["Success"] = $"Invoice {invoice.InvoiceNo} archived successfully.";
         return RedirectToAction(nameof(Index));
     }
@@ -399,6 +405,10 @@ public class InvoicesController : Controller
         invoice.IsArchived = false;
         invoice.ArchivedDate = null;
         await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(shopId, User.GetUserId(), "Restore", "Invoice", invoice.InvoiceId,
+            $"Restored invoice {invoice.InvoiceNo} from archive",
+            HttpContext.Connection.RemoteIpAddress?.ToString());
 
         TempData["Success"] = $"Invoice {invoice.InvoiceNo} restored successfully.";
         return RedirectToAction(nameof(Archive));

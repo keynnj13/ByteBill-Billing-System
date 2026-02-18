@@ -57,10 +57,10 @@ public class DashboardController : Controller
             
             RecentActivity = new List<RecentActivityItem>
             {
-                new() { Title = "New Shop Registration", Description = "TechFix Pro joined the platform", Icon = "store", IconColor = "success", TimeAgo = "2 min ago", BadgeText = "New", BadgeClass = "badge-success" },
+                new() { Title = "New Shop Registration", Description = "TechFix Pro joined the platform", Icon = "store", IconColor = "success", TimeAgo = "2 min ago", BadgeText = "New", BadgeClass = "status-success" },
                 new() { Title = "User Account Created", Description = "John Smith (Admin) at QuickRepairs", Icon = "user", IconColor = "primary", TimeAgo = "15 min ago" },
-                new() { Title = "System Update", Description = "Invoice module updated to v2.3", Icon = "settings", IconColor = "info", TimeAgo = "1 hr ago", BadgeText = "System", BadgeClass = "badge-info" },
-                new() { Title = "Shop Suspended", Description = "OldTech Solutions - Payment overdue", Icon = "alert", IconColor = "warning", TimeAgo = "2 hrs ago", BadgeText = "Alert", BadgeClass = "badge-warning" },
+                new() { Title = "System Update", Description = "Invoice module updated to v2.3", Icon = "settings", IconColor = "info", TimeAgo = "1 hr ago", BadgeText = "System", BadgeClass = "status-info" },
+                new() { Title = "Shop Suspended", Description = "OldTech Solutions - Payment overdue", Icon = "alert", IconColor = "warning", TimeAgo = "2 hrs ago", BadgeText = "Alert", BadgeClass = "status-warning" },
                 new() { Title = "Payment Received", Description = "QuickRepairs - Monthly subscription", Icon = "dollar-sign", IconColor = "success", TimeAgo = "3 hrs ago" }
             },
             

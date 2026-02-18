@@ -636,6 +636,7 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.User)
                   .WithMany()
                   .HasForeignKey(e => e.UserId)
+                  .IsRequired(false)
                   .OnDelete(DeleteBehavior.NoAction);
         });
 

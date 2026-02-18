@@ -14,11 +14,11 @@
         </div>
         @if (Model.IsVoid)
         {
-            <span class="badge badge-void" style="font-size: 13px; padding: 6px 14px;">Void</span>
+            <span class="status-indicator status-muted">Void</span>
         }
         else
         {
-            <span class="badge badge-success" style="font-size: 13px; padding: 6px 14px;">Confirmed</span>
+            <span class="status-indicator status-success">Confirmed</span>
         }
     </div>
 
@@ -35,7 +35,7 @@
             <div class="modal-detail-item">
                 <dt>Method</dt>
                 <dd>
-                    <span class="badge @GetMethodBadge(Model.Method)">@Model.Method.ToString()</span>
+                    <span class="status-indicator @GetMethodBadge(Model.Method)">@Model.Method.ToString()</span>
                 </dd>
             </div>
             @if (!string.IsNullOrEmpty(Model.ReferenceNumber))
@@ -106,11 +106,11 @@
     {
         return method switch
         {
-            PaymentMethod.Cash => "badge-success",
-            PaymentMethod.GCash => "badge-primary",
-            PaymentMethod.Card => "badge-info",
-            PaymentMethod.PayMongo => "badge-purple",
-            _ => "badge-muted"
+            PaymentMethod.Cash => "status-success",
+            PaymentMethod.GCash => "status-primary",
+            PaymentMethod.Card => "status-info",
+            PaymentMethod.PayMongo => "status-purple",
+            _ => "status-muted"
         };
     }
 }
@@ -123,9 +123,5 @@
     .payment-amount-value { font-size: 28px; font-weight: 700; color: #065f46; }
     .text-line-through { text-decoration: line-through; color: #9ca3af; }
     .font-medium { font-weight: 500; }
-    .badge-success { background: #d1fae5; color: #065f46; }
-    .badge-primary { background: #dbeafe; color: #1e40af; }
-    .badge-info { background: #e0f2fe; color: #075985; }
-    .badge-purple { background: #ede9fe; color: #5b21b6; }
-    .badge-void { background: #f3f4f6; color: #6b7280; }
+
 </style>

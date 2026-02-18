@@ -36,10 +36,10 @@ public class ShopItemViewModel
     public string Status { get; set; } = "Active";
     public string StatusClass => Status switch
     {
-        "Active"    => "badge-success",
-        "Suspended" => "badge-danger",
-        "Pending"   => "badge-warning",
-        _           => "badge-muted"
+        "Active"    => "status-success",
+        "Suspended" => "status-danger",
+        "Pending"   => "status-warning",
+        _           => "status-muted"
     };
     public DateTime CreatedAt { get; set; }
 }
@@ -92,10 +92,10 @@ public class ShopDetailViewModel
     public string Status { get; set; } = "Active";
     public string StatusClass => Status switch
     {
-        "Active"    => "badge-success",
-        "Suspended" => "badge-danger",
-        "Pending"   => "badge-warning",
-        _           => "badge-muted"
+        "Active"    => "status-success",
+        "Suspended" => "status-danger",
+        "Pending"   => "status-warning",
+        _           => "status-muted"
     };
     public DateTime CreatedAt { get; set; }
     public string? Notes { get; set; }
@@ -116,7 +116,7 @@ public class ShopUserItem
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string RoleName { get; set; } = string.Empty;
-    public string RoleClass { get; set; } = "badge-muted";
+    public string RoleClass { get; set; } = "status-muted";
     public bool IsActive { get; set; }
 }
 
@@ -158,12 +158,12 @@ public class GlobalUserItemViewModel
     public string RoleName { get; set; } = string.Empty;
     public string RoleClass => Role switch
     {
-        UserRole.SuperAdmin  => "badge-purple",
-        UserRole.Admin       => "badge-primary",
-        UserRole.Billing     => "badge-success",
-        UserRole.Technician  => "badge-info",
-        UserRole.Auditor     => "badge-warning",
-        _                    => "badge-muted"
+        UserRole.SuperAdmin  => "status-purple",
+        UserRole.Admin       => "status-primary",
+        UserRole.Billing     => "status-success",
+        UserRole.Technician  => "status-info",
+        UserRole.Auditor     => "status-warning",
+        _                    => "status-muted"
     };
     public bool IsActive { get; set; }
     public DateTime? LastLoginAt { get; set; }
@@ -239,12 +239,12 @@ public class GlobalUserDetailViewModel
     public string RoleName { get; set; } = string.Empty;
     public string RoleClass => Role switch
     {
-        UserRole.SuperAdmin  => "badge-purple",
-        UserRole.Admin       => "badge-primary",
-        UserRole.Billing     => "badge-success",
-        UserRole.Technician  => "badge-info",
-        UserRole.Auditor     => "badge-warning",
-        _                    => "badge-muted"
+        UserRole.SuperAdmin  => "status-purple",
+        UserRole.Admin       => "status-primary",
+        UserRole.Billing     => "status-success",
+        UserRole.Technician  => "status-info",
+        UserRole.Auditor     => "status-warning",
+        _                    => "status-muted"
     };
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -297,11 +297,11 @@ public class SystemLogItemViewModel
     public string Type { get; set; } = string.Empty;
     public string TypeClass => Type switch
     {
-        "Info"     => "badge-info",
-        "Warning"  => "badge-warning",
-        "Error"    => "badge-danger",
-        "Critical" => "badge-danger",
-        _          => "badge-muted"
+        "Info"     => "status-info",
+        "Warning"  => "status-warning",
+        "Error"    => "status-danger",
+        "Critical" => "status-danger",
+        _          => "status-muted"
     };
     public string TypeIcon => Type switch
     {
@@ -326,11 +326,11 @@ public class SystemLogDetailViewModel
     public string Type { get; set; } = string.Empty;
     public string TypeClass => Type switch
     {
-        "Info"     => "badge-info",
-        "Warning"  => "badge-warning",
-        "Error"    => "badge-danger",
-        "Critical" => "badge-danger",
-        _          => "badge-muted"
+        "Info"     => "status-info",
+        "Warning"  => "status-warning",
+        "Error"    => "status-danger",
+        "Critical" => "status-danger",
+        _          => "status-muted"
     };
     public string Message { get; set; } = string.Empty;
     public string UserName { get; set; } = string.Empty;

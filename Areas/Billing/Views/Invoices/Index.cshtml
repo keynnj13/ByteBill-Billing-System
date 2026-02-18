@@ -102,10 +102,10 @@
                                     <span class="@(inv.Balance > 0 ? "text-danger" : "text-muted")">@inv.Balance.ToString("N2")</span>
                                 </td>
                                 <td class="text-center">
-                                    <span class="badge @inv.StatusClass">@inv.StatusDisplay</span>
+                                    <span class="status-indicator @inv.StatusClass">@inv.StatusDisplay</span>
                                     @if (inv.IsOverdue)
                                     {
-                                        <span class="badge badge-void" style="margin-left: 4px; font-size: 10px;">OVERDUE</span>
+                                        <span class="status-indicator status-muted" style="margin-left: 4px; font-size: 10px;">OVERDUE</span>
                                     }
                                 </td>
                                 <td class="text-right"><span class="text-muted text-sm">@inv.CreatedAt.ToString("MMM dd")</span></td>

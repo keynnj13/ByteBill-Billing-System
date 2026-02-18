@@ -468,6 +468,9 @@ a:hover {
 .status-delivered { color: #0d9488; }
 .status-cancelled { color: #dc2626; }
 .status-muted { color: #64748b; }
+.status-purple { color: #7c3aed; }
+.status-danger { color: #dc2626; }
+.status-partial { color: #ea580c; }
 
 /* =========================================================
    Forms
@@ -2569,6 +2572,9 @@ a:hover {
 [data-theme="dark"] .status-delivered { color: hsl(173, 60%, 55%); }
 [data-theme="dark"] .status-cancelled { color: hsl(4, 70%, 65%); }
 [data-theme="dark"] .status-muted { color: var(--gray-500); }
+[data-theme="dark"] .status-purple { color: hsl(270, 60%, 70%); }
+[data-theme="dark"] .status-danger { color: hsl(4, 70%, 65%); }
+[data-theme="dark"] .status-partial { color: hsl(25, 80%, 65%); }
 
 /* ── Buttons (dark) ── */
 [data-theme="dark"] .btn-secondary {

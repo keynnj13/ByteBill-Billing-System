@@ -10,7 +10,7 @@
             <h3 class="modal-detail-name">@Model.Name</h3>
             <p class="modal-detail-sub">
                 <span class="category-badge">@Model.Category</span>
-                <span class="badge @(Model.IsActive ? "badge-success" : "badge-muted")" style="margin-left: 6px;">@(Model.IsActive ? "Active" : "Inactive")</span>
+                <span class="status-indicator @(Model.IsActive ? "status-success" : "status-muted")" style="margin-left: 6px;">@(Model.IsActive ? "Active" : "Inactive")</span>
             </p>
         </div>
     </div>
@@ -54,7 +54,7 @@
             <div class="modal-detail-item">
                 <dt>Status</dt>
                 <dd>
-                    <span class="badge @(Model.IsActive ? "badge-success" : "badge-muted")">
+                    <span class="status-indicator @(Model.IsActive ? "status-success" : "status-muted")">
                         @(Model.IsActive ? "Active" : "Inactive")
                     </span>
                 </dd>

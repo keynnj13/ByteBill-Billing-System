@@ -110,7 +110,7 @@
                                     <span class="amount-text @(pay.IsVoid ? "text-line-through text-muted" : "font-medium")">@pay.Amount.ToString("C")</span>
                                 </td>
                                 <td class="text-center">
-                                    <span class="badge @pay.MethodClass">@pay.MethodDisplay</span>
+                                    <span class="status-indicator @pay.MethodClass">@pay.MethodDisplay</span>
                                 </td>
                                 <td class="text-center">
                                     <span class="pay-date">@pay.PaidAt.ToString("MMM d, yyyy")</span>
@@ -120,11 +120,11 @@
                                 <td class="text-center">
                                     @if (pay.IsVoid)
                                     {
-                                        <span class="badge badge-void">Void</span>
+                                        <span class="status-indicator status-muted">Void</span>
                                     }
                                     else
                                     {
-                                        <span class="badge badge-success">Confirmed</span>
+                                        <span class="status-indicator status-success">Confirmed</span>
                                     }
                                 </td>
                             </tr>
@@ -176,11 +176,6 @@
     .pay-time { display: block; font-size: 11px; color: #9ca3af; }
     .clickable-row { cursor: pointer; transition: background-color 0.15s ease; }
     .clickable-row:hover { background-color: #f0f7ff; }
-    .badge-success { background: #d1fae5; color: #065f46; }
-    .badge-primary { background: #dbeafe; color: #1e40af; }
-    .badge-info { background: #e0f2fe; color: #075985; }
-    .badge-purple { background: #ede9fe; color: #5b21b6; }
-    .badge-void { background: #f3f4f6; color: #6b7280; }
     @@media (max-width: 1024px) { .pay-stats { grid-template-columns: 1fr; } }
     @@media (max-width: 768px) {
         .page-header { flex-direction: column; gap: 12px; }

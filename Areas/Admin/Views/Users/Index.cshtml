@@ -126,15 +126,15 @@
                                 </td>
                                 <td><span class="usr-email">@user.Email</span></td>
                                 <td class="text-muted">@user.Phone</td>
-                                <td class="text-center"><span class="badge @user.RoleClass">@user.RoleName</span></td>
+                                <td class="text-center"><span class="status-indicator @user.RoleClass">@user.RoleName</span></td>
                                 <td class="text-center">
                                     @if (user.IsActive)
                                     {
-                                        <span class="badge badge-success">Active</span>
+                                        <span class="status-indicator status-success">Active</span>
                                     }
                                     else
                                     {
-                                        <span class="badge badge-muted">Inactive</span>
+                                        <span class="status-indicator status-muted">Inactive</span>
                                     }
                                 </td>
                                 <td class="text-muted" style="font-size: 13px;">

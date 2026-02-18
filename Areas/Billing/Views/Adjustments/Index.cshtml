@@ -71,16 +71,16 @@
             <tbody>
                 @foreach (var req in myRequests)
                 {
-                    var badgeClass = req.Type == "Credit" ? "badge-info" : req.Type == "Refund" ? "badge-warning" : "badge-purple";
-                    var statusBadge = req.Status == "Approved" ? "badge-success" : req.Status == "Rejected" ? "badge-destructive" : "badge-pending";
+                    var badgeClass = req.Type == "Credit" ? "status-info" : req.Type == "Refund" ? "status-warning" : "status-purple";
+                    var statusBadge = req.Status == "Approved" ? "status-success" : req.Status == "Rejected" ? "status-danger" : "status-pending";
                     var amountClass = req.Amount < 0 ? "bil-adj-amount-credit" : "bil-adj-amount-debit";
                     <tr>
-                        <td><span class="badge @badgeClass">@req.Type</span></td>
+                        <td><span class="status-indicator @badgeClass">@req.Type</span></td>
                         <td><span class="bil-adj-inv-link">@req.InvoiceNumber</span></td>
                         <td><span class="bil-adj-customer">@req.CustomerName</span></td>
                         <td style="text-align: right;"><span class="@amountClass">@(req.Amount < 0 ? "−" : "+")₱@(Math.Abs(req.Amount).ToString("N2"))</span></td>
                         <td><span class="bil-adj-reason">@req.Reason</span></td>
-                        <td><span class="badge @statusBadge">@req.Status</span></td>
+                        <td><span class="status-indicator @statusBadge">@req.Status</span></td>
                         <td><span class="bil-adj-date">@req.SubmittedAt.ToString("MMM dd, yyyy h:mm tt")</span></td>
                         <td><span class="bil-adj-reviewer">@(req.ReviewedBy ?? "—")</span></td>
                     </tr>

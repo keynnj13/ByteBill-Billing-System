@@ -94,14 +94,14 @@
                                     </div>
                                 </td>
                                 <td><span class="text-primary font-medium">@(pay.InvoiceNumber ?? "—")</span></td>
-                                <td class="text-center"><span class="badge @pay.MethodClass">@pay.MethodDisplay</span></td>
+                                <td class="text-center"><span class="status-indicator @pay.MethodClass">@pay.MethodDisplay</span></td>
                                 <td class="text-right font-medium">@pay.Amount.ToString("N2")</td>
                                 <td><span class="text-muted">@(pay.ReceivedByName ?? "—")</span></td>
                                 <td class="text-right"><span class="text-muted text-sm">@pay.PaymentDate.ToString("MMM dd, yyyy")</span></td>
                                 <td class="text-center">
                                     @if (pay.IsVoid)
                                     {
-                                        <span class="badge badge-void">Void</span>
+                                        <span class="status-indicator status-muted">Void</span>
                                     }
                                 </td>
                             </tr>

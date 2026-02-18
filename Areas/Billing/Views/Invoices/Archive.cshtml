@@ -84,7 +84,7 @@
                                     <span class="@(inv.Balance > 0 ? "text-danger font-medium" : "")">@inv.Balance.ToString("C")</span>
                                 </td>
                                 <td class="text-center">
-                                    <span class="badge @inv.StatusClass">@inv.StatusDisplay</span>
+                                    <span class="status-indicator @inv.StatusClass">@inv.StatusDisplay</span>
                                 </td>
                                 <td class="text-center">
                                     @if (inv.DueDate.HasValue)

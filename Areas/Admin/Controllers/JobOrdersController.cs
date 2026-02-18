@@ -18,11 +18,13 @@ public class JobOrdersController : Controller
 {
     private readonly IJobOrderService _jobOrderService;
     private readonly ApplicationDbContext _db;
+    private readonly IAuditService _audit;
 
-    public JobOrdersController(IJobOrderService jobOrderService, ApplicationDbContext db)
+    public JobOrdersController(IJobOrderService jobOrderService, ApplicationDbContext db, IAuditService audit)
     {
         _jobOrderService = jobOrderService;
         _db = db;
+        _audit = audit;
     }
 
     private bool IsAuthorized() => User.IsInRoles("Admin", "SuperAdmin");
@@ -546,6 +548,10 @@ public class JobOrdersController : Controller
         jobOrder.ArchivedDate = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
+        await _audit.LogAsync(shopId, User.GetUserId(), "Archive", "JobOrder", jobOrder.JobOrderId,
+            $"Archived job order {jobOrder.JobOrderNo}",
+            HttpContext.Connection.RemoteIpAddress?.ToString());
+
         TempData["Success"] = $"Job order {jobOrder.JobOrderNo} archived successfully.";
         return RedirectToAction(nameof(Index));
     }
@@ -563,6 +569,10 @@ public class JobOrdersController : Controller
         jobOrder.IsArchived = false;
         jobOrder.ArchivedDate = null;
         await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(shopId, User.GetUserId(), "Restore", "JobOrder", jobOrder.JobOrderId,
+            $"Restored job order {jobOrder.JobOrderNo} from archive",
+            HttpContext.Connection.RemoteIpAddress?.ToString());
 
         TempData["Success"] = $"Job order {jobOrder.JobOrderNo} restored successfully.";
         return RedirectToAction(nameof(Archive));

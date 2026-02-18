@@ -114,7 +114,7 @@
                                     <span class="@(inv.Balance > 0 ? "text-danger font-medium" : "")">@inv.Balance.ToString("C")</span>
                                 </td>
                                 <td class="text-center">
-                                    <span class="badge @inv.StatusClass">@inv.StatusDisplay</span>
+                                    <span class="status-indicator @inv.StatusClass">@inv.StatusDisplay</span>
                                 </td>
                                 <td class="text-center">
                                     @if (inv.DueDate.HasValue)
@@ -182,10 +182,6 @@
     .font-medium { font-weight: 500; }
     .clickable-row { cursor: pointer; transition: background-color 0.15s ease; }
     .clickable-row:hover { background-color: #f0f7ff; }
-    .badge-pending { background: #fef3c7; color: #92400e; }
-    .badge-partial { background: #dbeafe; color: #1e40af; }
-    .badge-paid { background: #d1fae5; color: #065f46; }
-    .badge-void { background: #f3f4f6; color: #6b7280; }
     @@media (max-width: 1024px) { .inv-stats { grid-template-columns: 1fr; } }
     @@media (max-width: 768px) {
         .page-header { flex-direction: column; gap: 12px; }

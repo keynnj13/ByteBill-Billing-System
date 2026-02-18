@@ -42,12 +42,12 @@
                         <div class="ig-integration-meta">
                             @if (Model.XeroConnected)
                             {
-                                <span class="badge badge-success">Connected</span>
+                                <span class="status-indicator status-success">Connected</span>
                                 <span class="ig-meta-text">Last sync: @(Model.XeroLastSyncAt?.ToString("MMM dd, h:mm tt") ?? "Never")</span>
                             }
                             else
                             {
-                                <span class="badge badge-muted">Not Connected</span>
+                                <span class="status-indicator status-muted">Not Connected</span>
                             }
                         </div>
                     </div>
@@ -116,9 +116,9 @@
                         {
                             <tr>
                                 <td class="ig-ts">@sync.SyncedAt.ToString("MMM dd, h:mm tt")</td>
-                                <td><span class="badge badge-muted">@sync.SyncType</span></td>
+                                <td><span class="status-indicator status-muted">@sync.SyncType</span></td>
                                 <td class="fw-medium">@(sync.EntityReference ?? "—")</td>
-                                <td><span class="badge @sync.StatusClass">@sync.Status</span></td>
+                                <td><span class="status-indicator @sync.StatusClass">@sync.Status</span></td>
                                 <td class="ig-mono">@(sync.XeroRecordId ?? "—")</td>
                                 <td class="text-muted" style="font-size: 13px;">@sync.SyncedByName</td>
                                 <td class="ig-msg" title="@sync.Message">@(sync.Message ?? "—")</td>
@@ -146,11 +146,11 @@
                         <div class="ig-integration-meta">
                             @if (Model.PayMongoEnabled)
                             {
-                                <span class="badge badge-success">Enabled</span>
+                                <span class="status-indicator status-success">Enabled</span>
                             }
                             else
                             {
-                                <span class="badge badge-muted">Disabled</span>
+                                <span class="status-indicator status-muted">Disabled</span>
                             }
                         </div>
                     </div>
@@ -211,11 +211,11 @@
                             <tr>
                                 <td class="ig-ts">@txn.CreatedAt.ToString("MMM dd, h:mm tt")</td>
                                 <td class="ig-mono">@txn.PayMongoId</td>
-                                <td><span class="badge badge-muted">@txn.Type</span></td>
+                                <td><span class="status-indicator status-muted">@txn.Type</span></td>
                                 <td class="fw-medium">@(txn.CustomerName ?? "—")</td>
                                 <td class="text-muted">@(txn.InvoiceNo ?? "—")</td>
                                 <td class="text-right fw-medium">&#8369;@txn.Amount.ToString("N2")</td>
-                                <td><span class="badge @txn.StatusClass">@txn.Status</span></td>
+                                <td><span class="status-indicator @txn.StatusClass">@txn.Status</span></td>
                             </tr>
                         }
                     </tbody>
