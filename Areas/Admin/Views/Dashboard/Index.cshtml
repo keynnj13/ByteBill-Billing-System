@@ -19,12 +19,12 @@
     <!-- Today's Revenue -->
     <div class="kpi-card">
         <div class="kpi-icon kpi-icon-green">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+            <span class="kpi-peso-icon">₱</span>
         </div>
         <div class="kpi-body">
             <span class="kpi-label">Today's Revenue</span>
-            <span class="kpi-value">@Model.TodayRevenue.ToString("C")</span>
-            <span class="kpi-sub">Week: @Model.WeekRevenue.ToString("C")</span>
+            <span class="kpi-value" id="kpi-today-revenue">₱@Model.TodayRevenue.ToString("N2")</span>
+            <span class="kpi-sub" id="kpi-week-revenue">Week: ₱@Model.WeekRevenue.ToString("N2")</span>
         </div>
     </div>
 
@@ -35,8 +35,8 @@
         </div>
         <div class="kpi-body">
             <span class="kpi-label">Pending Jobs</span>
-            <span class="kpi-value">@Model.PendingJobOrdersCount</span>
-            <span class="kpi-sub">In progress: @Model.InProgressJobOrders</span>
+            <span class="kpi-value" id="kpi-pending-jobs">@Model.PendingJobOrdersCount</span>
+            <span class="kpi-sub" id="kpi-inprogress-jobs">In progress: @Model.InProgressJobOrders</span>
         </div>
     </div>
 
@@ -47,8 +47,8 @@
         </div>
         <div class="kpi-body">
             <span class="kpi-label">Unpaid Invoices</span>
-            <span class="kpi-value">@Model.PendingInvoices</span>
-            <span class="kpi-sub">@Model.OutstandingAmount.ToString("C") outstanding</span>
+            <span class="kpi-value" id="kpi-unpaid-invoices">@Model.PendingInvoices</span>
+            <span class="kpi-sub" id="kpi-outstanding">₱@Model.OutstandingAmount.ToString("N2") outstanding</span>
         </div>
     </div>
 
@@ -59,7 +59,7 @@
         </div>
         <div class="kpi-body">
             <span class="kpi-label">Low Stock Items</span>
-            <span class="kpi-value">@Model.LowStockItems</span>
+            <span class="kpi-value" id="kpi-low-stock">@Model.LowStockItems</span>
             <span class="kpi-sub">Needs reorder</span>
         </div>
     </div>
@@ -71,7 +71,7 @@
     <div class="card chart-card">
         <div class="card-header">
             <h3 class="card-title">Monthly Revenue</h3>
-            <span class="card-badge">Last 6 months</span>
+            <div style="display:flex;align-items:center;gap:8px;"><span class="live-dot"></span><span class="card-badge">Last 6 months</span></div>
         </div>
         <div class="card-body">
             <canvas id="revenueChart" height="260"></canvas>
@@ -118,7 +118,7 @@
                                 <th class="text-center">Status</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="recent-jobs-body">
                             @foreach (var job in Model.RecentJobOrders)
                             {
                                 <tr>
@@ -150,7 +150,7 @@
         <div class="card-body p-0">
             @if (Model.RecentActivity.Any())
             {
-                <ul class="activity-list">
+                <ul class="activity-list" id="activity-list">
                     @foreach (var activity in Model.RecentActivity)
                     {
                         <li class="activity-item">
@@ -182,10 +182,25 @@
             red: '#ef4444',
             purple: '#8b5cf6',
             cyan: '#06b6d4',
+            indigo: '#6366f1',
+            teal: '#14b8a6',
             gray: '#6b7280',
             gridLine: 'rgba(0,0,0,0.04)',
             text: '#374151'
         };
+
+        // ── Semantic color map for Job Order Statuses ──
+        var statusColorMap = {
+            'Completed':      colors.green,
+            'InProgress':     colors.primary,
+            'Pending':        colors.amber,
+            'Diagnosis':      colors.cyan,
+            'WaitingForParts': colors.purple,
+            'Cancelled':      colors.red,
+            'CheckedIn':      colors.indigo,
+            'Delivered':      colors.teal
+        };
+        var fallbackColor = colors.gray;
 
         Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
         Chart.defaults.color = colors.text;
@@ -194,7 +209,7 @@
         var revenueLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RevenueChart.Select(c => c.Label)));
         var revenueValues = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RevenueChart.Select(c => c.Value)));
 
-        new Chart(document.getElementById('revenueChart'), {
+        var revenueChart = new Chart(document.getElementById('revenueChart'), {
             type: 'bar',
             data: {
                 labels: revenueLabels,
@@ -235,25 +250,30 @@
                         border: { display: false },
                         ticks: {
                             font: { size: 12 },
-                            callback: function (val) { return '₱' + (val / 1000).toFixed(0) + 'k'; }
+                            callback: function (val) {
+                                if (val >= 1000) return '₱' + (val / 1000).toFixed(0) + 'k';
+                                return '₱' + val;
+                            }
                         }
                     }
                 }
             }
         });
 
-        // ── Job Status Doughnut Chart ──
+        // ── Job Status Doughnut Chart (semantic colors) ──
         var statusLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.JobOrderChart.Select(c => c.Label)));
         var statusValues = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.JobOrderChart.Select(c => c.Value)));
-        var statusColors = [colors.amber, colors.primary, colors.cyan, colors.green, colors.red, colors.purple, colors.gray];
+        var statusColors = statusLabels.map(function(label) {
+            return statusColorMap[label] || fallbackColor;
+        });
 
-        new Chart(document.getElementById('jobStatusChart'), {
+        var jobStatusChart = new Chart(document.getElementById('jobStatusChart'), {
             type: 'doughnut',
             data: {
                 labels: statusLabels,
                 datasets: [{
                     data: statusValues,
-                    backgroundColor: statusColors.slice(0, statusLabels.length),
+                    backgroundColor: statusColors,
                     borderWidth: 0,
                     spacing: 2
                 }]
@@ -269,7 +289,20 @@
                             padding: 16,
                             usePointStyle: true,
                             pointStyleWidth: 8,
-                            font: { size: 12 }
+                            font: { size: 12 },
+                            generateLabels: function(chart) {
+                                var data = chart.data;
+                                return data.labels.map(function(label, i) {
+                                    return {
+                                        text: label,
+                                        fillStyle: data.datasets[0].backgroundColor[i],
+                                        strokeStyle: 'transparent',
+                                        pointStyle: 'circle',
+                                        hidden: false,
+                                        index: i
+                                    };
+                                });
+                            }
                         }
                     },
                     tooltip: {
@@ -280,6 +313,109 @@
                 }
             }
         });
+
+        // ── Real-time Polling (every 15 seconds) ──
+        function formatPeso(val) {
+            return '₱' + Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function getStatusClass(status) {
+            switch (status) {
+                case 'Completed': case 'Delivered': return 'success';
+                case 'InProgress': return 'primary';
+                case 'Pending': return 'warning';
+                case 'Cancelled': return 'danger';
+                case 'WaitingForParts': return 'secondary';
+                default: return 'info';
+            }
+        }
+
+        function getActivityDotClass(newStatus) {
+            switch (newStatus) {
+                case 'Completed': case 'Delivered': return 'activity-dot-success';
+                case 'InProgress': case 'Pending': return 'activity-dot-primary';
+                case 'Cancelled': return 'activity-dot-danger';
+                case 'WaitingForParts': return 'activity-dot-warning';
+                default: return 'activity-dot-info';
+            }
+        }
+
+        function pollDashboard() {
+            fetch('@Url.Action("Poll", "Dashboard", new { area = "Admin" })')
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    // ── Update KPI cards ──
+                    var el;
+                    el = document.getElementById('kpi-today-revenue');
+                    if (el) el.textContent = formatPeso(d.todayRevenue);
+                    el = document.getElementById('kpi-week-revenue');
+                    if (el) el.textContent = 'Week: ' + formatPeso(d.weekRevenue);
+                    el = document.getElementById('kpi-pending-jobs');
+                    if (el) el.textContent = d.pendingJobs;
+                    el = document.getElementById('kpi-inprogress-jobs');
+                    if (el) el.textContent = 'In progress: ' + d.inProgressJobs;
+                    el = document.getElementById('kpi-unpaid-invoices');
+                    if (el) el.textContent = d.unpaidInvoices;
+                    el = document.getElementById('kpi-outstanding');
+                    if (el) el.textContent = formatPeso(d.outstandingAmount) + ' outstanding';
+                    el = document.getElementById('kpi-low-stock');
+                    if (el) el.textContent = d.lowStockCount;
+
+                    // ── Update Revenue Bar Chart ──
+                    if (d.revenueChart && d.revenueChart.length) {
+                        revenueChart.data.labels = d.revenueChart.map(function(c) { return c.label; });
+                        revenueChart.data.datasets[0].data = d.revenueChart.map(function(c) { return c.value; });
+                        revenueChart.update('none');
+                    }
+
+                    // ── Update Job Status Doughnut ──
+                    if (d.jobOrderChart && d.jobOrderChart.length) {
+                        var newLabels = d.jobOrderChart.map(function(c) { return c.label; });
+                        var newValues = d.jobOrderChart.map(function(c) { return c.value; });
+                        var newColors = newLabels.map(function(l) { return statusColorMap[l] || fallbackColor; });
+                        jobStatusChart.data.labels = newLabels;
+                        jobStatusChart.data.datasets[0].data = newValues;
+                        jobStatusChart.data.datasets[0].backgroundColor = newColors;
+                        jobStatusChart.update('none');
+                    }
+
+                    // ── Update Recent Job Orders table ──
+                    var tbody = document.getElementById('recent-jobs-body');
+                    if (tbody && d.recentJobOrders) {
+                        tbody.innerHTML = d.recentJobOrders.map(function(job) {
+                            var techHtml = job.technicianName
+                                ? '<td style="font-size:13px;color:#374151;">' + job.technicianName + '</td>'
+                                : '<td style="font-size:13px;color:#d1d5db;font-style:italic;">Unassigned</td>';
+                            return '<tr>' +
+                                '<td><a href="/Admin/JobOrders/Details/' + job.id + '" class="text-primary font-medium" style="font-weight:600;color:#3b82f6;text-decoration:none;font-size:13px;">' + job.jobNumber + '</a></td>' +
+                                '<td style="font-size:13px;color:#374151;">' + job.customerName + '</td>' +
+                                '<td style="font-size:13px;color:#374151;">' + job.deviceType + '</td>' +
+                                techHtml +
+                                '<td class="text-center"><span class="status-indicator status-' + getStatusClass(job.status.toString()) + '">' + job.status + '</span></td>' +
+                                '</tr>';
+                        }).join('');
+                    }
+
+                    // ── Update Recent Activity ──
+                    var actList = document.getElementById('activity-list');
+                    if (actList && d.recentActivity) {
+                        actList.innerHTML = d.recentActivity.map(function(a) {
+                            return '<li class="activity-item">' +
+                                '<div class="activity-dot activity-dot-' + a.iconColor + '"></div>' +
+                                '<div class="activity-content">' +
+                                '<p class="activity-title">' + a.title + '</p>' +
+                                '<p class="activity-description">' + a.description + '</p>' +
+                                '</div>' +
+                                '<span class="activity-time">' + a.timeAgo + '</span>' +
+                                '</li>';
+                        }).join('');
+                    }
+                })
+                .catch(function(err) { console.warn('Dashboard poll error:', err); });
+        }
+
+        // Start polling every 15 seconds
+        setInterval(pollDashboard, 15000);
     });
 </script>
 
@@ -340,6 +476,28 @@
     .kpi-icon-blue   { background: rgba(59,130,246,0.1);  color: #3b82f6; }
     .kpi-icon-amber  { background: rgba(245,158,11,0.1);  color: #f59e0b; }
     .kpi-icon-red    { background: rgba(239,68,68,0.1);   color: #ef4444; }
+
+    /* ₱ Peso icon */
+    .kpi-peso-icon {
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* Live indicator */
+    .live-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #10b981;
+        display: inline-block;
+        animation: livePulse 2s ease-in-out infinite;
+    }
+    @@keyframes livePulse {
+        0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(16,185,129,0.5); }
+        50% { opacity: 0.7; box-shadow: 0 0 0 4px rgba(16,185,129,0); }
+    }
     .kpi-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
     .kpi-label { font-size: 13px; color: var(--muted); font-weight: 500; }
     .kpi-value { font-size: 24px; font-weight: 700; color: var(--gray-900, #1f2937); line-height: 1.2; }

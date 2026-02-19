@@ -25,15 +25,61 @@ public class DashboardController : Controller
         if (!User.IsInRoles("Admin"))
             return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
-        var shopId = User.GetShopId();
-        var today = DateTime.UtcNow.Date;
-        var weekStart = today.AddDays(-(int)today.DayOfWeek);
+        var vm = await BuildDashboardAsync();
+        return View(vm);
+    }
 
-        // ── Shop name ──
+    /// <summary>Real-time polling endpoint – returns all dashboard data as JSON.</summary>
+    [HttpGet]
+    public async Task<IActionResult> Poll()
+    {
+        if (!User.IsInRoles("Admin"))
+            return Unauthorized();
+
+        var data = await BuildDashboardDataAsync();
+        return Json(data);
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  Shared data-fetching helpers
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    private async Task<DashboardViewModel> BuildDashboardAsync()
+    {
+        var shopId = User.GetShopId();
         var shopName = await _db.Shops
             .Where(s => s.ShopId == shopId)
             .Select(s => s.ShopName)
             .FirstOrDefaultAsync() ?? "My Shop";
+
+        var data = await BuildDashboardDataAsync();
+
+        return new DashboardViewModel
+        {
+            UserRole = UserRole.Admin,
+            UserName = User.GetFullName(),
+            ShopName = shopName,
+            TotalJobOrders = data.TotalJobOrders,
+            PendingJobOrdersCount = data.PendingJobs,
+            InProgressJobOrders = data.InProgressJobs,
+            CompletedToday = data.CompletedToday,
+            TodayRevenue = data.TodayRevenue,
+            WeekRevenue = data.WeekRevenue,
+            PendingInvoices = data.UnpaidInvoices,
+            OutstandingAmount = data.OutstandingAmount,
+            LowStockItems = data.LowStockCount,
+            RevenueChart = data.RevenueChart,
+            JobOrderChart = data.JobOrderChart,
+            RecentJobOrders = data.RecentJobOrders,
+            RecentActivity = data.RecentActivity
+        };
+    }
+
+    private async Task<DashboardPollDto> BuildDashboardDataAsync()
+    {
+        var shopId = User.GetShopId();
+        var today = DateTime.UtcNow.Date;
+        var weekStart = today.AddDays(-(int)today.DayOfWeek);
 
         // ── Job Order counts ──
         var jobOrders = await _db.JobOrders
@@ -133,7 +179,7 @@ public class DashboardController : Controller
             })
             .ToListAsync();
 
-        // ── Recent Activity (from audit logs + status history, last 15) ──
+        // ── Recent Activity (from status history, last 15) ──
         var recentStatusChanges = await _db.JobOrderStatusHistories
             .Where(h => _db.JobOrders.Any(j => j.ShopId == shopId && j.JobOrderId == h.JobOrderId))
             .OrderByDescending(h => h.ChangedAt)
@@ -173,27 +219,22 @@ public class DashboardController : Controller
             };
         }).ToList();
 
-        var viewModel = new DashboardViewModel
+        return new DashboardPollDto
         {
-            UserRole = UserRole.Admin,
-            UserName = User.GetFullName(),
-            ShopName = shopName,
             TotalJobOrders = jobOrders?.Total ?? 0,
-            PendingJobOrdersCount = jobOrders?.Pending ?? 0,
-            InProgressJobOrders = jobOrders?.InProgress ?? 0,
+            PendingJobs = jobOrders?.Pending ?? 0,
+            InProgressJobs = jobOrders?.InProgress ?? 0,
             CompletedToday = jobOrders?.CompletedToday ?? 0,
             TodayRevenue = todayRevenue,
             WeekRevenue = weekRevenue,
-            PendingInvoices = invoiceStats?.Unpaid ?? 0,
+            UnpaidInvoices = invoiceStats?.Unpaid ?? 0,
             OutstandingAmount = invoiceStats?.Outstanding ?? 0m,
-            LowStockItems = lowStockCount,
+            LowStockCount = lowStockCount,
             RevenueChart = revenueChart,
             JobOrderChart = jobOrderChart,
             RecentJobOrders = recentJobs,
             RecentActivity = recentActivity
         };
-
-        return View(viewModel);
     }
 
     private static string GetTimeAgo(DateTime dt)
@@ -205,4 +246,22 @@ public class DashboardController : Controller
         if (span.TotalDays < 7) return $"{(int)span.TotalDays}d ago";
         return dt.ToString("MMM d");
     }
+}
+
+/// <summary>DTO returned by the Poll endpoint for real-time dashboard updates.</summary>
+public class DashboardPollDto
+{
+    public int TotalJobOrders { get; set; }
+    public int PendingJobs { get; set; }
+    public int InProgressJobs { get; set; }
+    public int CompletedToday { get; set; }
+    public decimal TodayRevenue { get; set; }
+    public decimal WeekRevenue { get; set; }
+    public int UnpaidInvoices { get; set; }
+    public decimal OutstandingAmount { get; set; }
+    public int LowStockCount { get; set; }
+    public List<ChartDataPoint> RevenueChart { get; set; } = new();
+    public List<ChartDataPoint> JobOrderChart { get; set; } = new();
+    public List<JobOrderSummary> RecentJobOrders { get; set; } = new();
+    public List<RecentActivityItem> RecentActivity { get; set; } = new();
 }
