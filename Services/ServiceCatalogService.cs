@@ -22,7 +22,9 @@ public class ServiceCatalogListItem
     public string ServiceName { get; set; } = string.Empty;
     public string CategoryName { get; set; } = string.Empty;
     public long ServiceCategoryId { get; set; }
+    public string? Description { get; set; }
     public decimal BasePrice { get; set; }
+    public int EstimatedDuration { get; set; }
     public bool IsActive { get; set; }
     public int UsageCount { get; set; }
 }
@@ -33,7 +35,9 @@ public class ServiceCatalogDetail
     public string ServiceName { get; set; } = string.Empty;
     public string CategoryName { get; set; } = string.Empty;
     public long ServiceCategoryId { get; set; }
+    public string? Description { get; set; }
     public decimal BasePrice { get; set; }
+    public int EstimatedDuration { get; set; }
     public bool IsActive { get; set; }
     public int UsageCount { get; set; }
     public decimal TotalRevenue { get; set; }
@@ -44,7 +48,9 @@ public class CreateServiceRequest
     public string ServiceName { get; set; } = string.Empty;
     public string CategoryName { get; set; } = string.Empty;
     public long? CategoryId { get; set; }
+    public string? Description { get; set; }
     public decimal BasePrice { get; set; }
+    public int EstimatedDuration { get; set; }
     public bool IsActive { get; set; } = true;
 }
 
@@ -53,7 +59,9 @@ public class UpdateServiceRequest
     public string ServiceName { get; set; } = string.Empty;
     public string CategoryName { get; set; } = string.Empty;
     public long? CategoryId { get; set; }
+    public string? Description { get; set; }
     public decimal BasePrice { get; set; }
+    public int EstimatedDuration { get; set; }
     public bool IsActive { get; set; }
 }
 
@@ -108,7 +116,9 @@ public class ServiceCatalogService : IServiceCatalogService
                 ServiceName = s.ServiceName,
                 CategoryName = s.ServiceCategory != null ? s.ServiceCategory.CategoryName : "",
                 ServiceCategoryId = s.ServiceCategoryId,
+                Description = s.Description,
                 BasePrice = s.BasePrice,
+                EstimatedDuration = s.EstimatedDuration,
                 IsActive = s.IsActive,
                 UsageCount = s.JobOrderServices.Count
             })
@@ -140,7 +150,9 @@ public class ServiceCatalogService : IServiceCatalogService
             ServiceName = svc.ServiceName,
             CategoryName = svc.ServiceCategory?.CategoryName ?? "",
             ServiceCategoryId = svc.ServiceCategoryId,
+            Description = svc.Description,
             BasePrice = svc.BasePrice,
+            EstimatedDuration = svc.EstimatedDuration,
             IsActive = svc.IsActive,
             UsageCount = svc.JobOrderServices.Count,
             TotalRevenue = svc.JobOrderServices.Sum(js => js.UnitPrice * js.Qty)
@@ -156,7 +168,9 @@ public class ServiceCatalogService : IServiceCatalogService
             ShopId = shopId,
             ServiceCategoryId = categoryId,
             ServiceName = req.ServiceName,
+            Description = req.Description,
             BasePrice = req.BasePrice,
+            EstimatedDuration = req.EstimatedDuration,
             IsActive = req.IsActive
         };
 
@@ -171,7 +185,9 @@ public class ServiceCatalogService : IServiceCatalogService
             ServiceName = entity.ServiceName,
             CategoryName = cat?.CategoryName ?? "",
             ServiceCategoryId = entity.ServiceCategoryId,
+            Description = entity.Description,
             BasePrice = entity.BasePrice,
+            EstimatedDuration = entity.EstimatedDuration,
             IsActive = entity.IsActive
         };
     }
@@ -189,7 +205,9 @@ public class ServiceCatalogService : IServiceCatalogService
 
         entity.ServiceName = req.ServiceName;
         entity.ServiceCategoryId = categoryId;
+        entity.Description = req.Description;
         entity.BasePrice = req.BasePrice;
+        entity.EstimatedDuration = req.EstimatedDuration;
         entity.IsActive = req.IsActive;
 
         await _db.SaveChangesAsync();
@@ -202,7 +220,9 @@ public class ServiceCatalogService : IServiceCatalogService
             ServiceName = entity.ServiceName,
             CategoryName = cat?.CategoryName ?? "",
             ServiceCategoryId = entity.ServiceCategoryId,
+            Description = entity.Description,
             BasePrice = entity.BasePrice,
+            EstimatedDuration = entity.EstimatedDuration,
             IsActive = entity.IsActive
         };
     }

@@ -48,8 +48,10 @@ public class ServicesController : Controller
                 Name = s.ServiceName,
                 ServiceName = s.ServiceName,
                 Category = s.CategoryName,
+                Description = s.Description,
                 Price = s.BasePrice,
                 BasePrice = s.BasePrice,
+                EstimatedDuration = s.EstimatedDuration > 0 ? $"{s.EstimatedDuration} min" : null,
                 IsActive = s.IsActive,
                 UsageCount = s.UsageCount
             }).ToList()
@@ -103,7 +105,9 @@ public class ServicesController : Controller
             ServiceName = model.Name,
             CategoryName = model.Category,
             CategoryId = model.CategoryId,
+            Description = model.Description,
             BasePrice = model.Price,
+            EstimatedDuration = model.EstimatedDuration,
             IsActive = model.IsActive
         });
 
@@ -145,7 +149,9 @@ public class ServicesController : Controller
             Name = detail.ServiceName,
             Category = detail.CategoryName,
             CategoryId = detail.ServiceCategoryId,
+            Description = detail.Description,
             Price = detail.BasePrice,
+            EstimatedDuration = detail.EstimatedDuration,
             IsActive = detail.IsActive,
             ExistingCategories = await _service.GetCategoriesAsync(shopId)
         };
@@ -172,7 +178,9 @@ public class ServicesController : Controller
             ServiceName = model.Name,
             CategoryName = model.Category,
             CategoryId = model.CategoryId,
+            Description = model.Description,
             BasePrice = model.Price,
+            EstimatedDuration = model.EstimatedDuration,
             IsActive = model.IsActive
         });
 
@@ -215,6 +223,7 @@ public class ServicesController : Controller
             Id = detail.ServiceId,
             Name = detail.ServiceName,
             Category = detail.CategoryName,
+            Description = detail.Description,
             Price = detail.BasePrice,
             IsActive = detail.IsActive,
             UsageCount = detail.UsageCount,

@@ -32,7 +32,6 @@ public class PaymentItemViewModel
         PaymentMethod.Cash => "status-success",
         PaymentMethod.GCash => "status-primary",
         PaymentMethod.Card => "status-info",
-        PaymentMethod.PayMongo => "status-purple",
         _ => "status-muted"
     };
     public decimal Amount { get; set; }

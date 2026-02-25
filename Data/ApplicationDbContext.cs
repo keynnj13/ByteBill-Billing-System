@@ -20,6 +20,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Device> Devices => Set<Device>();
     public DbSet<ServiceCategory> ServiceCategories => Set<ServiceCategory>();
     public DbSet<ServiceCatalog> ServiceCatalogs => Set<ServiceCatalog>();
+    public DbSet<InventoryCategory> InventoryCategories => Set<InventoryCategory>();
     public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
     public DbSet<InventoryTxn> InventoryTxns => Set<InventoryTxn>();
     public DbSet<JobOrder> JobOrders => Set<JobOrder>();
@@ -211,7 +212,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ShopId).HasColumnName("ShopID");
             entity.Property(e => e.ServiceCategoryId).HasColumnName("ServiceCategoryID");
             entity.Property(e => e.ServiceName).HasMaxLength(120).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(500);
             entity.Property(e => e.BasePrice).HasPrecision(18, 2).HasDefaultValue(0m);
+            entity.Property(e => e.EstimatedDuration).HasDefaultValue(0);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.HasIndex(e => new { e.ShopId, e.ServiceName }).IsUnique();
             entity.HasIndex(e => e.ShopId);
@@ -229,6 +232,26 @@ public class ApplicationDbContext : DbContext
         });
 
         // ═══════════════════════════════════════════════════════════════
+        // I0. INVENTORY_CATEGORY
+        // ═══════════════════════════════════════════════════════════════
+        modelBuilder.Entity<InventoryCategory>(entity =>
+        {
+            entity.ToTable("INVENTORY_CATEGORY");
+            entity.HasKey(e => e.InventoryCategoryId);
+            entity.Property(e => e.InventoryCategoryId).HasColumnName("InventoryCategoryID");
+            entity.Property(e => e.ShopId).HasColumnName("ShopID");
+            entity.Property(e => e.CategoryName).HasMaxLength(80).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(150);
+            entity.HasIndex(e => new { e.ShopId, e.CategoryName }).IsUnique();
+            entity.HasIndex(e => e.ShopId);
+
+            entity.HasOne(e => e.Shop)
+                  .WithMany(s => s.InventoryCategories)
+                  .HasForeignKey(e => e.ShopId)
+                  .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // ═══════════════════════════════════════════════════════════════
         // I. INVENTORY_ITEMS
         // ═══════════════════════════════════════════════════════════════
         modelBuilder.Entity<InventoryItem>(entity =>
@@ -237,6 +260,7 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(e => e.ItemId);
             entity.Property(e => e.ItemId).HasColumnName("ItemID");
             entity.Property(e => e.ShopId).HasColumnName("ShopID");
+            entity.Property(e => e.InventoryCategoryId).HasColumnName("InventoryCategoryID");
             entity.Property(e => e.SKU).HasMaxLength(40).IsRequired();
             entity.Property(e => e.ItemName).HasMaxLength(120).IsRequired();
             entity.Property(e => e.Unit).HasMaxLength(20).IsRequired();
@@ -252,6 +276,11 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.Shop)
                   .WithMany(s => s.InventoryItems)
                   .HasForeignKey(e => e.ShopId)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(e => e.InventoryCategory)
+                  .WithMany(ic => ic.Items)
+                  .HasForeignKey(e => e.InventoryCategoryId)
                   .OnDelete(DeleteBehavior.NoAction);
         });
 
@@ -556,7 +585,7 @@ public class ApplicationDbContext : DbContext
 
         // ═══════════════════════════════════════════════════════════════
         // S. PAYMONGO_TXN
-        //    UNIQUE(PaymentID) → optional 1:0..1 Payment → PayMongoTxn
+        //    PaymentID is nullable — set only after webhook confirms payment
         // ═══════════════════════════════════════════════════════════════
         modelBuilder.Entity<PayMongoTxn>(entity =>
         {
@@ -564,16 +593,37 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(e => e.PayMongoTxnId);
             entity.Property(e => e.PayMongoTxnId).HasColumnName("PayMongoTxnID");
             entity.Property(e => e.PaymentId).HasColumnName("PaymentID");
+            entity.Property(e => e.ShopId).HasColumnName("ShopID");
+            entity.Property(e => e.InvoiceId).HasColumnName("InvoiceID");
+            entity.Property(e => e.InitiatedByUserId).HasColumnName("InitiatedByUserID");
+            entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
             entity.Property(e => e.PayMongoPaymentIntentId).HasColumnName("PayMongoPaymentIntentID").HasMaxLength(80).IsRequired();
             entity.Property(e => e.PayMongoStatus).HasMaxLength(30).IsRequired();
+            entity.Property(e => e.PayMongoPaymentMethod).HasMaxLength(30);
+            entity.Property(e => e.CheckoutUrl).HasMaxLength(500);
+            entity.Property(e => e.ResourceType).HasMaxLength(30).IsRequired().HasDefaultValue("link");
             entity.Property(e => e.RawResponse).HasColumnType("nvarchar(max)");
             entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
-            entity.HasIndex(e => e.PaymentId).IsUnique(); // 1:0..1 with PAYMENTS
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime2(0)");
+            entity.HasIndex(e => e.PaymentId).IsUnique().HasFilter("[PaymentID] IS NOT NULL");
+            entity.HasIndex(e => e.PayMongoPaymentIntentId); // For webhook lookups
 
-            // 1:0..1 relationship — Payment optionally has one PayMongoTxn
+            // Optional 1:0..1 relationship — Payment set after webhook confirmation
             entity.HasOne(e => e.Payment)
                   .WithOne(p => p.PayMongoTxn)
                   .HasForeignKey<PayMongoTxn>(e => e.PaymentId)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            // Invoice relationship
+            entity.HasOne(e => e.Invoice)
+                  .WithMany()
+                  .HasForeignKey(e => e.InvoiceId)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            // Shop relationship
+            entity.HasOne(e => e.Shop)
+                  .WithMany()
+                  .HasForeignKey(e => e.ShopId)
                   .OnDelete(DeleteBehavior.NoAction);
         });
 

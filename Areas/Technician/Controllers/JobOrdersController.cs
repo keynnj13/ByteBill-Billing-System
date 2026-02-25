@@ -1,4 +1,5 @@
 using ByteBill_BS.Data;
+using ByteBill_BS.DTOs.Common;
 using ByteBill_BS.DTOs.JobOrders;
 using ByteBill_BS.Extensions;
 using ByteBill_BS.Models.Enums;
@@ -157,6 +158,7 @@ public class JobOrdersController : Controller
             Total = serviceCost + partsCost,
             LineItems = dto.Services.Select(s => new JobOrderDetailViewModel.LineItem
             {
+                Id = s.JobOrderServiceId,
                 Description = s.ServiceName,
                 Type = "Service",
                 Quantity = s.Qty,
@@ -165,6 +167,7 @@ public class JobOrdersController : Controller
             })
             .Concat(dto.Parts.Select(p => new JobOrderDetailViewModel.LineItem
             {
+                Id = p.JobOrderPartId,
                 Description = p.ItemName,
                 Type = "Part",
                 Quantity = p.QtyUsed,
@@ -181,6 +184,28 @@ public class JobOrdersController : Controller
                 IsCompleted = true
             }).ToList()
         };
+
+        // Load available services and parts for add forms
+        var canModifyLines = dto.InvoiceId == null
+            && parsedStatus != JobOrderStatus.Delivered
+            && parsedStatus != JobOrderStatus.Cancelled;
+
+        if (canModifyLines)
+        {
+            ViewBag.AvailableServices = await _db.ServiceCatalogs
+                .Where(s => s.IsActive && s.ShopId == shopId)
+                .OrderBy(s => s.ServiceName)
+                .Select(s => new { Id = s.ServiceId, Name = s.ServiceName, Price = s.BasePrice })
+                .ToListAsync();
+
+            ViewBag.AvailableParts = await _db.InventoryItems
+                .Where(i => i.ShopId == shopId && i.IsActive && i.QtyOnHand > 0)
+                .OrderBy(i => i.ItemName)
+                .Select(i => new { Id = i.ItemId, Name = i.ItemName, Stock = i.QtyOnHand, Price = i.UnitPrice })
+                .ToListAsync();
+        }
+
+        ViewBag.CanModifyLines = canModifyLines;
 
         return View(model);
     }
@@ -247,5 +272,94 @@ public class JobOrdersController : Controller
 
         TempData["Success"] = "Notes added successfully";
         return RedirectToAction(nameof(Details), new { id });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddServiceLine(long jobOrderId, long serviceCatalogId)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var userId = User.GetUserId();
+
+        // Look up the service to get its price
+        var svc = await _db.ServiceCatalogs.FindAsync(serviceCatalogId);
+        if (svc == null)
+        {
+            TempData["Error"] = "Service not found.";
+            return RedirectToAction(nameof(Details), new { id = jobOrderId });
+        }
+
+        var dto = new DTOs.JobOrders.AddServiceLineDto
+        {
+            ServiceId = serviceCatalogId,
+            Qty = 1,
+            UnitPrice = svc.BasePrice
+        };
+
+        var result = await _jobOrderService.AddServiceLineAsync(shopId, userId, jobOrderId, dto);
+        if (result.Success)
+            TempData["Success"] = "Service added successfully.";
+        else
+            TempData["Error"] = result.Message ?? "Failed to add service.";
+
+        return RedirectToAction(nameof(Details), new { id = jobOrderId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddPartLine(long jobOrderId, long inventoryItemId, int quantity)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var userId = User.GetUserId();
+
+        // Look up the part to get its price
+        var item = await _db.InventoryItems.FindAsync(inventoryItemId);
+        if (item == null)
+        {
+            TempData["Error"] = "Part not found.";
+            return RedirectToAction(nameof(Details), new { id = jobOrderId });
+        }
+
+        var dto = new DTOs.JobOrders.AddPartLineDto
+        {
+            ItemId = inventoryItemId,
+            QtyUsed = quantity,
+            UnitPrice = item.UnitPrice
+        };
+
+        var result = await _jobOrderService.AddPartLineAsync(shopId, userId, jobOrderId, dto);
+        if (result.Success)
+            TempData["Success"] = "Part added successfully.";
+        else
+            TempData["Error"] = result.Message ?? "Failed to add part.";
+
+        return RedirectToAction(nameof(Details), new { id = jobOrderId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveLine(long jobOrderId, long lineId, string lineType)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var userId = User.GetUserId();
+
+        DTOs.Common.ApiResponse<bool>? result;
+        if (lineType == "Service")
+            result = await _jobOrderService.RemoveServiceLineAsync(shopId, userId, jobOrderId, lineId);
+        else
+            result = await _jobOrderService.RemovePartLineAsync(shopId, userId, jobOrderId, lineId);
+
+        if (result.Success)
+            TempData["Success"] = $"{lineType} removed successfully.";
+        else
+            TempData["Error"] = result.Message ?? $"Failed to remove {lineType.ToLower()}.";
+
+        return RedirectToAction(nameof(Details), new { id = jobOrderId });
     }
 }

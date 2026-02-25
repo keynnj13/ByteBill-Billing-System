@@ -4,9 +4,9 @@ namespace ByteBill_BS.ViewModels.Auth;
 
 public class LoginViewModel
 {
-    [Required(ErrorMessage = "Username is required")]
+    [Required(ErrorMessage = "Username or email is required")]
     [StringLength(100)]
-    [Display(Name = "Username")]
+    [Display(Name = "Username or Email")]
     public string UserName { get; set; } = string.Empty;
     
     [Required(ErrorMessage = "Password is required")]

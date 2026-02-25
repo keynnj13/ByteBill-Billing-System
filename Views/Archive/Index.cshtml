@@ -121,9 +121,8 @@
                                     <td><span class="date-text">@order.CreatedAt.ToString("MMM d, yyyy")</span></td>
                                     <td>
                                         <div class="action-buttons">
-                                            <form asp-action="RestoreJobOrder" asp-controller="Archive" method="post" style="display: inline;">
+                                            <form asp-action="RestoreJobOrder" asp-controller="Archive" asp-route-id="@order.Id" method="post" style="display: inline;">
                                                 @Html.AntiForgeryToken()
-                                                <input type="hidden" name="id" value="@order.Id" />
                                                 <button type="submit" class="btn-action restore-btn" title="Restore" onclick="return confirm('Restore this job order?');">
                                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
                                                 </button>
@@ -234,9 +233,8 @@
                                         }
                                     </td>
                                     <td class="text-right">
-                                        <form asp-action="RestoreInvoice" asp-controller="Archive" method="post" style="display: inline;">
+                                        <form asp-action="RestoreInvoice" asp-controller="Archive" asp-route-id="@inv.Id" method="post" style="display: inline;">
                                             @Html.AntiForgeryToken()
-                                            <input type="hidden" name="id" value="@inv.Id" />
                                             <button type="submit" class="btn-action restore-btn" title="Restore" onclick="return confirm('Restore this invoice?');">
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
                                             </button>

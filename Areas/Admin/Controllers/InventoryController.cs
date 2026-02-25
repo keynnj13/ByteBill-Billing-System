@@ -32,6 +32,7 @@ public class InventoryController : Controller
 
         var shopId = User.GetShopId();
         var result = await _service.GetListAsync(shopId, new PagedRequest { Page = page, PageSize = 10, Search = search }, category, lowStock);
+        var categories = await _service.GetCategoriesAsync(shopId);
 
         var viewModel = new InventoryListViewModel
         {
@@ -41,12 +42,14 @@ public class InventoryController : Controller
             CurrentPage = result.Page,
             TotalCount = result.TotalCount,
             LowStockCount = result.LowStockCount,
+            Categories = categories,
             Items = result.Items.Select(i => new InventoryItemViewModel
             {
                 Id = i.ItemId,
                 SKU = i.SKU,
                 Name = i.ItemName,
                 ItemName = i.ItemName,
+                Category = i.CategoryName ?? "",
                 Unit = i.Unit,
                 UnitCost = i.UnitCost,
                 UnitPrice = i.UnitPrice,
@@ -64,17 +67,19 @@ public class InventoryController : Controller
     }
 
     [HttpGet]
-    public IActionResult Create()
+    public async Task<IActionResult> Create()
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        return View(new InventoryFormViewModel());
+        var shopId = User.GetShopId();
+        return View(new InventoryFormViewModel { ExistingCategories = await _service.GetCategoriesAsync(shopId) });
     }
 
     [HttpGet]
-    public IActionResult CreateModal()
+    public async Task<IActionResult> CreateModal()
     {
         if (!IsAuthorized()) return Forbid();
-        return PartialView("_CreateModal", new InventoryFormViewModel());
+        var shopId = User.GetShopId();
+        return PartialView("_CreateModal", new InventoryFormViewModel { ExistingCategories = await _service.GetCategoriesAsync(shopId) });
     }
 
     [HttpPost]
@@ -95,6 +100,7 @@ public class InventoryController : Controller
         {
             SKU = model.SKU,
             ItemName = model.Name,
+            CategoryName = model.Category,
             Unit = model.Unit,
             UnitCost = model.CostPrice,
             UnitPrice = model.SellingPrice,
@@ -140,12 +146,14 @@ public class InventoryController : Controller
             Id = detail.ItemId,
             SKU = detail.SKU,
             Name = detail.ItemName,
+            Category = detail.CategoryName ?? "",
             Unit = detail.Unit,
             CostPrice = detail.UnitCost,
             SellingPrice = detail.UnitPrice,
             QuantityInStock = detail.QtyOnHand,
             ReorderLevel = detail.ReorderLevel,
-            IsActive = detail.IsActive
+            IsActive = detail.IsActive,
+            ExistingCategories = await _service.GetCategoriesAsync(shopId)
         };
     }
 
@@ -167,6 +175,7 @@ public class InventoryController : Controller
         {
             SKU = model.SKU,
             ItemName = model.Name,
+            CategoryName = model.Category,
             Unit = model.Unit,
             UnitCost = model.CostPrice,
             UnitPrice = model.SellingPrice,
@@ -213,6 +222,7 @@ public class InventoryController : Controller
             Id = detail.ItemId,
             SKU = detail.SKU,
             Name = detail.ItemName,
+            Category = detail.CategoryName ?? "",
             Unit = detail.Unit,
             UnitCost = detail.UnitCost,
             UnitPrice = detail.UnitPrice,

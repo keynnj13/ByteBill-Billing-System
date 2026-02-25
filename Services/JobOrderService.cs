@@ -15,6 +15,10 @@ public interface IJobOrderService
     Task<ApiResponse<JobOrderDetailDto>> CreateAsync(long shopId, long userId, CreateJobOrderRequest req);
     Task<ApiResponse<bool>> UpdateStatusAsync(long shopId, long userId, string userRole, long jobOrderId, UpdateJobOrderStatusRequest req);
     Task<ApiResponse<bool>> AssignTechnicianAsync(long shopId, long userId, long jobOrderId, AssignTechnicianRequest req);
+    Task<ApiResponse<JobOrderServiceLineDto>> AddServiceLineAsync(long shopId, long userId, long jobOrderId, AddServiceLineDto dto);
+    Task<ApiResponse<bool>> RemoveServiceLineAsync(long shopId, long userId, long jobOrderId, long serviceLineId);
+    Task<ApiResponse<JobOrderPartLineDto>> AddPartLineAsync(long shopId, long userId, long jobOrderId, AddPartLineDto dto);
+    Task<ApiResponse<bool>> RemovePartLineAsync(long shopId, long userId, long jobOrderId, long partLineId);
 }
 
 public class JobOrderService : IJobOrderService
@@ -412,5 +416,208 @@ public class JobOrderService : IJobOrderService
         }
 
         return $"{prefix}{next:D4}";
+    }
+
+    // ── Add Service Line ─────────────────────────────────────────────────
+    public async Task<ApiResponse<JobOrderServiceLineDto>> AddServiceLineAsync(
+        long shopId, long userId, long jobOrderId, AddServiceLineDto dto)
+    {
+        var jobOrder = await _db.JobOrders
+            .FirstOrDefaultAsync(j => j.ShopId == shopId && j.JobOrderId == jobOrderId);
+
+        if (jobOrder is null)
+            return ApiResponse<JobOrderServiceLineDto>.Fail("Job order not found.");
+
+        // Only allow adding lines before invoice is created and while in active states
+        if (jobOrder.Status == JobOrderStatus.Delivered || jobOrder.Status == JobOrderStatus.Cancelled)
+            return ApiResponse<JobOrderServiceLineDto>.Fail("Cannot modify a delivered or cancelled job order.");
+
+        var existingInvoice = await _db.Invoices.AnyAsync(i => i.JobOrderId == jobOrderId);
+        if (existingInvoice)
+            return ApiResponse<JobOrderServiceLineDto>.Fail("Cannot add lines after invoice has been created.");
+
+        // Validate service exists
+        var service = await _db.ServiceCatalogs
+            .FirstOrDefaultAsync(s => s.ServiceId == dto.ServiceId && s.IsActive);
+        if (service is null)
+            return ApiResponse<JobOrderServiceLineDto>.Fail("Service not found or inactive.");
+
+        var line = new Models.JobOrderService
+        {
+            JobOrderId = jobOrderId,
+            ServiceId = dto.ServiceId,
+            Qty = dto.Qty,
+            UnitPrice = dto.UnitPrice
+        };
+
+        _db.JobOrderServices.Add(line);
+        jobOrder.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(shopId, userId, "AddServiceLine", "JobOrder", jobOrderId,
+            $"Added service '{service.ServiceName}' (Qty:{dto.Qty}, Price:{dto.UnitPrice:C}).", ClientIp);
+
+        return ApiResponse<JobOrderServiceLineDto>.Ok(new JobOrderServiceLineDto
+        {
+            JobOrderServiceId = line.JobOrderServiceId,
+            ServiceId = line.ServiceId,
+            ServiceName = service.ServiceName,
+            Qty = line.Qty,
+            UnitPrice = line.UnitPrice,
+            LineTotal = line.Qty * line.UnitPrice
+        });
+    }
+
+    // ── Remove Service Line ──────────────────────────────────────────────
+    public async Task<ApiResponse<bool>> RemoveServiceLineAsync(
+        long shopId, long userId, long jobOrderId, long serviceLineId)
+    {
+        var jobOrder = await _db.JobOrders
+            .FirstOrDefaultAsync(j => j.ShopId == shopId && j.JobOrderId == jobOrderId);
+
+        if (jobOrder is null)
+            return ApiResponse<bool>.Fail("Job order not found.");
+
+        if (jobOrder.Status == JobOrderStatus.Delivered || jobOrder.Status == JobOrderStatus.Cancelled)
+            return ApiResponse<bool>.Fail("Cannot modify a delivered or cancelled job order.");
+
+        var existingInvoice = await _db.Invoices.AnyAsync(i => i.JobOrderId == jobOrderId);
+        if (existingInvoice)
+            return ApiResponse<bool>.Fail("Cannot remove lines after invoice has been created.");
+
+        var line = await _db.JobOrderServices
+            .FirstOrDefaultAsync(s => s.JobOrderServiceId == serviceLineId && s.JobOrderId == jobOrderId);
+
+        if (line is null)
+            return ApiResponse<bool>.Fail("Service line not found.");
+
+        _db.JobOrderServices.Remove(line);
+        jobOrder.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(shopId, userId, "RemoveServiceLine", "JobOrder", jobOrderId,
+            $"Removed service line #{serviceLineId}.", ClientIp);
+
+        return ApiResponse<bool>.Ok(true);
+    }
+
+    // ── Add Part Line ────────────────────────────────────────────────────
+    public async Task<ApiResponse<JobOrderPartLineDto>> AddPartLineAsync(
+        long shopId, long userId, long jobOrderId, AddPartLineDto dto)
+    {
+        var jobOrder = await _db.JobOrders
+            .FirstOrDefaultAsync(j => j.ShopId == shopId && j.JobOrderId == jobOrderId);
+
+        if (jobOrder is null)
+            return ApiResponse<JobOrderPartLineDto>.Fail("Job order not found.");
+
+        if (jobOrder.Status == JobOrderStatus.Delivered || jobOrder.Status == JobOrderStatus.Cancelled)
+            return ApiResponse<JobOrderPartLineDto>.Fail("Cannot modify a delivered or cancelled job order.");
+
+        var existingInvoice = await _db.Invoices.AnyAsync(i => i.JobOrderId == jobOrderId);
+        if (existingInvoice)
+            return ApiResponse<JobOrderPartLineDto>.Fail("Cannot add lines after invoice has been created.");
+
+        // Validate inventory item exists and has sufficient stock
+        var item = await _db.InventoryItems
+            .FirstOrDefaultAsync(i => i.ItemId == dto.ItemId && i.ShopId == shopId);
+        if (item is null)
+            return ApiResponse<JobOrderPartLineDto>.Fail("Inventory item not found.");
+
+        if (item.QtyOnHand < dto.QtyUsed)
+            return ApiResponse<JobOrderPartLineDto>.Fail(
+                $"Insufficient stock for '{item.ItemName}'. Available: {item.QtyOnHand}, Required: {dto.QtyUsed}.");
+
+        var line = new JobOrderPart
+        {
+            JobOrderId = jobOrderId,
+            ItemId = dto.ItemId,
+            QtyUsed = dto.QtyUsed,
+            UnitPrice = dto.UnitPrice
+        };
+
+        _db.JobOrderParts.Add(line);
+
+        // Deduct inventory
+        item.QtyOnHand -= dto.QtyUsed;
+
+        // Record inventory transaction
+        _db.InventoryTxns.Add(new InventoryTxn
+        {
+            ItemId = dto.ItemId,
+            TxnType = InventoryTxnType.OUT,
+            Quantity = dto.QtyUsed,
+            ReferenceType = "JobOrder",
+            ReferenceId = jobOrder.JobOrderId,
+            Remarks = $"Used in JO#{jobOrder.JobOrderNo}",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        jobOrder.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(shopId, userId, "AddPartLine", "JobOrder", jobOrderId,
+            $"Added part '{item.ItemName}' (Qty:{dto.QtyUsed}, Price:{dto.UnitPrice:C}). Stock: {item.QtyOnHand + dto.QtyUsed} → {item.QtyOnHand}.", ClientIp);
+
+        return ApiResponse<JobOrderPartLineDto>.Ok(new JobOrderPartLineDto
+        {
+            JobOrderPartId = line.JobOrderPartId,
+            ItemId = line.ItemId,
+            ItemName = item.ItemName,
+            QtyUsed = line.QtyUsed,
+            UnitPrice = line.UnitPrice,
+            LineTotal = line.QtyUsed * line.UnitPrice
+        });
+    }
+
+    // ── Remove Part Line ─────────────────────────────────────────────────
+    public async Task<ApiResponse<bool>> RemovePartLineAsync(
+        long shopId, long userId, long jobOrderId, long partLineId)
+    {
+        var jobOrder = await _db.JobOrders
+            .FirstOrDefaultAsync(j => j.ShopId == shopId && j.JobOrderId == jobOrderId);
+
+        if (jobOrder is null)
+            return ApiResponse<bool>.Fail("Job order not found.");
+
+        if (jobOrder.Status == JobOrderStatus.Delivered || jobOrder.Status == JobOrderStatus.Cancelled)
+            return ApiResponse<bool>.Fail("Cannot modify a delivered or cancelled job order.");
+
+        var existingInvoice = await _db.Invoices.AnyAsync(i => i.JobOrderId == jobOrderId);
+        if (existingInvoice)
+            return ApiResponse<bool>.Fail("Cannot remove lines after invoice has been created.");
+
+        var line = await _db.JobOrderParts
+            .FirstOrDefaultAsync(p => p.JobOrderPartId == partLineId && p.JobOrderId == jobOrderId);
+
+        if (line is null)
+            return ApiResponse<bool>.Fail("Part line not found.");
+
+        // Restore inventory
+        var item = await _db.InventoryItems.FindAsync(line.ItemId);
+        if (item != null)
+        {
+            item.QtyOnHand += line.QtyUsed;
+
+            _db.InventoryTxns.Add(new InventoryTxn
+            {
+                ItemId = line.ItemId,
+                TxnType = InventoryTxnType.IN,
+                Quantity = line.QtyUsed,
+                ReferenceType = "JobOrder",
+                ReferenceId = jobOrder.JobOrderId,
+                Remarks = $"Returned from JO#{jobOrder.JobOrderNo} (line removed)",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        _db.JobOrderParts.Remove(line);
+        jobOrder.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(shopId, userId, "RemovePartLine", "JobOrder", jobOrderId,
+            $"Removed part line #{partLineId}. Inventory restored.", ClientIp);
+
+        return ApiResponse<bool>.Ok(true);
     }
 }

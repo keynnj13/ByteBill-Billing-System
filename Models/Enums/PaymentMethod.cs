@@ -4,6 +4,5 @@ public enum PaymentMethod
 {
     Cash,
     GCash,
-    Card,
-    PayMongo
+    Card
 }

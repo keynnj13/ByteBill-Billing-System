@@ -68,10 +68,10 @@ public class AuthController : Controller
             _loginAttempts.TryRemove(key, out _);
         }
 
-        // ── Look up user in the database ─────────────────────────────
+        // ── Look up user by username or email ─────────────────────────
         var dbUser = await _db.Users
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
-            .FirstOrDefaultAsync(u => u.UserName == key && u.IsActive);
+            .FirstOrDefaultAsync(u => (u.UserName == key || (u.Email != null && u.Email.ToLower() == key)) && u.IsActive);
 
         if (dbUser is not null && BCrypt.Net.BCrypt.Verify(model.Password, dbUser.PasswordHash))
         {

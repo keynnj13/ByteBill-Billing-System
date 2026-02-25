@@ -166,7 +166,43 @@
 
 <div class="modal-form-footer">
     <button type="button" class="btn btn-ghost" onclick="closeAjaxModal()">Close</button>
+    @if (Model.Balance > 0 && Model.Status != ByteBill_BS.Models.Enums.InvoiceStatus.Void)
+    {
+        <button type="button" class="btn btn-primary" id="payMongoBtn" onclick="initiatePayMongoCheckout(@Model.Id)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+            Pay
+        </button>
+    }
 </div>
+
+<script>
+function initiatePayMongoCheckout(invoiceId) {
+    var btn = document.getElementById('payMongoBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="animation: spin 1s linear infinite;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg> Processing...';
+
+    fetch('/api/paymongoapi/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoiceId: invoiceId })
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.success && data.data && data.data.checkoutUrl) {
+            window.location.href = data.data.checkoutUrl;
+        } else {
+            alert(data.message || 'Failed to create checkout session. Please try again.');
+            btn.disabled = false;
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg> Pay';
+        }
+    })
+    .catch(function() {
+        alert('An error occurred. Please try again.');
+        btn.disabled = false;
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg> Pay';
+    });
+}
+</script>
 
 <style>
     .detail-icon-lg { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }

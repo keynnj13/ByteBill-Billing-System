@@ -25,6 +25,7 @@ public static class DbSeeder
         await SeedDevicesAsync(db);
         await SeedServiceCategoriesAsync(db);
         await SeedServiceCatalogAsync(db);
+        await SeedInventoryCategoriesAsync(db);
         await SeedInventoryItemsAsync(db);
         await SeedJobOrdersAsync(db);
         await SeedInvoicesAsync(db);
@@ -233,21 +234,42 @@ public static class DbSeeder
 
         var services = new List<ServiceCatalog>
         {
-            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Diagnosis"],     ServiceName = "System Diagnosis",           BasePrice = 350m,  IsActive = true },
-            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Diagnosis"],     ServiceName = "Hardware Inspection",        BasePrice = 250m,  IsActive = true },
-            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Repair"],        ServiceName = "Virus/Malware Removal",      BasePrice = 500m,  IsActive = true },
-            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Repair"],        ServiceName = "Screen Replacement",         BasePrice = 2500m, IsActive = true },
-            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Repair"],        ServiceName = "Battery Replacement",        BasePrice = 1200m, IsActive = true },
-            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Repair"],        ServiceName = "Keyboard Replacement",       BasePrice = 1800m, IsActive = true },
-            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Installation"],  ServiceName = "OS Installation",            BasePrice = 800m,  IsActive = true },
-            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Installation"],  ServiceName = "Software Setup & Config",    BasePrice = 400m,  IsActive = true },
-            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Installation"],  ServiceName = "RAM/SSD Upgrade",            BasePrice = 500m,  IsActive = true },
-            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Maintenance"],   ServiceName = "Internal Cleaning & Repaste",BasePrice = 600m,  IsActive = true },
-            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Maintenance"],   ServiceName = "Full System Tune-Up",        BasePrice = 450m,  IsActive = true },
-            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Data Recovery"], ServiceName = "Data Recovery (HDD/SSD)",    BasePrice = 1500m, IsActive = true },
+            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Diagnosis"],     ServiceName = "System Diagnosis",           Description = "Full hardware and software diagnostic scan to identify issues",            BasePrice = 350m,  EstimatedDuration = 30,  IsActive = true },
+            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Diagnosis"],     ServiceName = "Hardware Inspection",        Description = "Physical inspection of all internal components for damage or wear",        BasePrice = 250m,  EstimatedDuration = 20,  IsActive = true },
+            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Repair"],        ServiceName = "Virus/Malware Removal",      Description = "Deep scan, removal of viruses and malware, security patching",             BasePrice = 500m,  EstimatedDuration = 60,  IsActive = true },
+            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Repair"],        ServiceName = "Screen Replacement",         Description = "Full LCD/LED screen replacement including calibration",                    BasePrice = 2500m, EstimatedDuration = 90,  IsActive = true },
+            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Repair"],        ServiceName = "Battery Replacement",        Description = "Battery removal, replacement, and charge cycle testing",                   BasePrice = 1200m, EstimatedDuration = 45,  IsActive = true },
+            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Repair"],        ServiceName = "Keyboard Replacement",       Description = "Full keyboard unit replacement and key mapping verification",              BasePrice = 1800m, EstimatedDuration = 60,  IsActive = true },
+            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Installation"],  ServiceName = "OS Installation",            Description = "Clean install of Windows/macOS/Linux with driver setup",                   BasePrice = 800m,  EstimatedDuration = 120, IsActive = true },
+            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Installation"],  ServiceName = "Software Setup & Config",    Description = "Install and configure essential software, office suites, and antivirus",   BasePrice = 400m,  EstimatedDuration = 45,  IsActive = true },
+            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Installation"],  ServiceName = "RAM/SSD Upgrade",            Description = "Install new RAM modules or SSD with data migration if needed",             BasePrice = 500m,  EstimatedDuration = 40,  IsActive = true },
+            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Maintenance"],   ServiceName = "Internal Cleaning & Repaste",Description = "Deep clean internals, replace thermal paste, clean fans and vents",        BasePrice = 600m,  EstimatedDuration = 60,  IsActive = true },
+            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Maintenance"],   ServiceName = "Full System Tune-Up",        Description = "Disk cleanup, startup optimization, registry repair, and updates",         BasePrice = 450m,  EstimatedDuration = 45,  IsActive = true },
+            new() { ShopId = shop.ShopId, ServiceCategoryId = cats["Data Recovery"], ServiceName = "Data Recovery (HDD/SSD)",    Description = "Recover data from damaged or corrupted drives using professional tools",   BasePrice = 1500m, EstimatedDuration = 180, IsActive = true },
         };
 
         db.ServiceCatalogs.AddRange(services);
+        await db.SaveChangesAsync();
+    }
+
+    // ── Inventory Categories (6) ────────────────────────────────────────
+    private static async Task SeedInventoryCategoriesAsync(ApplicationDbContext db)
+    {
+        if (await db.Set<InventoryCategory>().AnyAsync()) return;
+
+        var shop = await db.Shops.FirstAsync();
+
+        var categories = new List<InventoryCategory>
+        {
+            new() { ShopId = shop.ShopId, CategoryName = "Storage",      Description = "SSDs, HDDs, and flash drives" },
+            new() { ShopId = shop.ShopId, CategoryName = "Memory",       Description = "RAM modules and memory kits" },
+            new() { ShopId = shop.ShopId, CategoryName = "Cooling",      Description = "Fans, thermal paste, and heatsinks" },
+            new() { ShopId = shop.ShopId, CategoryName = "Cables",       Description = "HDMI, USB, SATA, and other cables" },
+            new() { ShopId = shop.ShopId, CategoryName = "Power Supply", Description = "PSU units and power accessories" },
+            new() { ShopId = shop.ShopId, CategoryName = "Peripherals",  Description = "Keyboards, mice, and other peripherals" },
+        };
+
+        db.Set<InventoryCategory>().AddRange(categories);
         await db.SaveChangesAsync();
     }
 
@@ -257,21 +279,23 @@ public static class DbSeeder
         if (await db.InventoryItems.AnyAsync()) return;
 
         var shop = await db.Shops.FirstAsync();
+        var cats = await db.Set<InventoryCategory>().Where(c => c.ShopId == shop.ShopId)
+            .ToDictionaryAsync(c => c.CategoryName, c => c.InventoryCategoryId);
 
         var items = new List<InventoryItem>
         {
-            new() { ShopId = shop.ShopId, SKU = "SSD-500-SAM",    ItemName = "Samsung 870 EVO 500GB SSD",      Unit = "pcs", UnitCost = 2500m,  UnitPrice = 3500m,  QtyOnHand = 15, ReorderLevel = 5,  IsActive = true },
-            new() { ShopId = shop.ShopId, SKU = "SSD-256-KNG",    ItemName = "Kingston A400 256GB SSD",        Unit = "pcs", UnitCost = 1200m,  UnitPrice = 1800m,  QtyOnHand = 20, ReorderLevel = 5,  IsActive = true },
-            new() { ShopId = shop.ShopId, SKU = "RAM-8-COR",      ItemName = "Corsair Vengeance 8GB DDR4",     Unit = "pcs", UnitCost = 1500m,  UnitPrice = 2200m,  QtyOnHand = 10, ReorderLevel = 5,  IsActive = true },
-            new() { ShopId = shop.ShopId, SKU = "RAM-16-COR",     ItemName = "Corsair Vengeance 16GB DDR4",    Unit = "pcs", UnitCost = 2800m,  UnitPrice = 3900m,  QtyOnHand = 8,  ReorderLevel = 5,  IsActive = true },
-            new() { ShopId = shop.ShopId, SKU = "HDD-1TB-WD",     ItemName = "WD Blue 1TB HDD",               Unit = "pcs", UnitCost = 2000m,  UnitPrice = 2800m,  QtyOnHand = 3,  ReorderLevel = 5,  IsActive = true },
-            new() { ShopId = shop.ShopId, SKU = "PST-THRM-NT",    ItemName = "Noctua NT-H1 Thermal Paste",    Unit = "pcs", UnitCost = 400m,   UnitPrice = 750m,   QtyOnHand = 25, ReorderLevel = 10, IsActive = true },
-            new() { ShopId = shop.ShopId, SKU = "CBL-HDMI-2M",    ItemName = "HDMI Cable 2m",                 Unit = "pcs", UnitCost = 150m,   UnitPrice = 350m,   QtyOnHand = 30, ReorderLevel = 10, IsActive = true },
-            new() { ShopId = shop.ShopId, SKU = "CBL-USBC-1M",    ItemName = "USB-C Cable 1m",                Unit = "pcs", UnitCost = 100m,   UnitPrice = 250m,   QtyOnHand = 40, ReorderLevel = 10, IsActive = true },
-            new() { ShopId = shop.ShopId, SKU = "FAN-120-DPC",    ItemName = "DeepCool 120mm Case Fan",       Unit = "pcs", UnitCost = 250m,   UnitPrice = 450m,   QtyOnHand = 12, ReorderLevel = 5,  IsActive = true },
-            new() { ShopId = shop.ShopId, SKU = "PSU-550-EVG",    ItemName = "EVGA 550W 80+ Bronze PSU",      Unit = "pcs", UnitCost = 2500m,  UnitPrice = 3600m,  QtyOnHand = 4,  ReorderLevel = 3,  IsActive = true },
-            new() { ShopId = shop.ShopId, SKU = "KBD-LOGI-K120",  ItemName = "Logitech K120 Keyboard",        Unit = "pcs", UnitCost = 450m,   UnitPrice = 750m,   QtyOnHand = 6,  ReorderLevel = 5,  IsActive = true },
-            new() { ShopId = shop.ShopId, SKU = "MOU-LOGI-B100",  ItemName = "Logitech B100 Mouse",           Unit = "pcs", UnitCost = 250m,   UnitPrice = 450m,   QtyOnHand = 2,  ReorderLevel = 5,  IsActive = true },
+            new() { ShopId = shop.ShopId, InventoryCategoryId = cats.GetValueOrDefault("Storage"),      SKU = "SSD-500-SAM",    ItemName = "Samsung 870 EVO 500GB SSD",      Unit = "pcs", UnitCost = 2500m,  UnitPrice = 3500m,  QtyOnHand = 15, ReorderLevel = 5,  IsActive = true },
+            new() { ShopId = shop.ShopId, InventoryCategoryId = cats.GetValueOrDefault("Storage"),      SKU = "SSD-256-KNG",    ItemName = "Kingston A400 256GB SSD",        Unit = "pcs", UnitCost = 1200m,  UnitPrice = 1800m,  QtyOnHand = 20, ReorderLevel = 5,  IsActive = true },
+            new() { ShopId = shop.ShopId, InventoryCategoryId = cats.GetValueOrDefault("Memory"),       SKU = "RAM-8-COR",      ItemName = "Corsair Vengeance 8GB DDR4",     Unit = "pcs", UnitCost = 1500m,  UnitPrice = 2200m,  QtyOnHand = 10, ReorderLevel = 5,  IsActive = true },
+            new() { ShopId = shop.ShopId, InventoryCategoryId = cats.GetValueOrDefault("Memory"),       SKU = "RAM-16-COR",     ItemName = "Corsair Vengeance 16GB DDR4",    Unit = "pcs", UnitCost = 2800m,  UnitPrice = 3900m,  QtyOnHand = 8,  ReorderLevel = 5,  IsActive = true },
+            new() { ShopId = shop.ShopId, InventoryCategoryId = cats.GetValueOrDefault("Storage"),      SKU = "HDD-1TB-WD",     ItemName = "WD Blue 1TB HDD",               Unit = "pcs", UnitCost = 2000m,  UnitPrice = 2800m,  QtyOnHand = 3,  ReorderLevel = 5,  IsActive = true },
+            new() { ShopId = shop.ShopId, InventoryCategoryId = cats.GetValueOrDefault("Cooling"),      SKU = "PST-THRM-NT",    ItemName = "Noctua NT-H1 Thermal Paste",    Unit = "pcs", UnitCost = 400m,   UnitPrice = 750m,   QtyOnHand = 25, ReorderLevel = 10, IsActive = true },
+            new() { ShopId = shop.ShopId, InventoryCategoryId = cats.GetValueOrDefault("Cables"),       SKU = "CBL-HDMI-2M",    ItemName = "HDMI Cable 2m",                 Unit = "pcs", UnitCost = 150m,   UnitPrice = 350m,   QtyOnHand = 30, ReorderLevel = 10, IsActive = true },
+            new() { ShopId = shop.ShopId, InventoryCategoryId = cats.GetValueOrDefault("Cables"),       SKU = "CBL-USBC-1M",    ItemName = "USB-C Cable 1m",                Unit = "pcs", UnitCost = 100m,   UnitPrice = 250m,   QtyOnHand = 40, ReorderLevel = 10, IsActive = true },
+            new() { ShopId = shop.ShopId, InventoryCategoryId = cats.GetValueOrDefault("Cooling"),      SKU = "FAN-120-DPC",    ItemName = "DeepCool 120mm Case Fan",       Unit = "pcs", UnitCost = 250m,   UnitPrice = 450m,   QtyOnHand = 12, ReorderLevel = 5,  IsActive = true },
+            new() { ShopId = shop.ShopId, InventoryCategoryId = cats.GetValueOrDefault("Power Supply"), SKU = "PSU-550-EVG",    ItemName = "EVGA 550W 80+ Bronze PSU",      Unit = "pcs", UnitCost = 2500m,  UnitPrice = 3600m,  QtyOnHand = 4,  ReorderLevel = 3,  IsActive = true },
+            new() { ShopId = shop.ShopId, InventoryCategoryId = cats.GetValueOrDefault("Peripherals"),  SKU = "KBD-LOGI-K120",  ItemName = "Logitech K120 Keyboard",        Unit = "pcs", UnitCost = 450m,   UnitPrice = 750m,   QtyOnHand = 6,  ReorderLevel = 5,  IsActive = true },
+            new() { ShopId = shop.ShopId, InventoryCategoryId = cats.GetValueOrDefault("Peripherals"),  SKU = "MOU-LOGI-B100",  ItemName = "Logitech B100 Mouse",           Unit = "pcs", UnitCost = 250m,   UnitPrice = 450m,   QtyOnHand = 2,  ReorderLevel = 5,  IsActive = true },
         };
 
         db.InventoryItems.AddRange(items);

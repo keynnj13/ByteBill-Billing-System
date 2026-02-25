@@ -17,6 +17,7 @@ public class Shop
     public ICollection<Customer> Customers { get; set; } = new List<Customer>();
     public ICollection<ServiceCategory> ServiceCategories { get; set; } = new List<ServiceCategory>();
     public ICollection<ServiceCatalog> ServiceCatalogs { get; set; } = new List<ServiceCatalog>();
+    public ICollection<InventoryCategory> InventoryCategories { get; set; } = new List<InventoryCategory>();
     public ICollection<InventoryItem> InventoryItems { get; set; } = new List<InventoryItem>();
     public ICollection<JobOrder> JobOrders { get; set; } = new List<JobOrder>();
     public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();

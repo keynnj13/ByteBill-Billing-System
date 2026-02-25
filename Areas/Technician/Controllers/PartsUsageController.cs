@@ -1,6 +1,11 @@
+using ByteBill_BS.Data;
+using ByteBill_BS.DTOs.JobOrders;
+using ByteBill_BS.Extensions;
 using ByteBill_BS.Models.Enums;
+using ByteBill_BS.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ByteBill_BS.Areas.Technician.Controllers;
 
@@ -8,6 +13,15 @@ namespace ByteBill_BS.Areas.Technician.Controllers;
 [Authorize]
 public class PartsUsageController : Controller
 {
+    private readonly ApplicationDbContext _db;
+    private readonly IJobOrderService _jobOrderService;
+
+    public PartsUsageController(ApplicationDbContext db, IJobOrderService jobOrderService)
+    {
+        _db = db;
+        _jobOrderService = jobOrderService;
+    }
+
     private bool IsAuthorized()
     {
         var roleClaim = User.Claims.FirstOrDefault(c => c.Type == "Role")?.Value;
@@ -15,41 +29,122 @@ public class PartsUsageController : Controller
     }
 
     [HttpGet]
-    public IActionResult Index(long? jobOrderId)
+    public async Task<IActionResult> Index(long? jobOrderId)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
-        var usageHistory = new[]
-        {
-            new { Id = 1, JobOrderNumber = "JO-2024-0156", PartName = "Display Cable (MacBook Pro 2021)", Quantity = 1, UsedAt = DateTime.Now.AddHours(-6) },
-            new { Id = 2, JobOrderNumber = "JO-2024-0154", PartName = "iPhone 14 Pro Screen Assembly", Quantity = 1, UsedAt = DateTime.Now.AddHours(-3) },
-            new { Id = 3, JobOrderNumber = "JO-2024-0150", PartName = "Samsung 870 EVO 500GB SSD", Quantity = 1, UsedAt = DateTime.Now.AddDays(-1) },
-            new { Id = 4, JobOrderNumber = "JO-2024-0150", PartName = "Noctua NT-H1 Thermal Paste", Quantity = 1, UsedAt = DateTime.Now.AddDays(-1) }
-        };
+        var shopId = User.GetShopId();
+        var userId = User.GetUserId();
 
-        var availableParts = new[]
-        {
-            new { Id = 1, SKU = "SSD-500-SAM", Name = "Samsung 870 EVO 500GB SSD", InStock = 12 },
-            new { Id = 2, SKU = "RAM-16-COR", Name = "Corsair Vengeance 16GB DDR4", InStock = 8 },
-            new { Id = 3, SKU = "HDD-1TB-WD", Name = "WD Blue 1TB HDD", InStock = 3 },
-            new { Id = 4, SKU = "CBL-HDMI-2M", Name = "HDMI Cable 2m", InStock = 25 },
-            new { Id = 5, SKU = "PST-THRM-NT", Name = "Noctua NT-H1 Thermal Paste", InStock = 2 }
-        };
-        
+        // Get parts usage history for this technician's job orders
+        var usageHistory = await _db.JobOrderParts
+            .Where(p => p.JobOrder!.ShopId == shopId && p.JobOrder.AssignedTechUserId == userId)
+            .OrderByDescending(p => p.JobOrder!.UpdatedAt ?? p.JobOrder.CreatedAt)
+            .Take(20)
+            .Select(p => new
+            {
+                p.JobOrderPartId,
+                JobOrderNumber = p.JobOrder!.JobOrderNo,
+                JobOrderId = p.JobOrderId,
+                PartName = p.Item!.ItemName,
+                SKU = p.Item.SKU,
+                Quantity = p.QtyUsed,
+                UnitPrice = p.UnitPrice,
+                LineTotal = p.QtyUsed * p.UnitPrice,
+                UsedAt = p.JobOrder.UpdatedAt ?? p.JobOrder.CreatedAt
+            })
+            .ToListAsync();
+
+        // Get available parts (in-stock inventory)
+        var availableParts = await _db.InventoryItems
+            .Where(i => i.ShopId == shopId && i.IsActive && i.QtyOnHand > 0)
+            .OrderBy(i => i.ItemName)
+            .Select(i => new
+            {
+                i.ItemId,
+                i.SKU,
+                i.ItemName,
+                i.QtyOnHand,
+                i.UnitPrice,
+                i.IsLowStock
+            })
+            .ToListAsync();
+
+        // Get active job orders for the technician (for the "Record Usage" dropdown)
+        var activeJobOrders = await _db.JobOrders
+            .Where(j => j.ShopId == shopId
+                && j.AssignedTechUserId == userId
+                && !j.IsArchived
+                && j.Status != JobOrderStatus.Completed
+                && j.Status != JobOrderStatus.Delivered
+                && j.Status != JobOrderStatus.Cancelled)
+            .OrderByDescending(j => j.CreatedAt)
+            .Select(j => new
+            {
+                j.JobOrderId,
+                j.JobOrderNo,
+                CustomerName = j.Customer!.FirstName + " " + j.Customer.LastName,
+                DeviceSummary = j.Device!.DeviceType + " - " + j.Device.Brand + " " + j.Device.Model
+            })
+            .ToListAsync();
+
         ViewBag.UsageHistory = usageHistory;
         ViewBag.AvailableParts = availableParts;
+        ViewBag.ActiveJobOrders = activeJobOrders;
         ViewBag.JobOrderId = jobOrderId;
-        
+
         return View();
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult RecordUsage(long jobOrderId, long partId, int quantity)
+    public async Task<IActionResult> RecordUsage(long jobOrderId, long partId, int quantity)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
-        TempData["Success"] = "Parts usage recorded successfully";
+
+        var shopId = User.GetShopId();
+        var userId = User.GetUserId();
+
+        // Verify technician owns this job order
+        var jobOrder = await _db.JobOrders
+            .FirstOrDefaultAsync(j => j.ShopId == shopId
+                && j.JobOrderId == jobOrderId
+                && j.AssignedTechUserId == userId);
+
+        if (jobOrder == null)
+        {
+            TempData["Error"] = "Job order not found or not assigned to you.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // Get the inventory item price
+        var item = await _db.InventoryItems
+            .FirstOrDefaultAsync(i => i.ItemId == partId && i.ShopId == shopId);
+
+        if (item == null)
+        {
+            TempData["Error"] = "Part not found.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var dto = new AddPartLineDto
+        {
+            ItemId = partId,
+            QtyUsed = quantity,
+            UnitPrice = item.UnitPrice
+        };
+
+        var result = await _jobOrderService.AddPartLineAsync(shopId, userId, jobOrderId, dto);
+
+        if (!result.Success)
+        {
+            TempData["Error"] = result.Message ?? "Failed to record parts usage.";
+        }
+        else
+        {
+            TempData["Success"] = $"Added {quantity}x {item.ItemName} to {jobOrder.JobOrderNo}";
+        }
+
         return RedirectToAction(nameof(Index));
     }
 }

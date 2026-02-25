@@ -94,10 +94,9 @@ public class ReportsController : Controller
             AveragePayment = 480.28m,
             MethodBreakdown = new()
             {
-                new() { Method = "Cash",     Amount = 28500m, Count = 62, Percentage = 41.8m },
-                new() { Method = "GCash",    Amount = 22300m, Count = 48, Percentage = 32.7m },
-                new() { Method = "Card",     Amount = 12400m, Count = 22, Percentage = 18.2m },
-                new() { Method = "PayMongo", Amount = 5000m,  Count = 10, Percentage = 7.3m },
+                new() { Method = "Cash",     Amount = 28500m, Count = 62, Percentage = 43.5m },
+                new() { Method = "GCash",    Amount = 22300m, Count = 48, Percentage = 34.1m },
+                new() { Method = "Card",     Amount = 17400m, Count = 32, Percentage = 22.4m },
             },
             DailyTrend = Enumerable.Range(0, 14).Select(i => new PaymentByDay
             {

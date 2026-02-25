@@ -540,7 +540,7 @@ BEGIN
                                               ON UPDATE NO ACTION ON DELETE NO ACTION,
         CONSTRAINT FK_PAYMENTS_ReceivedBy     FOREIGN KEY (ReceivedByUserID) REFERENCES USERS (UserID)
                                               ON UPDATE NO ACTION ON DELETE NO ACTION,
-        CONSTRAINT CK_PAYMENTS_Method         CHECK (Method IN ('Cash','GCash','Card','PayMongo')),
+        CONSTRAINT CK_PAYMENTS_Method         CHECK (Method IN ('Cash','GCash','Card')),
         CONSTRAINT CK_PAYMENTS_Status         CHECK ([Status] IN ('Pending','Confirmed','Failed','Refunded')),
         CONSTRAINT UQ_PAYMENTS_PaymentNo      UNIQUE (ShopID, PaymentNo)
     );
@@ -584,7 +584,7 @@ BEGIN
         PaymentID               BIGINT         NOT NULL,
         PayMongoPaymentIntentID NVARCHAR(80)   NOT NULL,
         PayMongoStatus          NVARCHAR(30)   NOT NULL,
-        RawResponse             NVARCHAR(2000) NULL,
+        RawResponse             NVARCHAR(MAX) NULL,
         CreatedAt               DATETIME2(0)   NOT NULL  DEFAULT SYSDATETIME(),
 
         CONSTRAINT PK_PAYMONGO_TXN           PRIMARY KEY (PayMongoTxnID),

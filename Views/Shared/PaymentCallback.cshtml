@@ -1,0 +1,139 @@
+@{
+    ViewData["Title"] = ViewBag.Status == "success" ? "Payment Successful" : "Payment Cancelled";
+    ViewData["HideNavigation"] = true;
+    var isSuccess = ViewBag.Status == "success";
+    var invoiceId = ViewBag.InvoiceId as long?;
+}
+
+<div class="payment-callback-page">
+    <div class="callback-card">
+        @if (isSuccess)
+        {
+            <div class="callback-icon success">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+            </div>
+            <h1 class="callback-title">Payment Successful!</h1>
+            <p class="callback-message">Your payment has been processed successfully. Thank you for your payment.</p>
+            <p class="callback-note">You may now close this window or return to the shop system.</p>
+        }
+        else
+        {
+            <div class="callback-icon cancel">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                </svg>
+            </div>
+            <h1 class="callback-title">Payment Cancelled</h1>
+            <p class="callback-message">Your payment was not completed. No charges have been made to your account.</p>
+            <p class="callback-note">If you'd like to try again, please contact the shop or use the payment link provided.</p>
+        }
+
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <div class="callback-actions">
+                @if (invoiceId.HasValue)
+                {
+                    <a href="@Url.Action("Details", "Invoices", new { area = "Billing", id = invoiceId })" class="btn btn-primary">
+                        View Invoice
+                    </a>
+                }
+                <a href="@Url.Action("Index", "Dashboard", new { area = "Billing" })" class="btn btn-ghost">
+                    Go to Dashboard
+                </a>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .payment-callback-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f9fafb;
+        padding: 20px;
+    }
+    .callback-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+        padding: 48px;
+        text-align: center;
+        max-width: 480px;
+        width: 100%;
+    }
+    .callback-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 24px;
+    }
+    .callback-icon.success {
+        background: #ecfdf5;
+        color: #059669;
+    }
+    .callback-icon.cancel {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+    .callback-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 12px;
+    }
+    .callback-message {
+        font-size: 15px;
+        color: #6b7280;
+        line-height: 1.6;
+        margin-bottom: 8px;
+    }
+    .callback-note {
+        font-size: 13px;
+        color: #9ca3af;
+        margin-bottom: 32px;
+    }
+    .callback-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+    }
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .btn-primary {
+        background: #3b82f6;
+        color: white;
+        border: none;
+    }
+    .btn-primary:hover {
+        background: #2563eb;
+    }
+    .btn-ghost {
+        background: transparent;
+        color: #6b7280;
+        border: 1px solid #e5e7eb;
+    }
+    .btn-ghost:hover {
+        background: #f9fafb;
+        color: #374151;
+    }
+</style>

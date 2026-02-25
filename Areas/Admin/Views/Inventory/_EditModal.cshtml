@@ -41,13 +41,7 @@
                 </div>
                 <div class="form-group">
                     <label asp-for="Brand" class="form-label">Brand</label>
-                    <select asp-for="Brand" class="form-select">
-                        <option value="">Select brand</option>
-                        @foreach (var brand in Model.ExistingBrands)
-                        {
-                            <option value="@brand">@brand</option>
-                        }
-                    </select>
+                    <input asp-for="Brand" class="form-input" placeholder="e.g., Samsung, Kingston, Corsair" />
                 </div>
                 <div class="form-group">
                     <label asp-for="Unit" class="form-label">Unit <span class="required">*</span></label>

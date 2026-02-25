@@ -94,4 +94,66 @@ public class JobOrdersApiController : ControllerBase
             return BadRequest(result);
         return Ok(result);
     }
+
+    // ── Service Line Management ──────────────────────────────────────
+    // POST api/jobordersapi/5/services
+    [HttpPost("{id:long}/services")]
+    [Authorize(Policy = "TechnicianOrAbove")]
+    public async Task<IActionResult> AddServiceLine(long id, [FromBody] AddServiceLineDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ApiResponse<object>.Fail("Validation failed.",
+                ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList()));
+
+        var shopId = User.GetShopId();
+        var userId = User.GetUserId();
+        var result = await _svc.AddServiceLineAsync(shopId, userId, id, dto);
+        if (!result.Success)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
+    // DELETE api/jobordersapi/5/services/10
+    [HttpDelete("{id:long}/services/{lineId:long}")]
+    [Authorize(Policy = "TechnicianOrAbove")]
+    public async Task<IActionResult> RemoveServiceLine(long id, long lineId)
+    {
+        var shopId = User.GetShopId();
+        var userId = User.GetUserId();
+        var result = await _svc.RemoveServiceLineAsync(shopId, userId, id, lineId);
+        if (!result.Success)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
+    // ── Part Line Management ─────────────────────────────────────────
+    // POST api/jobordersapi/5/parts
+    [HttpPost("{id:long}/parts")]
+    [Authorize(Policy = "TechnicianOrAbove")]
+    public async Task<IActionResult> AddPartLine(long id, [FromBody] AddPartLineDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ApiResponse<object>.Fail("Validation failed.",
+                ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList()));
+
+        var shopId = User.GetShopId();
+        var userId = User.GetUserId();
+        var result = await _svc.AddPartLineAsync(shopId, userId, id, dto);
+        if (!result.Success)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
+    // DELETE api/jobordersapi/5/parts/10
+    [HttpDelete("{id:long}/parts/{lineId:long}")]
+    [Authorize(Policy = "TechnicianOrAbove")]
+    public async Task<IActionResult> RemovePartLine(long id, long lineId)
+    {
+        var shopId = User.GetShopId();
+        var userId = User.GetUserId();
+        var result = await _svc.RemovePartLineAsync(shopId, userId, id, lineId);
+        if (!result.Success)
+            return BadRequest(result);
+        return Ok(result);
+    }
 }

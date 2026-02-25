@@ -32,6 +32,7 @@ public class InventoryListItemDto
     public long ItemId { get; set; }
     public string SKU { get; set; } = string.Empty;
     public string ItemName { get; set; } = string.Empty;
+    public string? CategoryName { get; set; }
     public string Unit { get; set; } = string.Empty;
     public decimal UnitCost { get; set; }
     public decimal UnitPrice { get; set; }
@@ -46,6 +47,8 @@ public class InventoryDetailDto
     public long ItemId { get; set; }
     public string SKU { get; set; } = string.Empty;
     public string ItemName { get; set; } = string.Empty;
+    public string? CategoryName { get; set; }
+    public long? InventoryCategoryId { get; set; }
     public string Unit { get; set; } = string.Empty;
     public decimal UnitCost { get; set; }
     public decimal UnitPrice { get; set; }
@@ -71,6 +74,8 @@ public class CreateInventoryItemRequest
 {
     public string SKU { get; set; } = string.Empty;
     public string ItemName { get; set; } = string.Empty;
+    public string? CategoryName { get; set; }
+    public long? CategoryId { get; set; }
     public string Unit { get; set; } = "pcs";
     public decimal UnitCost { get; set; }
     public decimal UnitPrice { get; set; }
@@ -83,6 +88,8 @@ public class UpdateInventoryItemRequest
 {
     public string SKU { get; set; } = string.Empty;
     public string ItemName { get; set; } = string.Empty;
+    public string? CategoryName { get; set; }
+    public long? CategoryId { get; set; }
     public string Unit { get; set; } = "pcs";
     public decimal UnitCost { get; set; }
     public decimal UnitPrice { get; set; }
@@ -109,15 +116,17 @@ public class InventoryService : IInventoryService
 
     public async Task<List<string>> GetCategoriesAsync(long shopId)
     {
-        // InventoryItem doesn't have a category column in the model, 
-        // so we return distinct SKU prefixes or an empty list.
-        // If categories are needed, we can have a separate table later.
-        return new List<string>();
+        return await _db.Set<InventoryCategory>()
+            .Where(c => c.ShopId == shopId)
+            .OrderBy(c => c.CategoryName)
+            .Select(c => c.CategoryName)
+            .ToListAsync();
     }
 
     public async Task<InventoryPagedResult> GetListAsync(long shopId, PagedRequest req, string? categoryFilter, bool? lowStockOnly)
     {
         var query = _db.InventoryItems
+            .Include(i => i.InventoryCategory)
             .Where(i => i.ShopId == shopId)
             .AsNoTracking();
 
@@ -127,6 +136,11 @@ public class InventoryService : IInventoryService
             query = query.Where(i =>
                 i.ItemName.ToLower().Contains(term) ||
                 i.SKU.ToLower().Contains(term));
+        }
+
+        if (!string.IsNullOrWhiteSpace(categoryFilter))
+        {
+            query = query.Where(i => i.InventoryCategory != null && i.InventoryCategory.CategoryName == categoryFilter);
         }
 
         if (lowStockOnly == true)
@@ -148,6 +162,7 @@ public class InventoryService : IInventoryService
                 ItemId = i.ItemId,
                 SKU = i.SKU,
                 ItemName = i.ItemName,
+                CategoryName = i.InventoryCategory != null ? i.InventoryCategory.CategoryName : null,
                 Unit = i.Unit,
                 UnitCost = i.UnitCost,
                 UnitPrice = i.UnitPrice,
@@ -170,6 +185,7 @@ public class InventoryService : IInventoryService
     public async Task<InventoryDetailDto?> GetDetailAsync(long shopId, long itemId)
     {
         var item = await _db.InventoryItems
+            .Include(i => i.InventoryCategory)
             .Where(i => i.ShopId == shopId && i.ItemId == itemId)
             .AsNoTracking()
             .FirstOrDefaultAsync();
@@ -197,6 +213,8 @@ public class InventoryService : IInventoryService
             ItemId = item.ItemId,
             SKU = item.SKU,
             ItemName = item.ItemName,
+            CategoryName = item.InventoryCategory?.CategoryName,
+            InventoryCategoryId = item.InventoryCategoryId,
             Unit = item.Unit,
             UnitCost = item.UnitCost,
             UnitPrice = item.UnitPrice,
@@ -209,9 +227,12 @@ public class InventoryService : IInventoryService
 
     public async Task<InventoryListItemDto> CreateAsync(long shopId, CreateInventoryItemRequest req)
     {
+        var categoryId = await ResolveOrCreateCategoryAsync(shopId, req.CategoryName, req.CategoryId);
+
         var entity = new InventoryItem
         {
             ShopId = shopId,
+            InventoryCategoryId = categoryId,
             SKU = req.SKU,
             ItemName = req.ItemName,
             Unit = req.Unit,
@@ -260,6 +281,7 @@ public class InventoryService : IInventoryService
 
         if (entity == null) return null;
 
+        entity.InventoryCategoryId = await ResolveOrCreateCategoryAsync(shopId, req.CategoryName, req.CategoryId);
         entity.SKU = req.SKU;
         entity.ItemName = req.ItemName;
         entity.Unit = req.Unit;
@@ -315,5 +337,28 @@ public class InventoryService : IInventoryService
 
         await _db.SaveChangesAsync();
         return true;
+    }
+
+    private async Task<long?> ResolveOrCreateCategoryAsync(long shopId, string? categoryName, long? categoryId)
+    {
+        if (categoryId.HasValue && categoryId.Value > 0)
+            return categoryId.Value;
+
+        if (string.IsNullOrWhiteSpace(categoryName))
+            return null;
+
+        var existing = await _db.Set<InventoryCategory>()
+            .FirstOrDefaultAsync(c => c.ShopId == shopId && c.CategoryName == categoryName.Trim());
+
+        if (existing != null) return existing.InventoryCategoryId;
+
+        var newCat = new InventoryCategory
+        {
+            ShopId = shopId,
+            CategoryName = categoryName.Trim()
+        };
+        _db.Set<InventoryCategory>().Add(newCat);
+        await _db.SaveChangesAsync();
+        return newCat.InventoryCategoryId;
     }
 }

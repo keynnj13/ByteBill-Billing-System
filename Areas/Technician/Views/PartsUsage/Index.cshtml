@@ -1,20 +1,246 @@
 @{
     ViewData["Title"] = "Parts Usage";
+    var usageHistory = ViewBag.UsageHistory as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+    var availableParts = ViewBag.AvailableParts as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+    var activeJobOrders = ViewBag.ActiveJobOrders as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
 }
 
 <partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Parts Usage", IsActive = true } } })" />
 
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success" style="margin-bottom: 20px; padding: 12px 16px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; color: #065f46; font-size: 14px;">
+        @TempData["Success"]
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger" style="margin-bottom: 20px; padding: 12px 16px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #991b1b; font-size: 14px;">
+        @TempData["Error"]
+    </div>
+}
+
 <div class="page-header">
     <div>
         <h1 class="page-title">Parts Usage</h1>
-        <p class="text-muted">Track parts and inventory usage</p>
+        <p class="text-muted">Track and record parts used in your job orders</p>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body text-center py-5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-        <h3 class="text-muted">Coming Soon</h3>
-        <p class="text-muted">This module is currently under development.</p>
+<!-- Record Usage Form -->
+<div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h3 class="card-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Record Parts Usage
+        </h3>
+    </div>
+    <div class="card-body">
+        @if (activeJobOrders.Any())
+        {
+            <form asp-action="RecordUsage" asp-controller="PartsUsage" asp-area="Technician" method="post">
+                @Html.AntiForgeryToken()
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Job Order</label>
+                        <select name="jobOrderId" class="form-select" required>
+                            <option value="">Select a job order...</option>
+                            @foreach (var jo in activeJobOrders)
+                            {
+                                var isSelected = ViewBag.JobOrderId != null && (long)ViewBag.JobOrderId == (long)jo.JobOrderId;
+                                if (isSelected)
+                                {
+                                    <option value="@jo.JobOrderId" selected>
+                                        @jo.JobOrderNo — @jo.CustomerName (@jo.DeviceSummary)
+                                    </option>
+                                }
+                                else
+                                {
+                                    <option value="@jo.JobOrderId">
+                                        @jo.JobOrderNo — @jo.CustomerName (@jo.DeviceSummary)
+                                    </option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Part</label>
+                        <select name="partId" class="form-select" required>
+                            <option value="">Select a part...</option>
+                            @foreach (var part in availableParts)
+                            {
+                                <option value="@part.ItemId">
+                                    @part.ItemName (@part.SKU) — @part.QtyOnHand in stock — ₱@(((decimal)part.UnitPrice).ToString("N2"))
+                                </option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group" style="max-width: 120px;">
+                        <label class="form-label">Qty</label>
+                        <input type="number" name="quantity" class="form-input" min="1" value="1" required />
+                    </div>
+                    <div class="form-group" style="align-self: flex-end;">
+                        <button type="submit" class="btn btn-primary">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            Add Part
+                        </button>
+                    </div>
+                </div>
+            </form>
+        }
+        else
+        {
+            <p class="text-muted" style="font-size: 14px; margin: 0;">No active job orders assigned to you. Parts can only be added to active job orders.</p>
+        }
     </div>
 </div>
+
+<div class="grid-2">
+    <!-- Usage History -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Recent Parts Usage</h3>
+        </div>
+        <div class="card-body p-0">
+            @if (usageHistory.Any())
+            {
+                <div class="table-container">
+                    <table class="table table-compact">
+                        <thead>
+                            <tr>
+                                <th>Job Order</th>
+                                <th>Part</th>
+                                <th class="text-right">Qty</th>
+                                <th class="text-right">Unit Price</th>
+                                <th class="text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in usageHistory)
+                            {
+                                <tr>
+                                    <td>
+                                        <a href="@Url.Action("Details", "JobOrders", new { area = "Technician", id = (long)item.JobOrderId })" style="color: #3b82f6; text-decoration: none; font-weight: 500;">
+                                            @item.JobOrderNumber
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <div>@item.PartName</div>
+                                        <div style="font-size: 11px; color: #9ca3af;">@item.SKU</div>
+                                    </td>
+                                    <td class="text-right">@item.Quantity</td>
+                                    <td class="text-right">₱@(((decimal)item.UnitPrice).ToString("N2"))</td>
+                                    <td class="text-right"><strong>₱@(((decimal)item.LineTotal).ToString("N2"))</strong></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div style="padding: 40px 20px; text-align: center;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                    <p style="color: #9ca3af; font-size: 14px; margin-top: 12px;">No parts usage recorded yet.</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Available Parts -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Available Inventory</h3>
+        </div>
+        <div class="card-body p-0">
+            @if (availableParts.Any())
+            {
+                <div class="table-container">
+                    <table class="table table-compact">
+                        <thead>
+                            <tr>
+                                <th>SKU</th>
+                                <th>Part Name</th>
+                                <th class="text-right">In Stock</th>
+                                <th class="text-right">Price</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var part in availableParts)
+                            {
+                                <tr>
+                                    <td><code style="font-size: 12px;">@part.SKU</code></td>
+                                    <td>@part.ItemName</td>
+                                    <td class="text-right">
+                                        <span class="@((bool)part.IsLowStock ? "text-danger" : "")">
+                                            @part.QtyOnHand
+                                        </span>
+                                        @if ((bool)part.IsLowStock)
+                                        {
+                                            <span class="status-indicator status-warning" style="font-size: 10px; margin-left: 4px;">Low</span>
+                                        }
+                                    </td>
+                                    <td class="text-right">₱@(((decimal)part.UnitPrice).ToString("N2"))</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div style="padding: 40px 20px; text-align: center;">
+                    <p style="color: #9ca3af; font-size: 14px;">No inventory items available.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: var(--space-6);
+    }
+    .page-title {
+        font-size: var(--text-2xl);
+        font-weight: 600;
+        color: var(--gray-900);
+        margin-bottom: var(--space-1);
+    }
+    .form-row {
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+    .form-row .form-group {
+        flex: 1;
+        min-width: 180px;
+    }
+    .form-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 6px;
+    }
+    .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-6);
+    }
+    @@media (max-width: 1024px) {
+        .grid-2 { grid-template-columns: 1fr; }
+        .form-row { flex-direction: column; }
+        .form-row .form-group { min-width: 100%; max-width: 100% !important; }
+    }
+    .text-danger { color: #dc2626; font-weight: 600; }
+    .card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid #f3f4f6; }
+    .card-title { font-size: 14px; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 8px; margin: 0; }
+    .card-body { padding: 20px; }
+    .card-body.p-0 { padding: 0; }
+</style>

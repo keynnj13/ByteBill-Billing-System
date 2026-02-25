@@ -4,6 +4,7 @@ public class InventoryItem
 {
     public long ItemId { get; set; }
     public long ShopId { get; set; }
+    public long? InventoryCategoryId { get; set; }
     public string SKU { get; set; } = string.Empty;
     public string ItemName { get; set; } = string.Empty;
     public string Unit { get; set; } = string.Empty;
@@ -15,6 +16,7 @@ public class InventoryItem
 
     // Navigation properties
     public Shop? Shop { get; set; }
+    public InventoryCategory? InventoryCategory { get; set; }
     public ICollection<InventoryTxn> Transactions { get; set; } = new List<InventoryTxn>();
     public ICollection<JobOrderPart> JobOrderParts { get; set; } = new List<JobOrderPart>();
 

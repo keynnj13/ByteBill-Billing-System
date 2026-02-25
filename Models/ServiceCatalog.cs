@@ -6,7 +6,9 @@ public class ServiceCatalog
     public long ShopId { get; set; }
     public long ServiceCategoryId { get; set; }
     public string ServiceName { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public decimal BasePrice { get; set; }
+    public int EstimatedDuration { get; set; }
     public bool IsActive { get; set; } = true;
 
     // Navigation properties

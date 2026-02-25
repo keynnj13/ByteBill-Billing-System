@@ -73,6 +73,10 @@ builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IServiceCatalogService, ServiceCatalogService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 
+// ── PayMongo integration ─────────────────────────────────────────────
+builder.Services.Configure<PayMongoSettings>(builder.Configuration.GetSection("PayMongo"));
+builder.Services.AddHttpClient<IPayMongoService, PayMongoService>();
+
 // Rate limiting for login endpoint
 builder.Services.AddRateLimiter(options =>
 {

@@ -143,6 +143,7 @@ public class JobOrderDetailViewModel
     
     public class LineItem
     {
+        public long Id { get; set; }
         public string Description { get; set; } = string.Empty;
         public string Type { get; set; } = "Service";
         public int Quantity { get; set; }

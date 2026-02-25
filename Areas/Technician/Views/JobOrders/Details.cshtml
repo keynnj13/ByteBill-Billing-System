@@ -120,15 +120,15 @@
         </div>
 
         <!-- Services & Parts -->
-        @if (Model.LineItems.Any())
-        {
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
-                        Services & Parts
-                    </h3>
-                </div>
+        <div class="card">
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 class="card-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                    Services & Parts
+                </h3>
+            </div>
+            @if (Model.LineItems.Any())
+            {
                 <div class="card-body p-0">
                     <div class="table-container">
                         <table class="table table-compact">
@@ -139,6 +139,10 @@
                                     <th class="text-right">Qty</th>
                                     <th class="text-right">Price</th>
                                     <th class="text-right">Total</th>
+                                    @if (ViewBag.CanModifyLines == true)
+                                    {
+                                        <th style="width:60px;"></th>
+                                    }
                                 </tr>
                             </thead>
                             <tbody>
@@ -150,20 +154,98 @@
                                         <td class="text-right">@item.Quantity</td>
                                         <td class="text-right">@item.UnitPrice.ToString("C")</td>
                                         <td class="text-right">@item.Total.ToString("C")</td>
+                                        @if (ViewBag.CanModifyLines == true)
+                                        {
+                                            <td class="text-right">
+                                                <form asp-action="RemoveLine" asp-controller="JobOrders" asp-area="Technician" method="post" style="display:inline;" onsubmit="return confirm('Remove this line?');">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="jobOrderId" value="@Model.Id" />
+                                                    <input type="hidden" name="lineId" value="@item.Id" />
+                                                    <input type="hidden" name="lineType" value="@item.Type" />
+                                                    <button type="submit" class="btn-icon-danger" title="Remove">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-2 14H7L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"></path></svg>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        }
                                     </tr>
                                 }
                             </tbody>
                             <tfoot>
                                 <tr>
-                                    <td colspan="4" class="text-right"><strong>Total</strong></td>
+                                    <td colspan="@(ViewBag.CanModifyLines == true ? 5 : 4)" class="text-right"><strong>Total</strong></td>
                                     <td class="text-right"><strong>@Model.Total.ToString("C")</strong></td>
                                 </tr>
                             </tfoot>
                         </table>
                     </div>
                 </div>
-            </div>
-        }
+            }
+            else
+            {
+                <div class="card-body">
+                    <p class="text-muted" style="font-size:14px;">No services or parts added yet.</p>
+                </div>
+            }
+
+            <!-- Add Service / Part Forms -->
+            @if (ViewBag.CanModifyLines == true)
+            {
+                var availableServices = ViewBag.AvailableServices as List<dynamic> ?? new List<dynamic>();
+                var availableParts = ViewBag.AvailableParts as List<dynamic> ?? new List<dynamic>();
+
+                <div class="card-body" style="border-top: 1px solid #e5e7eb;">
+                    <div class="add-line-grid">
+                        <!-- Add Service -->
+                        <div class="add-line-section">
+                            <h4 class="add-line-title">Add Service</h4>
+                            <form asp-action="AddServiceLine" asp-controller="JobOrders" asp-area="Technician" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="jobOrderId" value="@Model.Id" />
+                                <div class="form-group" style="margin-bottom:8px;">
+                                    <select name="serviceCatalogId" class="form-select" required>
+                                        <option value="">Select a service...</option>
+                                        @foreach (var svc in availableServices)
+                                        {
+                                            <option value="@svc.Id">@svc.Name — ₱@(((decimal)svc.Price).ToString("N2"))</option>
+                                        }
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-outline-primary btn-sm">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    Add Service
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Add Part -->
+                        <div class="add-line-section">
+                            <h4 class="add-line-title">Add Part</h4>
+                            <form asp-action="AddPartLine" asp-controller="JobOrders" asp-area="Technician" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="jobOrderId" value="@Model.Id" />
+                                <div class="form-group" style="margin-bottom:8px;">
+                                    <select name="inventoryItemId" class="form-select" required>
+                                        <option value="">Select a part...</option>
+                                        @foreach (var part in availableParts)
+                                        {
+                                            <option value="@part.Id">@part.Name (Stock: @part.Stock) — ₱@(((decimal)part.Price).ToString("N2"))</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-bottom:8px;">
+                                    <input type="number" name="quantity" class="form-input" value="1" min="1" required placeholder="Qty" style="width:80px;" />
+                                </div>
+                                <button type="submit" class="btn btn-outline-primary btn-sm">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    Add Part
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
     </div>
 
     <!-- Right Column: Sidebar -->
@@ -315,6 +397,13 @@
     .btn-outline-primary { background: white; color: #3b82f6; border: 1px solid #3b82f6; border-radius: 8px; padding: 6px 14px; font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; }
     .btn-outline-primary:hover { background: #eff6ff; }
     .btn-sm { padding: 6px 14px; font-size: 13px; }
+
+    .btn-icon-danger { background: none; border: none; color: #9ca3af; cursor: pointer; padding: 4px; border-radius: 4px; display: inline-flex; transition: all 0.15s; }
+    .btn-icon-danger:hover { color: #ef4444; background: #fef2f2; }
+
+    .add-line-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .add-line-section { }
+    .add-line-title { font-size: 13px; font-weight: 600; color: #374151; margin: 0 0 10px 0; }
 
     @@media (max-width: 768px) {
         .detail-grid { grid-template-columns: 1fr; }
