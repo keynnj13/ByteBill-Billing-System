@@ -2,6 +2,7 @@ using ByteBill_BS.Data;
 using ByteBill_BS.Extensions;
 using ByteBill_BS.Models.Enums;
 using ByteBill_BS.Services;
+using ByteBill_BS.ViewModels.Admin;
 using ByteBill_BS.ViewModels.Invoices;
 using ByteBill_BS.ViewModels.JobOrders;
 using Microsoft.AspNetCore.Authorization;
@@ -40,7 +41,8 @@ public class ArchiveController : Controller
         JobOrderStatus? joStatus = null,
         InvoiceStatus? invStatus = null,
         int joPage = 1,
-        int invPage = 1)
+        int invPage = 1,
+        int usrPage = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth");
 
@@ -150,6 +152,53 @@ public class ArchiveController : Controller
             Invoices = invItems
         };
 
+        // ── Deactivated Users ──
+        var usrQuery = _db.Users
+            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+            .Where(u => u.ShopId == shopId && !u.IsActive)
+            .Where(u => !u.UserRoles.Any(ur => ur.Role!.RoleName == "SuperAdmin"))
+            .AsNoTracking();
+
+        if (tab == "users" && !string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            usrQuery = usrQuery.Where(u =>
+                (u.FirstName + " " + u.LastName).ToLower().Contains(term) ||
+                (u.Email != null && u.Email.ToLower().Contains(term)));
+        }
+
+        var usrTotal = await usrQuery.CountAsync();
+        var usrItems = await usrQuery
+            .OrderBy(u => u.FirstName).ThenBy(u => u.LastName)
+            .Skip((usrPage - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        ViewBag.DeactivatedUsers = new UserListViewModel
+        {
+            SearchTerm = tab == "users" ? search : null,
+            CurrentPage = usrPage,
+            TotalCount = usrTotal,
+            PageSize = pageSize,
+            Users = usrItems.Select(u =>
+            {
+                var roleName = u.UserRoles.FirstOrDefault()?.Role?.RoleName ?? "Billing";
+                _ = Enum.TryParse<UserRole>(roleName, out var parsedRole);
+                return new UserItemViewModel
+                {
+                    Id = u.UserId,
+                    FullName = u.FullName,
+                    Initials = GetInitials(u.FullName),
+                    Email = u.Email ?? "",
+                    Phone = u.Phone,
+                    Role = parsedRole,
+                    RoleName = roleName,
+                    IsActive = u.IsActive,
+                    CreatedAt = u.CreatedAt
+                };
+            }).ToList()
+        };
+
         return View();
     }
 
@@ -191,5 +240,25 @@ public class ArchiveController : Controller
 
         TempData["Success"] = $"Invoice {inv.InvoiceNo} restored.";
         return RedirectToAction(nameof(Index), new { tab = "invoices" });
+    }
+
+    [HttpPost("/Archive/ReactivateUser/{id}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReactivateUser(long id)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth");
+        var shopId = User.GetShopId();
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.ShopId == shopId && u.UserId == id);
+        if (user == null) return NotFound();
+
+        user.IsActive = true;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(shopId, User.GetUserId(), "Reactivate", "User", user.UserId,
+            $"Reactivated user '{user.UserName}' from archive",
+            HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        TempData["Success"] = $"User {user.FirstName} {user.LastName} reactivated.";
+        return RedirectToAction(nameof(Index), new { tab = "users" });
     }
 }

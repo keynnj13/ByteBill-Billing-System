@@ -93,6 +93,7 @@ public class UpdateInventoryItemRequest
     public string Unit { get; set; } = "pcs";
     public decimal UnitCost { get; set; }
     public decimal UnitPrice { get; set; }
+    public int QtyOnHand { get; set; }
     public int ReorderLevel { get; set; }
     public bool IsActive { get; set; }
 }
@@ -289,6 +290,22 @@ public class InventoryService : IInventoryService
         entity.UnitPrice = req.UnitPrice;
         entity.ReorderLevel = req.ReorderLevel;
         entity.IsActive = req.IsActive;
+
+        // Handle stock quantity change with transaction logging
+        var oldQty = entity.QtyOnHand;
+        if (req.QtyOnHand != oldQty)
+        {
+            var diff = req.QtyOnHand - oldQty;
+            entity.QtyOnHand = req.QtyOnHand;
+
+            _db.InventoryTxns.Add(new InventoryTxn
+            {
+                ItemId = itemId,
+                TxnType = diff > 0 ? InventoryTxnType.IN : InventoryTxnType.OUT,
+                Quantity = Math.Abs(diff),
+                Remarks = $"Stock adjusted via edit: {oldQty} → {req.QtyOnHand}"
+            });
+        }
 
         await _db.SaveChangesAsync();
 

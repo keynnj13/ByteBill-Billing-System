@@ -27,6 +27,8 @@
     </div>
 }
 
+<form id="userStatusForm" style="display:none;">@Html.AntiForgeryToken()</form>
+
 <!-- Quick Stats -->
 <div class="usr-stats">
     <div class="usr-stat-card">
@@ -152,6 +154,18 @@
                                         <button type="button" class="btn-action" title="Edit" onclick="event.stopPropagation(); openAjaxModal('@Url.Action("EditModal", "Users", new { area = "Admin", id = user.Id })', 'Edit User')">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                         </button>
+                                        @if (user.IsActive)
+                                        {
+                                            <button type="button" class="btn-action btn-deactivate" title="Deactivate" onclick="event.stopPropagation(); toggleUserStatus(@user.Id, '@user.FullName.Replace("'", "\\'")' , true)">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn-action btn-activate" title="Activate" onclick="event.stopPropagation(); toggleUserStatus(@user.Id, '@user.FullName.Replace("'", "\\'")' , false)">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                            </button>
+                                        }
                                     </div>
                                 </td>
                             </tr>
@@ -203,6 +217,10 @@
     .action-buttons { display: flex; gap: 4px; justify-content: flex-end; }
     .btn-action { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: #6b7280; transition: all 0.15s; border: none; background: none; cursor: pointer; }
     .btn-action:hover { background: #f3f4f6; color: #3b82f6; }
+    .btn-deactivate { color: #ef4444; }
+    .btn-deactivate:hover { background: #fef2f2; color: #dc2626; }
+    .btn-activate { color: #16a34a; }
+    .btn-activate:hover { background: #f0fdf4; color: #15803d; }
     .clickable-row { cursor: pointer; transition: background-color 0.15s ease; }
     .clickable-row:hover { background-color: #f0f7ff; }
 
@@ -213,3 +231,28 @@
         .usr-filter-form { flex-direction: column; }
     }
 </style>
+
+<script>
+function toggleUserStatus(userId, userName, isCurrentlyActive) {
+    var action = isCurrentlyActive ? 'deactivate' : 'activate';
+    if (!confirm('Are you sure you want to ' + action + ' ' + userName + '?')) return;
+
+    var token = document.querySelector('#userStatusForm input[name="__RequestVerificationToken"]').value;
+
+    fetch('@Url.Action("ToggleStatus", "Users", new { area = "Admin" })?id=' + userId, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'RequestVerificationToken': token,
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: '__RequestVerificationToken=' + encodeURIComponent(token)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) location.reload();
+        else alert(data.message || 'Action failed.');
+    })
+    .catch(() => alert('Error toggling user status.'));
+}
+</script>

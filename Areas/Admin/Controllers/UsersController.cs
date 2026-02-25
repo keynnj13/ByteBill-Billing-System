@@ -39,11 +39,14 @@ public class UsersController : Controller
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
         var shopId = User.GetShopId();
+        var currentUserId = User.GetUserId();
         var pageSize = 10;
 
         var query = _db.Users
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .Where(u => u.ShopId == shopId)
+            .Where(u => u.UserId != currentUserId) // Hide admin's own account
+            .Where(u => !u.UserRoles.Any(ur => ur.Role!.RoleName == "SuperAdmin")) // Hide SuperAdmin users
             .AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -63,10 +66,12 @@ public class UsersController : Controller
 
         var totalCount = await query.CountAsync();
 
-        // Stats from full dataset (unfiltered)
+        // Stats from full dataset (unfiltered but excluding own account + SuperAdmin)
         var allUsersQuery = _db.Users
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .Where(u => u.ShopId == shopId)
+            .Where(u => u.UserId != currentUserId)
+            .Where(u => !u.UserRoles.Any(ur => ur.Role!.RoleName == "SuperAdmin"))
             .AsNoTracking();
 
         var activeCount = await allUsersQuery.CountAsync(u => u.IsActive);

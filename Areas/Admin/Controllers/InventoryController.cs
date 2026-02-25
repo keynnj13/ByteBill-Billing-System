@@ -179,6 +179,7 @@ public class InventoryController : Controller
             Unit = model.Unit,
             UnitCost = model.CostPrice,
             UnitPrice = model.SellingPrice,
+            QtyOnHand = model.QuantityInStock,
             ReorderLevel = model.ReorderLevel,
             IsActive = model.IsActive
         });
@@ -240,5 +241,31 @@ public class InventoryController : Controller
                 CreatedAt = t.CreatedAt
             }).ToList()
         };
+    }
+
+    // ─── QUICK RESTOCK ──────────────────────────────────────
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Restock(long id, int quantity, string? remarks)
+    {
+        if (!IsAuthorized()) return Forbid();
+        if (quantity <= 0)
+            return Json(new { success = false, message = "Quantity must be greater than zero." });
+
+        var shopId = User.GetShopId();
+        var result = await _service.AdjustStockAsync(shopId, id, new AdjustStockRequest
+        {
+            TxnType = Models.Enums.InventoryTxnType.IN,
+            Quantity = quantity,
+            Remarks = string.IsNullOrWhiteSpace(remarks) ? "Quick restock" : remarks.Trim()
+        });
+
+        if (!result)
+            return Json(new { success = false, message = "Item not found." });
+
+        TempData["Success"] = "Stock restocked successfully!";
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            return Json(new { success = true, message = "Stock restocked successfully!" });
+        return RedirectToAction(nameof(Index));
     }
 }
