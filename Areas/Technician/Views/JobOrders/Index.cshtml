@@ -5,10 +5,10 @@
 
 <partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "My Job Orders", IsActive = true } } })" />
 
-<div class="page-header">
+<div class="tjo-header">
     <div>
-        <h1 class="page-title">My Job Orders</h1>
-        <p class="page-subtitle">@Model.TotalCount assigned job orders</p>
+        <h1 class="tjo-title">My Job Orders</h1>
+        <p class="tjo-subtitle">@Model.TotalCount assigned job orders</p>
     </div>
 </div>
 
@@ -25,10 +25,11 @@
     </div>
 }
 
-<!-- Status Quick Filters -->
-<div class="status-filters" style="margin-bottom: 20px;">
-    <a href="@Url.Action("Index")" class="status-filter-btn @(Model.StatusFilter == null ? "active" : "")">
-        All <span class="filter-count">@Model.TotalCount</span>
+<!-- Status Filter Pills -->
+<div class="tjo-filters">
+    <a href="@Url.Action("Index")" class="tjo-pill @(Model.StatusFilter == null ? "tjo-pill-active" : "")">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        All
     </a>
     @{
         var statusFilters = new[] {
@@ -38,147 +39,212 @@
             (Status: JobOrderStatus.InProgress, Label: "In Progress"),
             (Status: JobOrderStatus.WaitingForParts, Label: "Waiting Parts"),
             (Status: JobOrderStatus.Completed, Label: "Completed"),
-            (Status: JobOrderStatus.Delivered, Label: "Delivered"),
             (Status: JobOrderStatus.Cancelled, Label: "Cancelled")
         };
     }
     @foreach (var sf in statusFilters)
     {
-        <a href="@Url.Action("Index", new { status = sf.Status })" class="status-filter-btn @(Model.StatusFilter == sf.Status ? "active" : "")">
+        <a href="@Url.Action("Index", new { status = sf.Status })" class="tjo-pill @(Model.StatusFilter == sf.Status ? "tjo-pill-active" : "")">
             @sf.Label
         </a>
     }
 </div>
 
-<div class="card">
-    <div class="card-body p-0">
-        @if (Model.JobOrders.Any())
+<!-- Job Order Cards -->
+@if (Model.JobOrders.Any())
+{
+    <div class="tjo-list">
+        @foreach (var order in Model.JobOrders)
         {
-            <div class="table-container">
-                <table class="table" style="table-layout: fixed;">
-                    <colgroup>
-                        <col style="width: 14%;" />
-                        <col style="width: 20%;" />
-                        <col style="width: 18%;" />
-                        <col style="width: 13%;" />
-                        <col style="width: 15%;" />
-                        <col style="width: 10%;" />
-                        <col style="width: 10%;" />
-                    </colgroup>
-                    <thead>
-                        <tr>
-                            <th>Order #</th>
-                            <th>Customer</th>
-                            <th>Device</th>
-                            <th class="text-center">Status</th>
-                            <th>Problem</th>
-                            <th>Created</th>
-                            <th class="text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var order in Model.JobOrders)
-                        {
-                            <tr class="clickable-row" onclick="window.location.href='@Url.Action("Details", "JobOrders", new { area = "Technician", id = order.Id })'">
-                                <td>
-                                    <span class="order-link">@order.JobNumber</span>
-                                </td>
-                                <td>
-                                    <div class="customer-cell">
-                                        <div class="avatar-xs">@order.CustomerInitials</div>
-                                        <span class="customer-text">@order.CustomerName</span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="device-cell">
-                                        <span class="device-text">@order.DeviceType</span>
-                                        @if (!string.IsNullOrEmpty(order.DeviceBrand))
-                                        {
-                                            <span class="device-sub">@order.DeviceBrand @order.DeviceModel</span>
-                                        }
-                                    </div>
-                                </td>
-                                <td class="text-center"><span class="status-indicator @order.StatusClass">@order.StatusDisplay</span></td>
-                                <td>
-                                    <span class="problem-text" title="@order.ProblemDescription">@(order.ProblemDescription?.Length > 40 ? order.ProblemDescription[..40] + "..." : order.ProblemDescription ?? "")</span>
-                                </td>
-                                <td><span class="date-text">@order.CreatedAt.ToString("MMM d")</span></td>
-                                <td>
-                                    <div class="action-buttons">
-                                        <a href="@Url.Action("Details", "JobOrders", new { area = "Technician", id = order.Id })" class="btn-action" title="View Details" onclick="event.stopPropagation();">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-
-            @if (Model.TotalPages > 1)
-            {
-                <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel
-                {
-                    CurrentPage = Model.CurrentPage,
-                    TotalPages = Model.TotalPages,
-                    TotalItems = Model.TotalCount,
-                    PageSize = Model.PageSize,
-                    BaseUrl = Url.Action("Index", "JobOrders", new { area = "Technician", status = Model.StatusFilter })!
-                })" />
-            }
-        }
-        else
-        {
-            <div class="empty-state" style="padding: 60px 20px; text-align: center;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;">
-                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"></path>
-                    <rect x="9" y="3" width="6" height="4" rx="1"></rect>
-                    <path d="M9 14l2 2 4-4"></path>
-                </svg>
-                <h3 style="color: #6b7280; font-size: 16px; margin-bottom: 4px;">No job orders found</h3>
-                <p style="color: #9ca3af; font-size: 14px;">
-                    @if (Model.StatusFilter.HasValue)
+            <a href="@Url.Action("Details", "JobOrders", new { area = "Technician", id = order.Id })" class="tjo-card">
+                <div class="tjo-card-top">
+                    <div class="tjo-card-left">
+                        <span class="tjo-order-no">@order.JobNumber</span>
+                        <span class="tjo-date">@order.CreatedAt.ToString("MMM d, yyyy")</span>
+                    </div>
+                    <span class="tjo-status tjo-status-@order.StatusClass">@order.StatusDisplay</span>
+                </div>
+                <div class="tjo-card-body">
+                    <div class="tjo-customer-row">
+                        <div class="tjo-avatar">@order.CustomerInitials</div>
+                        <div class="tjo-customer-info">
+                            <span class="tjo-customer-name">@order.CustomerName</span>
+                            <span class="tjo-device-info">@order.DeviceType — @order.DeviceBrand @order.DeviceModel</span>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(order.ProblemDescription))
                     {
-                        <span>No @Model.StatusFilter.Value orders assigned to you.</span>
+                        <p class="tjo-problem">@(order.ProblemDescription.Length > 80 ? order.ProblemDescription[..80] + "..." : order.ProblemDescription)</p>
                     }
-                    else
-                    {
-                        <span>You don't have any assigned job orders yet.</span>
-                    }
-                </p>
-            </div>
+                </div>
+                <div class="tjo-card-footer">
+                    <span class="tjo-view-link">View Details →</span>
+                </div>
+            </a>
         }
     </div>
-</div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel
+        {
+            CurrentPage = Model.CurrentPage,
+            TotalPages = Model.TotalPages,
+            TotalItems = Model.TotalCount,
+            PageSize = Model.PageSize,
+            BaseUrl = Url.Action("Index", "JobOrders", new { area = "Technician", status = Model.StatusFilter })!
+        })" />
+    }
+}
+else
+{
+    <div class="tjo-empty-card">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"></path>
+            <rect x="9" y="3" width="6" height="4" rx="1"></rect>
+            <path d="M9 14l2 2 4-4"></path>
+        </svg>
+        <h3>No job orders found</h3>
+        <p>
+            @if (Model.StatusFilter.HasValue)
+            {
+                <span>No @Model.StatusFilter.Value orders assigned to you.</span>
+            }
+            else
+            {
+                <span>You don't have any assigned job orders yet.</span>
+            }
+        </p>
+    </div>
+}
 
 <style>
-    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
-    .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
-    .page-subtitle { font-size: 14px; color: #6b7280; }
-    .status-filters { display: flex; gap: 8px; flex-wrap: wrap; }
-    .status-filter-btn { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; color: #6b7280; background: #f3f4f6; border: 1px solid transparent; text-decoration: none; transition: all 0.15s; }
-    .status-filter-btn:hover { background: #e5e7eb; color: #374151; }
-    .status-filter-btn.active { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; font-weight: 600; }
-    .filter-count { background: rgba(0,0,0,0.08); padding: 1px 6px; border-radius: 10px; font-size: 11px; margin-left: 4px; }
-    .status-filter-btn.active .filter-count { background: rgba(37,99,235,0.12); }
-    .customer-cell { display: flex; align-items: center; gap: 8px; }
-    .avatar-xs { width: 28px; height: 28px; border-radius: 50%; background: rgba(59,130,246,0.1); color: #3b82f6; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 11px; flex-shrink: 0; }
-    .customer-text { font-size: 13px; font-weight: 500; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .order-link { font-weight: 600; color: #3b82f6; font-size: 13px; }
-    .device-cell { display: flex; flex-direction: column; gap: 1px; }
-    .device-text { font-size: 13px; color: #374151; }
-    .device-sub { font-size: 12px; color: #9ca3af; }
-    .problem-text { font-size: 12px; color: #6b7280; }
-    .date-text { font-size: 13px; color: #6b7280; }
-    .action-buttons { display: flex; gap: 4px; justify-content: flex-end; }
-    .btn-action { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: #6b7280; transition: all 0.15s; border: none; background: none; cursor: pointer; text-decoration: none; }
-    .btn-action:hover { background: #f3f4f6; color: #3b82f6; }
-    .clickable-row { cursor: pointer; transition: background-color 0.15s ease; }
-    .clickable-row:hover { background-color: #f0f7ff; }
+    /* ── Header ── */
+    .tjo-header { margin-bottom: 24px; }
+    .tjo-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .tjo-subtitle { font-size: 14px; color: #6b7280; }
+
+    /* ── Filter Pills ── */
+    .tjo-filters {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+    }
+    .tjo-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 7px 16px;
+        border-radius: 99px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #6b7280;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        text-decoration: none;
+        transition: all 0.15s;
+    }
+    .tjo-pill:hover { background: #f3f4f6; color: #374151; border-color: #d1d5db; }
+    .tjo-pill-active { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; font-weight: 600; }
+
+    /* ── Card List ── */
+    .tjo-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .tjo-card {
+        background: white;
+        border-radius: 14px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        text-decoration: none;
+        color: inherit;
+        transition: all 0.2s;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .tjo-card:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        border-color: #bfdbfe;
+        transform: translateY(-2px);
+    }
+
+    /* ── Card Top ── */
+    .tjo-card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px 0;
+    }
+    .tjo-card-left { display: flex; flex-direction: column; gap: 2px; }
+    .tjo-order-no { font-size: 15px; font-weight: 700; color: #1e3a8a; }
+    .tjo-date { font-size: 12px; color: #9ca3af; }
+
+    .tjo-status {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 99px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        white-space: nowrap;
+    }
+    .tjo-status.status-pending { background: #f3f4f6; color: #6b7280; }
+    .tjo-status.status-checkedin { background: rgba(37,99,235,0.1); color: #2563eb; }
+    .tjo-status.status-diagnosis { background: rgba(124,58,237,0.1); color: #7c3aed; }
+    .tjo-status.status-inprogress { background: rgba(217,119,6,0.1); color: #d97706; }
+    .tjo-status.status-waitingparts { background: rgba(220,38,38,0.1); color: #dc2626; }
+    .tjo-status.status-success { background: rgba(22,163,74,0.1); color: #16a34a; }
+    .tjo-status.status-cancelled { background: rgba(107,114,128,0.1); color: #6b7280; }
+
+    /* ── Card Body ── */
+    .tjo-card-body { padding: 16px 20px; flex: 1; }
+    .tjo-customer-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .tjo-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+    .tjo-customer-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .tjo-customer-name { font-size: 14px; font-weight: 600; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tjo-device-info { font-size: 12px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tjo-problem { font-size: 13px; color: #6b7280; line-height: 1.5; margin: 0; }
+
+    /* ── Card Footer ── */
+    .tjo-card-footer {
+        padding: 12px 20px;
+        border-top: 1px solid #f3f4f6;
+        display: flex;
+        justify-content: flex-end;
+    }
+    .tjo-view-link { font-size: 13px; font-weight: 500; color: #3b82f6; }
+    .tjo-card:hover .tjo-view-link { text-decoration: underline; }
+
+    /* ── Empty State ── */
+    .tjo-empty-card {
+        background: white;
+        border-radius: 14px;
+        border: 1px solid #e5e7eb;
+        padding: 60px 20px;
+        text-align: center;
+    }
+    .tjo-empty-card h3 { color: #6b7280; font-size: 16px; margin: 16px 0 4px; }
+    .tjo-empty-card p { color: #9ca3af; font-size: 14px; }
+
     @@media (max-width: 768px) {
-        .page-header { flex-direction: column; gap: 12px; }
-        .table { table-layout: auto !important; }
-        .status-filters { overflow-x: auto; flex-wrap: nowrap; }
+        .tjo-list { grid-template-columns: 1fr; }
+        .tjo-filters { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
     }
 </style>

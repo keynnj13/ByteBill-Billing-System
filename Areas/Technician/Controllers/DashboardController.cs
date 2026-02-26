@@ -91,7 +91,6 @@ public class DashboardController : Controller
         // Work queue — pending/active jobs
         var workQueue = await myJobs
             .Where(j => j.Status != JobOrderStatus.Completed
-                && j.Status != JobOrderStatus.Delivered
                 && j.Status != JobOrderStatus.Cancelled)
             .OrderByDescending(j => j.Priority == "Urgent" ? 0 : j.Priority == "High" ? 1 : 2)
             .ThenByDescending(j => j.CreatedAt)
@@ -114,6 +113,7 @@ public class DashboardController : Controller
 
         var viewModel = new DashboardViewModel
         {
+            UserName = User.GetFullName(),
             TodayRevenue = 0,
             PendingInvoices = 0,
             PaidToday = 0,
@@ -126,6 +126,9 @@ public class DashboardController : Controller
         ViewBag.CompletedToday = completedToday;
         ViewBag.InProgress = inProgress;
         ViewBag.WaitingParts = waitingParts;
+        ViewBag.TotalActive = await myJobs.CountAsync(j =>
+            j.Status != JobOrderStatus.Completed
+            && j.Status != JobOrderStatus.Cancelled);
 
         return View(viewModel);
     }

@@ -69,6 +69,7 @@ public class PaymentsController : Controller
                 return new PaymentItemViewModel
                 {
                     Id = p.PaymentId,
+                    PaymentNumber = p.PaymentNo,
                     CustomerName = p.CustomerName,
                     CustomerInitials = GetInitials(p.CustomerName),
                     InvoiceNumber = p.InvoiceNo,
@@ -273,6 +274,7 @@ public class PaymentsController : Controller
         return new PaymentDetailViewModel
         {
             Id = dto.PaymentId,
+            PaymentNumber = dto.PaymentNo,
             CustomerId = dto.CustomerId,
             CustomerName = dto.CustomerName,
             CustomerEmail = customer?.Email,

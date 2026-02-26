@@ -57,6 +57,11 @@ public class DashboardViewModel
     // Chart Data
     public List<ChartDataPoint> RevenueChart { get; set; } = new();
     public List<ChartDataPoint> JobOrderChart { get; set; } = new();
+
+    // Date filter
+    public string ActivePeriod { get; set; } = "all";
+    public DateTime? FilterFrom { get; set; }
+    public DateTime? FilterTo { get; set; }
 }
 
 public class RecentActivityItem
@@ -78,6 +83,7 @@ public class JobOrderSummary
     public string CustomerName { get; set; } = string.Empty;
     public string DeviceType { get; set; } = string.Empty;
     public JobOrderStatus Status { get; set; }
+    public string StatusName => Status.ToString();
     public string StatusBadgeClass { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public string? TechnicianName { get; set; }
@@ -99,9 +105,11 @@ public class RecentInvoiceItem
     public string InvoiceNumber { get; set; } = string.Empty;
     public string CustomerName { get; set; } = string.Empty;
     public decimal Total { get; set; }
+    public decimal Balance { get; set; }
     public string Status { get; set; } = string.Empty;
     public string StatusClass { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+    public DateTime? DueDate { get; set; }
 }
 
 public class LowStockItem

@@ -20,29 +20,60 @@
     </div>
 }
 
-<div class="page-header">
+<div class="pu-header">
     <div>
-        <h1 class="page-title">Parts Usage</h1>
-        <p class="text-muted">Track and record parts used in your job orders</p>
+        <h1 class="pu-title">Parts Usage</h1>
+        <p class="pu-subtitle">Track and record parts used in your job orders</p>
     </div>
 </div>
 
-<!-- Record Usage Form -->
-<div class="card" style="margin-bottom: 24px;">
-    <div class="card-header">
-        <h3 class="card-title">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            Record Parts Usage
-        </h3>
+<!-- Quick Stats -->
+<div class="pu-stats">
+    <div class="pu-stat-card">
+        <div class="pu-stat-icon pu-icon-blue">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+        </div>
+        <div>
+            <span class="pu-stat-label">Parts Used</span>
+            <span class="pu-stat-value">@usageHistory.Count()</span>
+        </div>
     </div>
-    <div class="card-body">
+    <div class="pu-stat-card">
+        <div class="pu-stat-icon pu-icon-green">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+        </div>
+        <div>
+            <span class="pu-stat-label">Available Parts</span>
+            <span class="pu-stat-value">@availableParts.Count()</span>
+        </div>
+    </div>
+    <div class="pu-stat-card">
+        <div class="pu-stat-icon pu-icon-amber">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+        </div>
+        <div>
+            <span class="pu-stat-label">Active Jobs</span>
+            <span class="pu-stat-value">@activeJobOrders.Count()</span>
+        </div>
+    </div>
+</div>
+
+<!-- Record Usage Card -->
+<div class="pu-card pu-card-highlight" style="margin-bottom: 24px;">
+    <div class="pu-card-header">
+        <div class="pu-card-header-left">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <h3 class="pu-card-title">Record Parts Usage</h3>
+        </div>
+    </div>
+    <div class="pu-card-body">
         @if (activeJobOrders.Any())
         {
             <form asp-action="RecordUsage" asp-controller="PartsUsage" asp-area="Technician" method="post">
                 @Html.AntiForgeryToken()
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Job Order</label>
+                <div class="pu-form-grid">
+                    <div class="pu-form-group pu-form-lg">
+                        <label class="pu-label">Job Order</label>
                         <select name="jobOrderId" class="form-select" required>
                             <option value="">Select a job order...</option>
                             @foreach (var jo in activeJobOrders)
@@ -63,8 +94,8 @@
                             }
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Part</label>
+                    <div class="pu-form-group pu-form-lg">
+                        <label class="pu-label">Part</label>
                         <select name="partId" class="form-select" required>
                             <option value="">Select a part...</option>
                             @foreach (var part in availableParts)
@@ -75,11 +106,11 @@
                             }
                         </select>
                     </div>
-                    <div class="form-group" style="max-width: 120px;">
-                        <label class="form-label">Qty</label>
+                    <div class="pu-form-group pu-form-sm">
+                        <label class="pu-label">Qty</label>
                         <input type="number" name="quantity" class="form-input" min="1" value="1" required />
                     </div>
-                    <div class="form-group" style="align-self: flex-end;">
+                    <div class="pu-form-group pu-form-btn">
                         <button type="submit" class="btn btn-primary">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                             Add Part
@@ -90,107 +121,94 @@
         }
         else
         {
-            <p class="text-muted" style="font-size: 14px; margin: 0;">No active job orders assigned to you. Parts can only be added to active job orders.</p>
+            <div class="pu-no-jobs">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <span>No active job orders assigned to you. Parts can only be added to active job orders.</span>
+            </div>
         }
     </div>
 </div>
 
-<div class="grid-2">
+<!-- Content Grid -->
+<div class="pu-grid">
     <!-- Usage History -->
-    <div class="card">
-        <div class="card-header">
-            <h3 class="card-title">Recent Parts Usage</h3>
+    <div class="pu-card">
+        <div class="pu-card-header">
+            <div class="pu-card-header-left">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                <h3 class="pu-card-title">Recent Parts Usage</h3>
+            </div>
         </div>
-        <div class="card-body p-0">
+        <div class="pu-card-body p-0">
             @if (usageHistory.Any())
             {
-                <div class="table-container">
-                    <table class="table table-compact">
-                        <thead>
-                            <tr>
-                                <th>Job Order</th>
-                                <th>Part</th>
-                                <th class="text-right">Qty</th>
-                                <th class="text-right">Unit Price</th>
-                                <th class="text-right">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var item in usageHistory)
-                            {
-                                <tr>
-                                    <td>
-                                        <a href="@Url.Action("Details", "JobOrders", new { area = "Technician", id = (long)item.JobOrderId })" style="color: #3b82f6; text-decoration: none; font-weight: 500;">
-                                            @item.JobOrderNumber
-                                        </a>
-                                    </td>
-                                    <td>
-                                        <div>@item.PartName</div>
-                                        <div style="font-size: 11px; color: #9ca3af;">@item.SKU</div>
-                                    </td>
-                                    <td class="text-right">@item.Quantity</td>
-                                    <td class="text-right">₱@(((decimal)item.UnitPrice).ToString("N2"))</td>
-                                    <td class="text-right"><strong>₱@(((decimal)item.LineTotal).ToString("N2"))</strong></td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                @foreach (var item in usageHistory)
+                {
+                    <div class="pu-usage-item">
+                        <div class="pu-usage-left">
+                            <div class="pu-usage-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                            </div>
+                            <div class="pu-usage-info">
+                                <span class="pu-usage-part">@item.PartName</span>
+                                <span class="pu-usage-meta">
+                                    <a href="@Url.Action("Details", "JobOrders", new { area = "Technician", id = (long)item.JobOrderId })" class="pu-jo-link">@item.JobOrderNumber</a>
+                                    · @item.SKU · Qty: @item.Quantity
+                                </span>
+                            </div>
+                        </div>
+                        <div class="pu-usage-right">
+                            <span class="pu-usage-price">₱@(((decimal)item.LineTotal).ToString("N2"))</span>
+                            <span class="pu-usage-unit">₱@(((decimal)item.UnitPrice).ToString("N2")) each</span>
+                        </div>
+                    </div>
+                }
             }
             else
             {
-                <div style="padding: 40px 20px; text-align: center;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
-                    <p style="color: #9ca3af; font-size: 14px; margin-top: 12px;">No parts usage recorded yet.</p>
+                <div class="pu-empty">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                    <p>No parts usage recorded yet.</p>
                 </div>
             }
         </div>
     </div>
 
-    <!-- Available Parts -->
-    <div class="card">
-        <div class="card-header">
-            <h3 class="card-title">Available Inventory</h3>
+    <!-- Available Inventory -->
+    <div class="pu-card">
+        <div class="pu-card-header">
+            <div class="pu-card-header-left">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                <h3 class="pu-card-title">Available Inventory</h3>
+            </div>
         </div>
-        <div class="card-body p-0">
+        <div class="pu-card-body p-0">
             @if (availableParts.Any())
             {
-                <div class="table-container">
-                    <table class="table table-compact">
-                        <thead>
-                            <tr>
-                                <th>SKU</th>
-                                <th>Part Name</th>
-                                <th class="text-right">In Stock</th>
-                                <th class="text-right">Price</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var part in availableParts)
-                            {
-                                <tr>
-                                    <td><code style="font-size: 12px;">@part.SKU</code></td>
-                                    <td>@part.ItemName</td>
-                                    <td class="text-right">
-                                        <span class="@((bool)part.IsLowStock ? "text-danger" : "")">
-                                            @part.QtyOnHand
-                                        </span>
-                                        @if ((bool)part.IsLowStock)
-                                        {
-                                            <span class="status-indicator status-warning" style="font-size: 10px; margin-left: 4px;">Low</span>
-                                        }
-                                    </td>
-                                    <td class="text-right">₱@(((decimal)part.UnitPrice).ToString("N2"))</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                @foreach (var part in availableParts)
+                {
+                    <div class="pu-inv-item">
+                        <div class="pu-inv-left">
+                            <span class="pu-inv-name">@part.ItemName</span>
+                            <span class="pu-inv-sku">@part.SKU</span>
+                        </div>
+                        <div class="pu-inv-right">
+                            <span class="pu-inv-stock @((bool)part.IsLowStock ? "pu-inv-low" : "")">
+                                @part.QtyOnHand in stock
+                                @if ((bool)part.IsLowStock)
+                                {
+                                    <span class="pu-low-badge">Low</span>
+                                }
+                            </span>
+                            <span class="pu-inv-price">₱@(((decimal)part.UnitPrice).ToString("N2"))</span>
+                        </div>
+                    </div>
+                }
             }
             else
             {
-                <div style="padding: 40px 20px; text-align: center;">
-                    <p style="color: #9ca3af; font-size: 14px;">No inventory items available.</p>
+                <div class="pu-empty">
+                    <p>No inventory items available.</p>
                 </div>
             }
         </div>
@@ -198,49 +216,92 @@
 </div>
 
 <style>
-    .page-header {
+    /* ── Header ── */
+    .pu-header { margin-bottom: 24px; }
+    .pu-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .pu-subtitle { font-size: 14px; color: #6b7280; }
+
+    /* ── Stats ── */
+    .pu-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .pu-stat-card { display: flex; align-items: center; gap: 14px; padding: 16px 20px; background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .pu-stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .pu-icon-blue { background: rgba(59,130,246,0.1); color: #3b82f6; }
+    .pu-icon-green { background: rgba(16,185,129,0.1); color: #10b981; }
+    .pu-icon-amber { background: rgba(245,158,11,0.1); color: #f59e0b; }
+    .pu-stat-label { display: block; font-size: 12px; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .pu-stat-value { display: block; font-size: 22px; font-weight: 700; color: #1f2937; line-height: 1.2; }
+
+    /* ── Cards ── */
+    .pu-card { background: white; border-radius: 14px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; }
+    .pu-card-highlight { border-color: #bfdbfe; }
+    .pu-card-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f3f4f6; }
+    .pu-card-header-left { display: flex; align-items: center; gap: 8px; }
+    .pu-card-title { font-size: 15px; font-weight: 600; color: #1f2937; margin: 0; }
+    .pu-card-body { padding: 20px; }
+    .pu-card-body.p-0 { padding: 0; }
+
+    /* ── Form ── */
+    .pu-form-grid { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+    .pu-form-group { display: flex; flex-direction: column; gap: 6px; }
+    .pu-form-lg { flex: 1; min-width: 200px; }
+    .pu-form-sm { width: 100px; }
+    .pu-form-btn { align-self: flex-end; }
+    .pu-label { font-size: 13px; font-weight: 500; color: #374151; }
+    .pu-no-jobs { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #6b7280; }
+
+    /* ── Grid ── */
+    .pu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+
+    /* ── Usage Items ── */
+    .pu-usage-item {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: var(--space-6);
+        align-items: center;
+        padding: 14px 20px;
+        border-bottom: 1px solid #f3f4f6;
+        transition: background 0.15s;
     }
-    .page-title {
-        font-size: var(--text-2xl);
-        font-weight: 600;
-        color: var(--gray-900);
-        margin-bottom: var(--space-1);
-    }
-    .form-row {
+    .pu-usage-item:last-child { border-bottom: none; }
+    .pu-usage-item:hover { background: #f8fafc; }
+    .pu-usage-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .pu-usage-icon { width: 32px; height: 32px; border-radius: 8px; background: rgba(139,92,246,0.1); color: #8b5cf6; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .pu-usage-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .pu-usage-part { font-size: 14px; font-weight: 500; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pu-usage-meta { font-size: 12px; color: #9ca3af; }
+    .pu-jo-link { color: #3b82f6; text-decoration: none; font-weight: 500; }
+    .pu-jo-link:hover { text-decoration: underline; }
+    .pu-usage-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
+    .pu-usage-price { font-size: 14px; font-weight: 600; color: #1f2937; }
+    .pu-usage-unit { font-size: 11px; color: #d1d5db; }
+
+    /* ── Inventory Items ── */
+    .pu-inv-item {
         display: flex;
-        gap: 16px;
-        align-items: flex-start;
-        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 20px;
+        border-bottom: 1px solid #f3f4f6;
     }
-    .form-row .form-group {
-        flex: 1;
-        min-width: 180px;
-    }
-    .form-label {
-        display: block;
-        font-size: 13px;
-        font-weight: 500;
-        color: #374151;
-        margin-bottom: 6px;
-    }
-    .grid-2 {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: var(--space-6);
-    }
+    .pu-inv-item:last-child { border-bottom: none; }
+    .pu-inv-left { display: flex; flex-direction: column; gap: 2px; }
+    .pu-inv-name { font-size: 14px; font-weight: 500; color: #1f2937; }
+    .pu-inv-sku { font-size: 12px; color: #9ca3af; font-family: 'SF Mono','Cascadia Code','Consolas',monospace; }
+    .pu-inv-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+    .pu-inv-stock { font-size: 13px; color: #374151; }
+    .pu-inv-low { color: #ef4444; font-weight: 600; }
+    .pu-low-badge { font-size: 10px; background: rgba(245,158,11,0.1); color: #d97706; padding: 1px 6px; border-radius: 99px; margin-left: 4px; font-weight: 600; }
+    .pu-inv-price { font-size: 13px; color: #6b7280; }
+
+    /* ── Empty State ── */
+    .pu-empty { padding: 40px 20px; text-align: center; }
+    .pu-empty p { color: #9ca3af; font-size: 14px; margin-top: 12px; }
+
     @@media (max-width: 1024px) {
-        .grid-2 { grid-template-columns: 1fr; }
-        .form-row { flex-direction: column; }
-        .form-row .form-group { min-width: 100%; max-width: 100% !important; }
+        .pu-stats { grid-template-columns: 1fr; }
+        .pu-grid { grid-template-columns: 1fr; }
     }
-    .text-danger { color: #dc2626; font-weight: 600; }
-    .card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
-    .card-header { padding: 16px 20px; border-bottom: 1px solid #f3f4f6; }
-    .card-title { font-size: 14px; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 8px; margin: 0; }
-    .card-body { padding: 20px; }
-    .card-body.p-0 { padding: 0; }
+    @@media (max-width: 768px) {
+        .pu-form-grid { flex-direction: column; }
+        .pu-form-lg, .pu-form-sm { min-width: 100%; width: 100%; }
+    }
 </style>

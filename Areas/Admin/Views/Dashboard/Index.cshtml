@@ -8,10 +8,27 @@
 <!-- ═══ Page Header ═══ -->
 <div class="dash-header">
     <div>
-        <h1 class="dash-title">Welcome back, @Model.UserName</h1>
+        <h1 class="dash-title">Welcome back, @Model.UserName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()</h1>
         <p class="dash-subtitle">Here's what's happening at <strong>@Model.ShopName</strong> today.</p>
     </div>
+</div>
 
+<!-- ═══ Date Filter ═══ -->
+<div class="dash-filter" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:24px;">
+    <a href="@Url.Action("Index")" class="filter-btn @(Model.ActivePeriod == "all" ? "filter-btn-active" : "")">All Time</a>
+    <a href="@Url.Action("Index", new { period = "today" })" class="filter-btn @(Model.ActivePeriod == "today" ? "filter-btn-active" : "")">Today</a>
+    <a href="@Url.Action("Index", new { period = "week" })" class="filter-btn @(Model.ActivePeriod == "week" ? "filter-btn-active" : "")">This Week</a>
+    <a href="@Url.Action("Index", new { period = "month" })" class="filter-btn @(Model.ActivePeriod == "month" ? "filter-btn-active" : "")">This Month</a>
+    <a href="@Url.Action("Index", new { period = "last30" })" class="filter-btn @(Model.ActivePeriod == "last30" ? "filter-btn-active" : "")">Last 30 Days</a>
+    <a href="@Url.Action("Index", new { period = "last3mo" })" class="filter-btn @(Model.ActivePeriod == "last3mo" ? "filter-btn-active" : "")">Last 3 Months</a>
+    <span style="width:1px;height:24px;background:#e5e7eb;margin:0 4px;"></span>
+    <form method="get" style="display:flex;gap:6px;align-items:center;">
+        <input type="hidden" name="period" value="custom" />
+        <input type="date" name="from" value="@(Model.ActivePeriod == "custom" && Model.FilterFrom.HasValue ? Model.FilterFrom.Value.ToString("yyyy-MM-dd") : "")" class="form-input" style="font-size:13px;padding:6px 10px;width:150px;" placeholder="mm/dd/yyyy" />
+        <span style="color:#9ca3af;font-size:13px;">to</span>
+        <input type="date" name="to" value="@(Model.ActivePeriod == "custom" && Model.FilterTo.HasValue ? Model.FilterTo.Value.ToString("yyyy-MM-dd") : "")" class="form-input" style="font-size:13px;padding:6px 10px;width:150px;" placeholder="mm/dd/yyyy" />
+        <button type="submit" class="btn btn-outline-primary btn-sm">Apply</button>
+    </form>
 </div>
 
 <!-- ═══ KPI Cards ═══ -->
@@ -128,7 +145,7 @@
                                     <td style="font-size:13px;color:#374151;">@job.CustomerName</td>
                                     <td style="font-size:13px;color:#374151;">@job.DeviceType</td>
                                     <td style="font-size:13px;color:@(job.TechnicianName != null ? "#374151" : "#d1d5db");@(job.TechnicianName == null ? "font-style:italic;" : "")">@(job.TechnicianName ?? "Unassigned")</td>
-                                    <td class="text-center"><span class="status-indicator status-@job.StatusBadgeClass">@job.Status</span></td>
+                                    <td class="text-center"><span class="status-indicator status-@job.StatusBadgeClass">@job.StatusName</span></td>
                                 </tr>
                             }
                         </tbody>
@@ -197,8 +214,7 @@
             'Diagnosis':      colors.cyan,
             'WaitingForParts': colors.purple,
             'Cancelled':      colors.red,
-            'CheckedIn':      colors.indigo,
-            'Delivered':      colors.teal
+            'CheckedIn':      colors.indigo
         };
         var fallbackColor = colors.gray;
 
@@ -321,7 +337,7 @@
 
         function getStatusClass(status) {
             switch (status) {
-                case 'Completed': case 'Delivered': return 'success';
+                case 'Completed': return 'success';
                 case 'InProgress': return 'primary';
                 case 'Pending': return 'warning';
                 case 'Cancelled': return 'danger';
@@ -332,7 +348,7 @@
 
         function getActivityDotClass(newStatus) {
             switch (newStatus) {
-                case 'Completed': case 'Delivered': return 'activity-dot-success';
+                case 'Completed': return 'activity-dot-success';
                 case 'InProgress': case 'Pending': return 'activity-dot-primary';
                 case 'Cancelled': return 'activity-dot-danger';
                 case 'WaitingForParts': return 'activity-dot-warning';
@@ -341,7 +357,14 @@
         }
 
         function pollDashboard() {
-            fetch('@Url.Action("Poll", "Dashboard", new { area = "Admin" })')
+            var pollUrl = '@Url.Action("Poll", "Dashboard", new { area = "Admin" })';
+            var qs = [];
+            var activePeriod = '@Model.ActivePeriod';
+            if (activePeriod && activePeriod !== 'all') qs.push('period=' + activePeriod);
+            @if (Model.FilterFrom.HasValue) { <text>qs.push('from=@Model.FilterFrom.Value.ToString("yyyy-MM-dd")');</text> }
+            @if (Model.FilterTo.HasValue) { <text>qs.push('to=@Model.FilterTo.Value.ToString("yyyy-MM-dd")');</text> }
+            if (qs.length) pollUrl += (pollUrl.indexOf('?') >= 0 ? '&' : '?') + qs.join('&');
+            fetch(pollUrl)
                 .then(function(r) { return r.json(); })
                 .then(function(d) {
                     // ── Update KPI cards ──
@@ -391,7 +414,7 @@
                                 '<td style="font-size:13px;color:#374151;">' + job.customerName + '</td>' +
                                 '<td style="font-size:13px;color:#374151;">' + job.deviceType + '</td>' +
                                 techHtml +
-                                '<td class="text-center"><span class="status-indicator status-' + getStatusClass(job.status.toString()) + '">' + job.status + '</span></td>' +
+                                '<td class="text-center"><span class="status-indicator status-' + getStatusClass(job.statusName) + '">' + job.statusName + '</span></td>' +
                                 '</tr>';
                         }).join('');
                     }
@@ -440,6 +463,34 @@
     }
     .dash-subtitle strong { color: var(--gray-700, #374151); }
     .dash-actions { display: flex; gap: 12px; }
+
+    /* Filter buttons */
+    .filter-btn {
+        display: inline-block;
+        padding: 6px 14px;
+        border-radius: var(--radius-full, 9999px);
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--gray-600, #4b5563);
+        background: var(--gray-100, #f3f4f6);
+        border: 1px solid transparent;
+        text-decoration: none;
+        transition: all 0.15s;
+        cursor: pointer;
+    }
+    .filter-btn:hover {
+        background: var(--gray-200, #e5e7eb);
+        color: var(--gray-800, #1f2937);
+        text-decoration: none;
+    }
+    .filter-btn-active {
+        background: var(--primary, #3b82f6);
+        color: #fff !important;
+        border-color: var(--primary, #3b82f6);
+    }
+    .filter-btn-active:hover {
+        background: #2563eb;
+    }
 
     /* KPI Grid */
     .kpi-grid {

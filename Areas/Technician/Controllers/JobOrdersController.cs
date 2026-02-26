@@ -42,9 +42,9 @@ public class JobOrdersController : Controller
         var shopId = User.GetShopId();
         var userId = User.GetUserId();
 
-        // Technicians see only their assigned jobs
+        // Technicians see only their assigned jobs (exclude archived)
         var query = _db.JobOrders
-            .Where(j => j.ShopId == shopId && j.AssignedTechUserId == userId)
+            .Where(j => j.ShopId == shopId && j.AssignedTechUserId == userId && !j.IsArchived)
             .AsNoTracking();
 
         if (status.HasValue)
@@ -187,7 +187,7 @@ public class JobOrdersController : Controller
 
         // Load available services and parts for add forms
         var canModifyLines = dto.InvoiceId == null
-            && parsedStatus != JobOrderStatus.Delivered
+            && parsedStatus != JobOrderStatus.Completed
             && parsedStatus != JobOrderStatus.Cancelled;
 
         if (canModifyLines)
@@ -230,12 +230,13 @@ public class JobOrdersController : Controller
         if (!result.Success)
         {
             TempData["Error"] = result.Message ?? "Failed to update status.";
-        }
-        else
-        {
-            TempData["Success"] = $"Job order status updated to {status}";
+            return RedirectToAction(nameof(Details), new { id });
         }
 
+        TempData["Success"] = $"Job order status updated to {status}";
+
+        // Redirect to Details so the tech stays on the same job order
+        // and can see the updated status without confusion
         return RedirectToAction(nameof(Details), new { id });
     }
 

@@ -34,6 +34,9 @@ public class PaymentsController : Controller
             : (parts.Length == 1 ? parts[0][..1].ToUpper() : "??");
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  INDEX
+    // ═══════════════════════════════════════════════════════════════════
     [HttpGet]
     public async Task<IActionResult> Index(string? search, PaymentMethod? method, int page = 1)
     {
@@ -65,6 +68,7 @@ public class PaymentsController : Controller
                 return new PaymentItemViewModel
                 {
                     Id = p.PaymentId,
+                    PaymentNumber = p.PaymentNo,
                     CustomerName = p.CustomerName,
                     CustomerInitials = GetInitials(p.CustomerName),
                     InvoiceNumber = p.InvoiceNo,
@@ -91,21 +95,65 @@ public class PaymentsController : Controller
         return View(viewModel);
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  CREATE (Record Payment)
+    // ═══════════════════════════════════════════════════════════════════
     [HttpGet]
     public async Task<IActionResult> Create(long invoiceId)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
+        var model = await BuildCreateModelAsync(invoiceId);
+        if (model == null) return NotFound();
+        return View(model);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> CreateModal(long invoiceId = 0)
+    {
+        if (!IsAuthorized()) return Forbid();
+
+        var model = await BuildCreateModelAsync(invoiceId);
+        if (model == null) return NotFound();
+        return PartialView("_CreateModal", model);
+    }
+
+    private async Task<PaymentCreateViewModel?> BuildCreateModelAsync(long invoiceId)
+    {
         var shopId = User.GetShopId();
+
+        if (invoiceId <= 0)
+        {
+            var unpaidInvoices = await _db.Invoices
+                .Include(i => i.Customer)
+                .Where(i => i.ShopId == shopId &&
+                       (i.Status == InvoiceStatus.Unpaid || i.Status == InvoiceStatus.Partial))
+                .OrderByDescending(i => i.CreatedAt)
+                .Select(i => new AvailableInvoiceOption
+                {
+                    InvoiceId = i.InvoiceId,
+                    InvoiceNumber = i.InvoiceNo,
+                    CustomerName = i.Customer!.FirstName + " " + i.Customer.LastName,
+                    Balance = i.Balance
+                })
+                .ToListAsync();
+
+            return new PaymentCreateViewModel
+            {
+                Method = PaymentMethod.Cash,
+                AvailableInvoices = unpaidInvoices
+            };
+        }
+
         var invoice = await _db.Invoices
             .Include(i => i.Customer)
             .Where(i => i.ShopId == shopId && i.InvoiceId == invoiceId)
             .AsNoTracking()
             .FirstOrDefaultAsync();
 
-        if (invoice == null) return NotFound();
+        if (invoice == null) return null;
 
-        var model = new PaymentCreateViewModel
+        return new PaymentCreateViewModel
         {
             InvoiceId = invoiceId,
             InvoiceNumber = invoice.InvoiceNo,
@@ -114,8 +162,6 @@ public class PaymentsController : Controller
             Amount = invoice.Balance,
             Method = PaymentMethod.Cash
         };
-
-        return View(model);
     }
 
     [HttpPost]
@@ -124,7 +170,12 @@ public class PaymentsController : Controller
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
-        if (!ModelState.IsValid) return View(model);
+        if (!ModelState.IsValid)
+        {
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView("_CreateModal", model);
+            return View(model);
+        }
 
         var shopId = User.GetShopId();
         var userId = User.GetUserId();
@@ -137,12 +188,16 @@ public class PaymentsController : Controller
         if (invoice == null)
         {
             ModelState.AddModelError("", "Invoice not found.");
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView("_CreateModal", model);
             return View(model);
         }
 
         if (model.Amount > invoice.Balance)
         {
             ModelState.AddModelError("Amount", $"Amount cannot exceed invoice balance of {invoice.Balance:F2}.");
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView("_CreateModal", model);
             return View(model);
         }
 
@@ -163,21 +218,45 @@ public class PaymentsController : Controller
         if (!result.Success)
         {
             ModelState.AddModelError("", result.Message ?? "Failed to record payment.");
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView("_CreateModal", model);
             return View(model);
         }
 
         TempData["Success"] = "Payment recorded successfully!";
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            return Json(new { success = true, message = "Payment recorded successfully!", id = result.Data?.PaymentId });
         return RedirectToAction(nameof(Index));
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  DETAILS
+    // ═══════════════════════════════════════════════════════════════════
     [HttpGet]
     public async Task<IActionResult> Details(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
+        var vm = await GetPaymentDetailAsync(id);
+        if (vm == null) return NotFound();
+        return View(vm);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> DetailsModal(long id)
+    {
+        if (!IsAuthorized()) return Forbid();
+
+        var vm = await GetPaymentDetailAsync(id);
+        if (vm == null) return NotFound();
+        return PartialView("_DetailsModal", vm);
+    }
+
+    private async Task<PaymentDetailViewModel?> GetPaymentDetailAsync(long id)
+    {
         var shopId = User.GetShopId();
         var dto = await _paymentService.GetDetailAsync(shopId, id);
-        if (dto == null) return NotFound();
+        if (dto == null) return null;
 
         _ = Enum.TryParse<PaymentMethod>(dto.Method, true, out var parsedMethod);
         _ = Enum.TryParse<PaymentStatus>(dto.Status, true, out var parsedStatus);
@@ -187,9 +266,10 @@ public class PaymentsController : Controller
             .AsNoTracking()
             .FirstOrDefaultAsync();
 
-        var model = new PaymentDetailViewModel
+        return new PaymentDetailViewModel
         {
             Id = dto.PaymentId,
+            PaymentNumber = dto.PaymentNo,
             CustomerId = dto.CustomerId,
             CustomerName = dto.CustomerName,
             CustomerEmail = customer?.Email,
@@ -214,7 +294,5 @@ public class PaymentsController : Controller
                 AmountApplied = a.AmountApplied
             }).ToList()
         };
-
-        return View(model);
     }
 }

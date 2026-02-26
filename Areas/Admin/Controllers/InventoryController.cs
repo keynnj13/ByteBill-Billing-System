@@ -1,3 +1,4 @@
+using ByteBill_BS.Data;
 using ByteBill_BS.DTOs.Common;
 using ByteBill_BS.Extensions;
 using ByteBill_BS.Models.Enums;
@@ -5,6 +6,7 @@ using ByteBill_BS.Services;
 using ByteBill_BS.ViewModels.Inventory;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ByteBill_BS.Areas.Admin.Controllers;
 
@@ -13,10 +15,14 @@ namespace ByteBill_BS.Areas.Admin.Controllers;
 public class InventoryController : Controller
 {
     private readonly IInventoryService _service;
+    private readonly ApplicationDbContext _db;
+    private readonly IAuditService _audit;
 
-    public InventoryController(IInventoryService service)
+    public InventoryController(IInventoryService service, ApplicationDbContext db, IAuditService audit)
     {
         _service = service;
+        _db = db;
+        _audit = audit;
     }
 
     private bool IsAuthorized()
@@ -266,6 +272,29 @@ public class InventoryController : Controller
         TempData["Success"] = "Stock restocked successfully!";
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = true, message = "Stock restocked successfully!" });
+        return RedirectToAction(nameof(Index));
+    }
+
+    // ─── ARCHIVE ────────────────────────────────────────────
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Archive(long id)
+    {
+        if (!IsAuthorized()) return Forbid();
+        var shopId = User.GetShopId();
+        var item = await _db.InventoryItems.FirstOrDefaultAsync(i => i.ShopId == shopId && i.ItemId == id);
+        if (item == null) return NotFound();
+
+        item.IsActive = false;
+        await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(shopId, User.GetUserId(), "Archive", "InventoryItem", item.ItemId,
+            $"Archived inventory item '{item.ItemName}'",
+            HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            return Json(new { success = true, message = "Inventory item archived!" });
+        TempData["Success"] = "Item archived.";
         return RedirectToAction(nameof(Index));
     }
 }

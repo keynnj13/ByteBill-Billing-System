@@ -102,7 +102,7 @@
                 }
 
                 <!-- Add Notes Form -->
-                @if (Model.Status != JobOrderStatus.Completed && Model.Status != JobOrderStatus.Delivered && Model.Status != JobOrderStatus.Cancelled)
+                @if (Model.Status != JobOrderStatus.Completed && Model.Status != JobOrderStatus.Cancelled)
                 {
                     <form asp-action="AddNotes" asp-controller="JobOrders" asp-area="Technician" method="post" style="margin-top: 16px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
                         @Html.AntiForgeryToken()
@@ -191,25 +191,42 @@
             <!-- Add Service / Part Forms -->
             @if (ViewBag.CanModifyLines == true)
             {
-                var availableServices = ViewBag.AvailableServices as List<dynamic> ?? new List<dynamic>();
-                var availableParts = ViewBag.AvailableParts as List<dynamic> ?? new List<dynamic>();
-
                 <div class="card-body" style="border-top: 1px solid #e5e7eb;">
+                    <!-- Service Only Toggle -->
+                    <div style="margin-bottom:16px; display:flex; align-items:center; gap:10px;">
+                        <label class="toggle-label" style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:#374151; user-select:none;">
+                            <input type="checkbox" id="serviceOnlyToggle" style="width:16px; height:16px; accent-color:#3b82f6; cursor:pointer;" />
+                            <span><strong>Service Only</strong> — No parts needed for this job</span>
+                        </label>
+                        <span style="font-size:11px; color:#9ca3af;">(e.g. cleaning, diagnostics, software service)</span>
+                    </div>
+
                     <div class="add-line-grid">
                         <!-- Add Service -->
                         <div class="add-line-section">
                             <h4 class="add-line-title">Add Service</h4>
-                            <form asp-action="AddServiceLine" asp-controller="JobOrders" asp-area="Technician" method="post">
+                            <form asp-action="AddServiceLine" asp-controller="JobOrders" asp-area="Technician" method="post" id="addServiceForm">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="jobOrderId" value="@Model.Id" />
+                                <input type="hidden" name="serviceCatalogId" id="serviceCatalogIdInput" value="" />
                                 <div class="form-group" style="margin-bottom:8px;">
-                                    <select name="serviceCatalogId" class="form-select" required>
-                                        <option value="">Select a service...</option>
-                                        @foreach (var svc in availableServices)
-                                        {
-                                            <option value="@svc.Id">@svc.Name — ₱@(((decimal)svc.Price).ToString("N2"))</option>
-                                        }
-                                    </select>
+                                    <div class="combo-wrapper" id="serviceComboWrapper">
+                                        <div class="combo-input-row">
+                                            <svg class="combo-search-icon" width="15" height="15" fill="none" stroke="#9ca3af" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                            <input type="text" class="form-select combo-text-input" id="serviceComboInput" placeholder="Search services..." autocomplete="off" />
+                                            <button type="button" class="combo-chevron" id="serviceChevron" tabindex="-1">
+                                                <svg width="16" height="16" fill="none" stroke="#6b7280" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                            </button>
+                                        </div>
+                                        <div class="combo-results" id="serviceComboResults"></div>
+                                    </div>
+                                    <div class="combo-selected-card" id="serviceSelectedCard" style="display:none;">
+                                        <div class="combo-selected-info">
+                                            <span class="combo-selected-name" id="serviceSelectedName"></span>
+                                            <span class="combo-selected-detail" id="serviceSelectedDetail"></span>
+                                        </div>
+                                        <button type="button" class="combo-clear-btn" id="serviceClearBtn" title="Clear">&times;</button>
+                                    </div>
                                 </div>
                                 <button type="submit" class="btn btn-outline-primary btn-sm">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -219,22 +236,33 @@
                         </div>
 
                         <!-- Add Part -->
-                        <div class="add-line-section">
+                        <div class="add-line-section" id="addPartSection">
                             <h4 class="add-line-title">Add Part</h4>
-                            <form asp-action="AddPartLine" asp-controller="JobOrders" asp-area="Technician" method="post">
+                            <form asp-action="AddPartLine" asp-controller="JobOrders" asp-area="Technician" method="post" id="addPartForm">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="jobOrderId" value="@Model.Id" />
+                                <input type="hidden" name="inventoryItemId" id="inventoryItemIdInput" value="" />
                                 <div class="form-group" style="margin-bottom:8px;">
-                                    <select name="inventoryItemId" class="form-select" required>
-                                        <option value="">Select a part...</option>
-                                        @foreach (var part in availableParts)
-                                        {
-                                            <option value="@part.Id">@part.Name (Stock: @part.Stock) — ₱@(((decimal)part.Price).ToString("N2"))</option>
-                                        }
-                                    </select>
+                                    <div class="combo-wrapper" id="partComboWrapper">
+                                        <div class="combo-input-row">
+                                            <svg class="combo-search-icon" width="15" height="15" fill="none" stroke="#9ca3af" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                            <input type="text" class="form-select combo-text-input" id="partComboInput" placeholder="Search parts..." autocomplete="off" />
+                                            <button type="button" class="combo-chevron" id="partChevron" tabindex="-1">
+                                                <svg width="16" height="16" fill="none" stroke="#6b7280" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                            </button>
+                                        </div>
+                                        <div class="combo-results" id="partComboResults"></div>
+                                    </div>
+                                    <div class="combo-selected-card" id="partSelectedCard" style="display:none;">
+                                        <div class="combo-selected-info">
+                                            <span class="combo-selected-name" id="partSelectedName"></span>
+                                            <span class="combo-selected-detail" id="partSelectedDetail"></span>
+                                        </div>
+                                        <button type="button" class="combo-clear-btn" id="partClearBtn" title="Clear">&times;</button>
+                                    </div>
                                 </div>
                                 <div class="form-group" style="margin-bottom:8px;">
-                                    <input type="number" name="quantity" class="form-input" value="1" min="1" required placeholder="Qty" style="width:80px;" />
+                                    <input type="number" name="quantity" class="form-input" value="1" min="1" required placeholder="Qty" style="width:80px; font-size:13px;" />
                                 </div>
                                 <button type="submit" class="btn btn-outline-primary btn-sm">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -242,6 +270,11 @@
                                 </button>
                             </form>
                         </div>
+                    </div>
+
+                    <!-- Service-only hint shown when toggled -->
+                    <div id="serviceOnlyHint" style="display:none; margin-top:12px; padding:10px 14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; font-size:13px; color:#1e40af;">
+                        <strong>Service Only mode:</strong> This job requires only service(s) with no parts. You can proceed to mark as Completed once at least one service is added.
                     </div>
                 </div>
             }
@@ -251,7 +284,7 @@
     <!-- Right Column: Sidebar -->
     <div class="detail-sidebar">
         <!-- Update Status -->
-        @if (Model.Status != JobOrderStatus.Completed && Model.Status != JobOrderStatus.Delivered && Model.Status != JobOrderStatus.Cancelled)
+        @if (Model.Status != JobOrderStatus.Completed && Model.Status != JobOrderStatus.Cancelled)
         {
             <div class="card">
                 <div class="card-header">
@@ -276,12 +309,36 @@
                                 }
                                 @foreach (var s in allowedTransitions)
                                 {
-                                    <option value="@s">@s</option>
+                                    var label = s switch
+                                    {
+                                        JobOrderStatus.CheckedIn => "Checked In",
+                                        JobOrderStatus.InProgress => "In Progress",
+                                        JobOrderStatus.WaitingForParts => "Waiting for Parts",
+                                        _ => s.ToString()
+                                    };
+                                    <option value="@s">@label</option>
                                 }
                             </select>
                         </div>
                         <div class="form-group" style="margin-bottom: 12px;">
-                            <textarea name="notes" class="form-input" rows="2" placeholder="Optional notes..." style="font-size: 13px;"></textarea>
+                            @{
+                                var notesPlaceholder = Model.Status switch
+                                {
+                                    JobOrderStatus.Diagnosis => "Notes required for Waiting for Parts...",
+                                    JobOrderStatus.WaitingForParts => "Confirm parts received (or use Add Notes)...",
+                                    _ => "Optional notes..."
+                                };
+                                var notesHint = Model.Status == JobOrderStatus.WaitingForParts
+                                    ? "Notes are required to confirm parts have been received."
+                                    : (Model.Status == JobOrderStatus.Diagnosis
+                                        ? "Notes are required when changing to Waiting for Parts."
+                                        : (string)null);
+                            }
+                            <textarea name="notes" class="form-input" rows="2" placeholder="@notesPlaceholder" style="font-size: 13px;"></textarea>
+                            @if (notesHint != null)
+                            {
+                                <p style="font-size: 11px; color: #d97706; margin: 4px 0 0 4px;">⚠ @notesHint</p>
+                            }
                         </div>
                         <button type="submit" class="btn btn-primary btn-sm" style="width: 100%;">
                             Update Status
@@ -405,9 +462,250 @@
     .add-line-section { }
     .add-line-title { font-size: 13px; font-weight: 600; color: #374151; margin: 0 0 10px 0; }
 
+    /* ── Combo Dropdown (same as Admin customer search) ── */
+    .combo-wrapper { position: relative; }
+    .combo-input-row { position: relative; display: flex; align-items: center; }
+    .combo-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 1; }
+    .combo-text-input { padding-left: 34px !important; padding-right: 36px !important; cursor: pointer; font-size: 13px !important; }
+    .combo-chevron { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 8px 10px; cursor: pointer; color: #6b7280; display: flex; align-items: center; }
+    .combo-chevron:hover { color: #374151; }
+    .combo-results { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #d1d5db; border-top: none; border-radius: 0 0 8px 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.12); z-index: 50; max-height: 220px; overflow-y: auto; display: none; }
+    .combo-result-item { padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f3f4f6; transition: background 0.15s; }
+    .combo-result-item:hover { background: #eff6ff; }
+    .combo-result-item:last-child { border-bottom: none; }
+    .combo-result-name { font-size: 14px; font-weight: 600; color: #111827; }
+    .combo-result-detail { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .combo-result-empty { padding: 14px; font-size: 13px; color: #9ca3af; text-align: center; }
+    .combo-selected-card { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; }
+    .combo-selected-name { font-size: 13px; font-weight: 600; color: #1e40af; display: block; }
+    .combo-selected-detail { font-size: 11px; color: #3b82f6; }
+    .combo-clear-btn { background: none; border: none; font-size: 20px; color: #6b7280; cursor: pointer; padding: 0 4px; line-height: 1; }
+    .combo-clear-btn:hover { color: #ef4444; }
+
+    .add-line-section.hidden-section {
+        opacity: 0.35;
+        pointer-events: none;
+        position: relative;
+    }
+    .add-line-section.hidden-section::after {
+        content: 'Service Only — No Parts Needed';
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 600;
+        color: #6b7280;
+        background: rgba(249,250,251,0.7);
+        border-radius: 8px;
+    }
+
     @@media (max-width: 768px) {
         .detail-grid { grid-template-columns: 1fr; }
         .detail-header { flex-direction: column; gap: 12px; }
         .info-grid { grid-template-columns: 1fr; }
+        .add-line-grid { grid-template-columns: 1fr; }
     }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // ─── Data from ViewBag ───
+    var servicesData = [
+        @foreach (dynamic svc in ViewBag.AvailableServices ?? Array.Empty<object>())
+        {
+            <text>{ id: @svc.Id, name: '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode((string)svc.Name))', price: @svc.Price },</text>
+        }
+    ];
+    var partsData = [
+        @foreach (dynamic part in ViewBag.AvailableParts ?? Array.Empty<object>())
+        {
+            <text>{ id: @part.Id, name: '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode((string)part.Name))', stock: @part.Stock, price: @part.Price },</text>
+        }
+    ];
+
+    // ─── Already-added services (to prevent duplicates in dropdown) ───
+    var existingServiceNames = new Set([
+        @foreach (var item in Model.LineItems.Where(l => l.Type == "Service"))
+        {
+            <text>'@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(item.Description))',</text>
+        }
+    ]);
+
+    function escapeHtml(str) { var d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+    function formatPeso(n) { return '₱' + Number(n).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}); }
+
+    // ─── Reusable Combo Dropdown ───
+    function setupCombo(cfg) {
+        var input = document.getElementById(cfg.inputId);
+        var results = document.getElementById(cfg.resultsId);
+        var wrapper = document.getElementById(cfg.wrapperId);
+        var chevron = document.getElementById(cfg.chevronId);
+        var hiddenInput = document.getElementById(cfg.hiddenId);
+        var selectedCard = document.getElementById(cfg.selectedCardId);
+        var selectedName = document.getElementById(cfg.selectedNameId);
+        var selectedDetail = document.getElementById(cfg.selectedDetailId);
+        var clearBtn = document.getElementById(cfg.clearBtnId);
+        if (!input || !results) return;
+
+        var isOpen = false;
+        var timer = null;
+
+        function renderResults(query) {
+            var q = (query || '').toLowerCase();
+            results.innerHTML = '';
+            var matches = cfg.items.filter(function(item) {
+                if (cfg.excludeFn && cfg.excludeFn(item)) return false;
+                return !q || item.name.toLowerCase().indexOf(q) !== -1;
+            });
+            if (matches.length === 0) {
+                results.innerHTML = '<div class="combo-result-empty">No items found</div>';
+            } else {
+                matches.forEach(function(item) {
+                    var div = document.createElement('div');
+                    div.className = 'combo-result-item';
+                    div.innerHTML = '<div class="combo-result-name">' + escapeHtml(item.name) + '</div>' +
+                        '<div class="combo-result-detail">' + cfg.detailFn(item) + '</div>';
+                    div.addEventListener('click', function() { selectItem(item); });
+                    results.appendChild(div);
+                });
+            }
+            results.style.display = 'block';
+            isOpen = true;
+        }
+
+        function selectItem(item) {
+            hiddenInput.value = item.id;
+            selectedName.textContent = item.name;
+            selectedDetail.textContent = cfg.detailTextFn(item);
+            selectedCard.style.display = 'flex';
+            wrapper.style.display = 'none';
+            close();
+            // Update part quantity max if applicable
+            if (cfg.onSelectFn) cfg.onSelectFn(item);
+        }
+
+        function close() {
+            results.style.display = 'none';
+            isOpen = false;
+        }
+
+        function open() {
+            if (isOpen && results.children.length > 0) return;
+            renderResults(input.value.trim());
+        }
+
+        input.addEventListener('input', function() {
+            clearTimeout(timer);
+            timer = setTimeout(function() { renderResults(input.value.trim()); }, 150);
+        });
+        input.addEventListener('focus', function() { open(); });
+        chevron.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (isOpen) { close(); } else { input.focus(); open(); }
+        });
+        document.addEventListener('click', function(e) {
+            if (!wrapper.contains(e.target)) close();
+        });
+
+        clearBtn.addEventListener('click', function() {
+            hiddenInput.value = '';
+            input.value = '';
+            results.innerHTML = '';
+            selectedCard.style.display = 'none';
+            wrapper.style.display = 'block';
+            input.focus();
+            if (cfg.onClearFn) cfg.onClearFn();
+        });
+
+        // Validation on form submit
+        var form = cfg.formId ? document.getElementById(cfg.formId) : null;
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                if (!hiddenInput.value) {
+                    e.preventDefault();
+                    input.focus();
+                    open();
+                    input.style.borderColor = '#ef4444';
+                    setTimeout(function() { input.style.borderColor = ''; }, 2000);
+                }
+            });
+        }
+
+        return { close: close, open: open, reset: function() {
+            hiddenInput.value = '';
+            input.value = '';
+            results.innerHTML = '';
+            selectedCard.style.display = 'none';
+            wrapper.style.display = 'block';
+        }};
+    }
+
+    // ── Part quantity input ──
+    var qtyInput = document.querySelector('#addPartForm input[name="quantity"]');
+
+    // ── Setup Service Combo ──
+    setupCombo({
+        inputId: 'serviceComboInput', resultsId: 'serviceComboResults', wrapperId: 'serviceComboWrapper',
+        chevronId: 'serviceChevron', hiddenId: 'serviceCatalogIdInput',
+        selectedCardId: 'serviceSelectedCard', selectedNameId: 'serviceSelectedName',
+        selectedDetailId: 'serviceSelectedDetail', clearBtnId: 'serviceClearBtn',
+        formId: 'addServiceForm',
+        items: servicesData,
+        excludeFn: function(item) { return existingServiceNames.has(item.name); },
+        detailFn: function(s) { return formatPeso(s.price); },
+        detailTextFn: function(s) { return formatPeso(s.price); }
+    });
+
+    // ── Setup Part Combo ──
+    setupCombo({
+        inputId: 'partComboInput', resultsId: 'partComboResults', wrapperId: 'partComboWrapper',
+        chevronId: 'partChevron', hiddenId: 'inventoryItemIdInput',
+        selectedCardId: 'partSelectedCard', selectedNameId: 'partSelectedName',
+        selectedDetailId: 'partSelectedDetail', clearBtnId: 'partClearBtn',
+        formId: 'addPartForm',
+        items: partsData,
+        detailFn: function(p) { return 'Stock: ' + p.stock + ' &middot; ' + formatPeso(p.price); },
+        detailTextFn: function(p) { return 'Stock: ' + p.stock + ' · ' + formatPeso(p.price); },
+        onSelectFn: function(p) {
+            if (qtyInput) {
+                qtyInput.max = p.stock;
+                qtyInput.value = 1;
+                qtyInput.title = 'Available stock: ' + p.stock;
+            }
+        },
+        onClearFn: function() {
+            if (qtyInput) { qtyInput.removeAttribute('max'); qtyInput.title = ''; }
+        }
+    });
+
+    // ── Quantity change validation ──
+    if (qtyInput) {
+        qtyInput.addEventListener('change', function() {
+            var max = parseInt(this.max);
+            if (max && parseInt(this.value) > max) {
+                this.value = max;
+                alert('Only ' + max + ' unit(s) available in stock.');
+            }
+            if (parseInt(this.value) < 1) this.value = 1;
+        });
+    }
+
+    // ─── Service Only Toggle ───
+    var toggle = document.getElementById('serviceOnlyToggle');
+    var partSection = document.getElementById('addPartSection');
+    var hint = document.getElementById('serviceOnlyHint');
+    if (toggle && partSection) {
+        toggle.addEventListener('change', function () {
+            if (this.checked) {
+                partSection.classList.add('hidden-section');
+                if (hint) hint.style.display = 'block';
+            } else {
+                partSection.classList.remove('hidden-section');
+                if (hint) hint.style.display = 'none';
+            }
+        });
+    }
+});
+</script>

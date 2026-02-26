@@ -17,13 +17,11 @@ public class InvoicesController : Controller
 {
     private readonly IInvoiceService _invoiceService;
     private readonly ApplicationDbContext _db;
-    private readonly IAuditService _audit;
 
-    public InvoicesController(IInvoiceService invoiceService, ApplicationDbContext db, IAuditService audit)
+    public InvoicesController(IInvoiceService invoiceService, ApplicationDbContext db)
     {
         _invoiceService = invoiceService;
         _db = db;
-        _audit = audit;
     }
 
     private bool IsAuthorized() => User.IsInRoles("Billing", "Admin", "SuperAdmin");
@@ -36,6 +34,9 @@ public class InvoicesController : Controller
             : (parts.Length == 1 ? parts[0][..1].ToUpper() : "??");
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  INDEX
+    // ═══════════════════════════════════════════════════════════════════
     [HttpGet]
     public async Task<IActionResult> Index(string? search, InvoiceStatus? status, int page = 1)
     {
@@ -84,98 +85,34 @@ public class InvoicesController : Controller
         return View(viewModel);
     }
 
-    [HttpGet]
-    public async Task<IActionResult> Create(long? jobOrderId)
-    {
-        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-
-        if (!jobOrderId.HasValue || jobOrderId.Value <= 0)
-        {
-            return View(new InvoiceCreateViewModel { DueDate = DateTime.Now.AddDays(30) });
-        }
-
-        var shopId = User.GetShopId();
-        var jobOrder = await _db.JobOrders
-            .Include(j => j.Customer)
-            .Include(j => j.JobOrderServices).ThenInclude(s => s.Service)
-            .Include(j => j.JobOrderParts).ThenInclude(p => p.Item)
-            .Where(j => j.ShopId == shopId && j.JobOrderId == jobOrderId.Value)
-            .AsNoTracking()
-            .FirstOrDefaultAsync();
-
-        if (jobOrder == null) return NotFound();
-
-        var lines = new List<InvoiceCreateViewModel.LineItemInput>();
-        foreach (var svc in jobOrder.JobOrderServices)
-        {
-            lines.Add(new InvoiceCreateViewModel.LineItemInput
-            {
-                Description = svc.Service?.ServiceName ?? $"Service #{svc.ServiceId}",
-                Quantity = svc.Qty,
-                UnitPrice = svc.UnitPrice,
-                Type = "Service"
-            });
-        }
-        foreach (var part in jobOrder.JobOrderParts)
-        {
-            lines.Add(new InvoiceCreateViewModel.LineItemInput
-            {
-                Description = part.Item?.ItemName ?? $"Part #{part.ItemId}",
-                Quantity = part.QtyUsed,
-                UnitPrice = part.UnitPrice,
-                Type = "Part"
-            });
-        }
-
-        var model = new InvoiceCreateViewModel
-        {
-            JobOrderId = jobOrderId.Value,
-            JobNumber = jobOrder.JobOrderNo,
-            CustomerName = $"{jobOrder.Customer?.FirstName} {jobOrder.Customer?.LastName}".Trim(),
-            CustomerId = jobOrder.CustomerId,
-            DueDate = DateTime.Now.AddDays(30),
-            Items = lines
-        };
-
-        return View(model);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(InvoiceCreateViewModel model)
-    {
-        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-
-        if (!ModelState.IsValid) return View(model);
-
-        var shopId = User.GetShopId();
-        var userId = User.GetUserId();
-
-        var request = new CreateInvoiceRequest
-        {
-            JobOrderId = model.JobOrderId,
-            DueDate = model.DueDate
-        };
-
-        var result = await _invoiceService.CreateFromJobOrderAsync(shopId, userId, request);
-        if (!result.Success)
-        {
-            ModelState.AddModelError("", result.Message ?? "Failed to create invoice.");
-            return View(model);
-        }
-
-        TempData["Success"] = "Invoice created successfully!";
-        return RedirectToAction(nameof(Index));
-    }
-
+    // ═══════════════════════════════════════════════════════════════════
+    //  DETAILS
+    // ═══════════════════════════════════════════════════════════════════
     [HttpGet]
     public async Task<IActionResult> Details(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
+        var vm = await GetInvoiceDetailAsync(id);
+        if (vm == null) return NotFound();
+        return View(vm);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> DetailsModal(long id)
+    {
+        if (!IsAuthorized()) return Forbid();
+
+        var vm = await GetInvoiceDetailAsync(id);
+        if (vm == null) return NotFound();
+        return PartialView("_DetailsModal", vm);
+    }
+
+    private async Task<InvoiceDetailViewModel?> GetInvoiceDetailAsync(long id)
+    {
         var shopId = User.GetShopId();
         var dto = await _invoiceService.GetDetailAsync(shopId, id);
-        if (dto == null) return NotFound();
+        if (dto == null) return null;
 
         _ = Enum.TryParse<InvoiceStatus>(dto.Status, true, out var parsedStatus);
 
@@ -189,7 +126,7 @@ public class InvoicesController : Controller
             .AsNoTracking()
             .FirstOrDefaultAsync();
 
-        var model = new InvoiceDetailViewModel
+        return new InvoiceDetailViewModel
         {
             Id = dto.InvoiceId,
             InvoiceNumber = dto.InvoiceNo,
@@ -236,109 +173,5 @@ public class InvoicesController : Controller
                 };
             }).ToList()
         };
-
-        return View(model);
-    }
-
-    // ═══════════════════════════════════════════════════════════════════
-    //  ARCHIVE
-    // ═══════════════════════════════════════════════════════════════════
-    [HttpGet]
-    public async Task<IActionResult> Archive(string? search, InvoiceStatus? status, int page = 1)
-    {
-        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-
-        var shopId = User.GetShopId();
-        var query = _db.Invoices
-            .Where(i => i.ShopId == shopId && i.IsArchived)
-            .AsNoTracking();
-
-        if (status.HasValue)
-            query = query.Where(i => i.Status == status.Value);
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var term = search.Trim().ToLower();
-            query = query.Where(i =>
-                i.InvoiceNo.ToLower().Contains(term) ||
-                (i.Customer!.FirstName + " " + i.Customer.LastName).ToLower().Contains(term));
-        }
-
-        var totalCount = await query.CountAsync();
-        var pageSize = 10;
-        var items = await query
-            .OrderByDescending(i => i.ArchivedDate)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(i => new InvoiceItemViewModel
-            {
-                Id = i.InvoiceId,
-                InvoiceNumber = i.InvoiceNo,
-                CustomerName = i.Customer!.FirstName + " " + i.Customer.LastName,
-                CustomerInitials = GetInitials(i.Customer!.FirstName + " " + i.Customer.LastName),
-                Total = i.TotalAmount,
-                AmountPaid = i.AmountPaid,
-                Balance = i.Balance,
-                Status = i.Status,
-                CreatedAt = i.InvoiceDate,
-                DueDate = i.DueDate
-            })
-            .ToListAsync();
-
-        var viewModel = new InvoiceListViewModel
-        {
-            SearchTerm = search,
-            StatusFilter = status,
-            CurrentPage = page,
-            TotalCount = totalCount,
-            PageSize = pageSize,
-            Invoices = items
-        };
-
-        return View(viewModel);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ArchiveInvoice(long id)
-    {
-        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-
-        var shopId = User.GetShopId();
-        var invoice = await _db.Invoices.FirstOrDefaultAsync(i => i.ShopId == shopId && i.InvoiceId == id);
-        if (invoice == null) return NotFound();
-
-        invoice.IsArchived = true;
-        invoice.ArchivedDate = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-
-        await _audit.LogAsync(shopId, User.GetUserId(), "Archive", "Invoice", invoice.InvoiceId,
-            $"Archived invoice {invoice.InvoiceNo}",
-            HttpContext.Connection.RemoteIpAddress?.ToString());
-
-        TempData["Success"] = $"Invoice {invoice.InvoiceNo} archived successfully.";
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RestoreInvoice(long id)
-    {
-        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-
-        var shopId = User.GetShopId();
-        var invoice = await _db.Invoices.FirstOrDefaultAsync(i => i.ShopId == shopId && i.InvoiceId == id);
-        if (invoice == null) return NotFound();
-
-        invoice.IsArchived = false;
-        invoice.ArchivedDate = null;
-        await _db.SaveChangesAsync();
-
-        await _audit.LogAsync(shopId, User.GetUserId(), "Restore", "Invoice", invoice.InvoiceId,
-            $"Restored invoice {invoice.InvoiceNo} from archive",
-            HttpContext.Connection.RemoteIpAddress?.ToString());
-
-        TempData["Success"] = $"Invoice {invoice.InvoiceNo} restored successfully.";
-        return RedirectToAction(nameof(Archive));
     }
 }

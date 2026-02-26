@@ -6,6 +6,7 @@ namespace ByteBill_BS.DTOs.Payments;
 public class PaymentListItemDto
 {
     public long PaymentId { get; set; }
+    public string PaymentNo { get; set; } = string.Empty;
     public string CustomerName { get; set; } = string.Empty;
     public string? InvoiceNo { get; set; }    // first allocated invoice (if single)
     public decimal Amount { get; set; }
@@ -21,6 +22,7 @@ public class PaymentListItemDto
 public class PaymentDetailDto
 {
     public long PaymentId { get; set; }
+    public string PaymentNo { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public string Method { get; set; } = string.Empty;
     public DateTime PaymentDate { get; set; }

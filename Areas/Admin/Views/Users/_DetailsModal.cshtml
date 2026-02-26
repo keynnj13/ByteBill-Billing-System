@@ -1,5 +1,6 @@
 @model UserDetailViewModel
 @using ByteBill_BS.ViewModels.Admin
+@using ByteBill_BS.Models.Enums
 
 <div class="modal-detail-body">
     <!-- User Header -->
@@ -21,22 +22,54 @@
                 }
             </div>
         </div>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="openAjaxModal('@Url.Action("EditModal", "Users", new { area = "Admin", id = Model.Id })', 'Edit User')">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="m18.5 2.5 2.5 2.5L12 14l-4 1 1-4 9-9.5z"></path></svg>
-            Edit
-        </button>
     </div>
 
-    <!-- Quick Stats -->
+    <!-- Quick Stats (role-specific) -->
     <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px;">
-        <div style="background: #f8fafc; border-radius: 8px; padding: 14px; text-align: center;">
-            <div style="font-size: 22px; font-weight: 700; color: var(--navy);">@Model.JobOrdersHandled</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Jobs Handled</div>
-        </div>
-        <div style="background: #f8fafc; border-radius: 8px; padding: 14px; text-align: center;">
-            <div style="font-size: 22px; font-weight: 700; color: var(--emerald);">@Model.PaymentsProcessed</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Payments Processed</div>
-        </div>
+        @if (Model.Role == UserRole.Technician)
+        {
+            <div style="background: #f8fafc; border-radius: 8px; padding: 14px; text-align: center;">
+                <div style="font-size: 22px; font-weight: 700; color: var(--navy);">@Model.JobOrdersHandled</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Jobs Handled</div>
+            </div>
+            <div style="background: #f8fafc; border-radius: 8px; padding: 14px; text-align: center;">
+                <div style="font-size: 22px; font-weight: 700; color: var(--emerald);">@Model.PartsUsed</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Parts Used</div>
+            </div>
+        }
+        else if (Model.Role == UserRole.Billing)
+        {
+            <div style="background: #f8fafc; border-radius: 8px; padding: 14px; text-align: center;">
+                <div style="font-size: 22px; font-weight: 700; color: var(--navy);">@Model.InvoicesCreated</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Invoices Created</div>
+            </div>
+            <div style="background: #f8fafc; border-radius: 8px; padding: 14px; text-align: center;">
+                <div style="font-size: 22px; font-weight: 700; color: var(--emerald);">@Model.PaymentsProcessed</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Payments Processed</div>
+            </div>
+        }
+        else if (Model.Role == UserRole.Auditor)
+        {
+            <div style="background: #f8fafc; border-radius: 8px; padding: 14px; text-align: center;">
+                <div style="font-size: 22px; font-weight: 700; color: var(--navy);">@Model.LogsReviewed</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Logs Reviewed</div>
+            </div>
+            <div style="background: #f8fafc; border-radius: 8px; padding: 14px; text-align: center;">
+                <div style="font-size: 22px; font-weight: 700; color: var(--emerald);">@Model.ReportsGenerated</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Reports Generated</div>
+            </div>
+        }
+        else
+        {
+            <div style="background: #f8fafc; border-radius: 8px; padding: 14px; text-align: center;">
+                <div style="font-size: 22px; font-weight: 700; color: var(--navy);">@Model.UsersManagedCount</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Users Managed</div>
+            </div>
+            <div style="background: #f8fafc; border-radius: 8px; padding: 14px; text-align: center;">
+                <div style="font-size: 22px; font-weight: 700; color: var(--emerald);">@Model.TotalActivityCount</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Total Activity</div>
+            </div>
+        }
     </div>
 
     <!-- Contact Information -->

@@ -1,6 +1,6 @@
 @model PaymentCreateViewModel
 
-<form id="paymentCreateForm" asp-action="Create" asp-controller="Payments" asp-area="Admin" method="post" data-ajax="true">
+<form id="paymentCreateForm" asp-action="Create" asp-controller="Payments" asp-area="Billing" method="post" data-ajax="true">
     @Html.AntiForgeryToken()
 
     <div class="modal-form-body">
@@ -129,7 +129,7 @@
         loadBtn.addEventListener('click', function() {
             var invoiceId = select.value;
             if (!invoiceId) return;
-            var url = '@Url.Action("CreateModal", "Payments", new { area = "Admin" })' + '?invoiceId=' + invoiceId;
+            var url = '@Url.Action("CreateModal", "Payments", new { area = "Billing" })' + '?invoiceId=' + invoiceId;
             openAjaxModal(url, 'Record Payment');
         });
     })();

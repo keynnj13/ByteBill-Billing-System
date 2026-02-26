@@ -88,7 +88,7 @@ public class ServiceCatalogService : IServiceCatalogService
     {
         var query = _db.ServiceCatalogs
             .Include(s => s.ServiceCategory)
-            .Where(s => s.ShopId == shopId)
+            .Where(s => s.ShopId == shopId && s.IsActive)
             .AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(req.Search))

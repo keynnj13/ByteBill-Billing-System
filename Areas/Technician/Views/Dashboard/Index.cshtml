@@ -1,200 +1,306 @@
 @model DashboardViewModel
 @{
     ViewData["Title"] = "Technician Dashboard";
+    var firstName = Model.UserName?.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "Technician";
+    var totalActive = (int)(ViewBag.TotalActive ?? 0);
 }
 
 <partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", IsActive = true } } })" />
 
-<div class="page-header">
-    <div>
-        <h1 class="page-title">My Dashboard</h1>
-        <p class="text-muted">Your assigned jobs and work queue</p>
+<!-- Welcome Banner -->
+<div class="tech-welcome">
+    <div class="tech-welcome-content">
+        <h1 class="tech-welcome-title">Welcome back, @firstName</h1>
+        <p class="tech-welcome-sub">You have <strong>@totalActive active job@(totalActive != 1 ? "s" : "")</strong> in your queue today.</p>
+    </div>
+    <div class="tech-welcome-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
     </div>
 </div>
 
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-icon" style="background: var(--blue-light); color: var(--blue);">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+<!-- KPI Cards -->
+<div class="tech-kpi-grid">
+    <div class="tech-kpi-card">
+        <div class="tech-kpi-header">
+            <span class="tech-kpi-label">My Jobs Today</span>
+            <div class="tech-kpi-icon-wrap tech-kpi-icon-blue">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+            </div>
         </div>
-        <div class="stat-content">
-            <p class="stat-label">My Jobs Today</p>
-            <p class="stat-value">@ViewBag.MyJobsToday</p>
-        </div>
+        <span class="tech-kpi-value">@ViewBag.MyJobsToday</span>
+        <span class="tech-kpi-sub">Assigned to you</span>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon" style="background: var(--emerald-light); color: var(--emerald);">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+
+    <div class="tech-kpi-card">
+        <div class="tech-kpi-header">
+            <span class="tech-kpi-label">Completed Today</span>
+            <div class="tech-kpi-icon-wrap tech-kpi-icon-green">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            </div>
         </div>
-        <div class="stat-content">
-            <p class="stat-label">Completed Today</p>
-            <p class="stat-value">@ViewBag.CompletedToday</p>
-        </div>
+        <span class="tech-kpi-value">@ViewBag.CompletedToday</span>
+        <span class="tech-kpi-sub">Jobs done</span>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon" style="background: var(--amber-light); color: var(--amber);">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+
+    <div class="tech-kpi-card">
+        <div class="tech-kpi-header">
+            <span class="tech-kpi-label">In Progress</span>
+            <div class="tech-kpi-icon-wrap tech-kpi-icon-amber">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            </div>
         </div>
-        <div class="stat-content">
-            <p class="stat-label">In Progress</p>
-            <p class="stat-value">@ViewBag.InProgress</p>
-        </div>
+        <span class="tech-kpi-value">@ViewBag.InProgress</span>
+        <span class="tech-kpi-sub">Active repairs</span>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon" style="background: var(--purple-light); color: var(--purple);">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+
+    <div class="tech-kpi-card">
+        <div class="tech-kpi-header">
+            <span class="tech-kpi-label">Waiting Parts</span>
+            <div class="tech-kpi-icon-wrap tech-kpi-icon-purple">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+            </div>
         </div>
-        <div class="stat-content">
-            <p class="stat-label">Waiting Parts</p>
-            <p class="stat-value">@ViewBag.WaitingParts</p>
-        </div>
+        <span class="tech-kpi-value">@ViewBag.WaitingParts</span>
+        <span class="tech-kpi-sub">On hold</span>
     </div>
 </div>
 
-<div class="grid-2">
-    <div class="card">
-        <div class="card-header">
-            <h3 class="card-title">Recent Activity</h3>
+<!-- Main Content Grid -->
+<div class="tech-grid">
+    <!-- Work Queue -->
+    <div class="tech-card tech-card-lg">
+        <div class="tech-card-header">
+            <div class="tech-card-header-left">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                <h3 class="tech-card-title">My Work Queue</h3>
+                <span class="tech-badge">@Model.PendingJobOrders.Count</span>
+            </div>
+            <a asp-action="Index" asp-controller="JobOrders" class="tech-link">View All →</a>
         </div>
-        <div class="card-body p-0">
-            <ul class="activity-list">
-                @foreach (var activity in Model.RecentActivity)
-                {
-                    <li class="activity-item">
-                        <div class="activity-icon activity-icon-@activity.IconColor">
-                            <partial name="~/Views/Shared/_NavIcon.cshtml" model="activity.Icon" />
-                        </div>
-                        <div class="activity-content">
-                            <p class="activity-title">@activity.Title</p>
-                            <p class="activity-description">@activity.Description</p>
-                        </div>
-                        <span class="activity-time">@activity.TimeAgo</span>
-                    </li>
-                }
-            </ul>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-header">
-            <h3 class="card-title">My Work Queue</h3>
-            <a asp-action="Index" asp-controller="JobOrders" class="btn btn-ghost btn-sm">View All</a>
-        </div>
-        <div class="card-body p-0">
+        <div class="tech-card-body p-0">
             @if (Model.PendingJobOrders.Any())
             {
-                <ul class="job-list">
-                    @foreach (var job in Model.PendingJobOrders)
-                    {
-                        <li class="job-item">
-                            <div class="job-info">
-                                <a asp-action="Details" asp-controller="JobOrders" asp-route-id="@job.Id" class="job-number">@job.OrderNumber</a>
-                                <p class="job-device">@job.DeviceType</p>
-                                <p class="job-customer">@job.CustomerName</p>
+                @foreach (var job in Model.PendingJobOrders)
+                {
+                    <a asp-action="Details" asp-controller="JobOrders" asp-route-id="@job.Id" class="tech-job-card">
+                        <div class="tech-job-left">
+                            <div class="tech-job-status-dot tech-dot-@job.StatusBadgeClass"></div>
+                            <div class="tech-job-info">
+                                <span class="tech-job-number">@job.OrderNumber</span>
+                                <span class="tech-job-device">@job.DeviceType</span>
                             </div>
-                            <span class="status-indicator status-@job.StatusBadgeClass">@job.Status</span>
-                        </li>
-                    }
-                </ul>
+                        </div>
+                        <div class="tech-job-right">
+                            <span class="tech-job-customer">@job.CustomerName</span>
+                            <span class="tech-status-badge tech-status-@job.StatusBadgeClass">@job.Status</span>
+                        </div>
+                    </a>
+                }
             }
             else
             {
-                <partial name="~/Views/Shared/_EmptyState.cshtml" model="@(new { Icon = "check-circle", Title = "All done!", Description = "No pending jobs in your queue" })" />
+                <div class="tech-empty">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    <p>All done! No pending jobs in your queue.</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="tech-card">
+        <div class="tech-card-header">
+            <div class="tech-card-header-left">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                <h3 class="tech-card-title">Recent Activity</h3>
+            </div>
+        </div>
+        <div class="tech-card-body p-0">
+            @if (Model.RecentActivity.Any())
+            {
+                @foreach (var activity in Model.RecentActivity)
+                {
+                    <div class="tech-activity-item">
+                        <div class="tech-activity-icon tech-activity-@activity.IconColor">
+                            <partial name="~/Views/Shared/_NavIcon.cshtml" model="activity.Icon" />
+                        </div>
+                        <div class="tech-activity-content">
+                            <p class="tech-activity-title">@activity.Title</p>
+                            <p class="tech-activity-desc">@activity.Description</p>
+                        </div>
+                        <span class="tech-activity-time">@activity.TimeAgo</span>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="tech-empty">
+                    <p>No recent activity.</p>
+                </div>
             }
         </div>
     </div>
 </div>
 
 <style>
-    .page-header {
+    /* ── Welcome Banner ── */
+    .tech-welcome {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: var(--space-6);
-    }
-    .page-title {
-        font-size: var(--text-2xl);
-        font-weight: 600;
-        color: var(--gray-900);
-        margin-bottom: var(--space-1);
-    }
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: var(--space-4);
-        margin-bottom: var(--space-6);
-    }
-    .stat-card {
-        display: flex;
         align-items: center;
-        gap: var(--space-4);
-        padding: var(--space-4);
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        border-radius: 16px;
+        padding: 28px 32px;
+        margin-bottom: 24px;
+        color: white;
+    }
+    .tech-welcome-title { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+    .tech-welcome-sub { font-size: 14px; opacity: 0.85; }
+    .tech-welcome-sub strong { opacity: 1; }
+    .tech-welcome-icon { opacity: 0.2; }
+
+    /* ── KPI Cards ── */
+    .tech-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .tech-kpi-card {
         background: white;
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-sm);
+        border-radius: 14px;
+        padding: 20px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        transition: box-shadow 0.2s, transform 0.2s;
     }
-    .stat-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: var(--radius-md);
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    .tech-kpi-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        transform: translateY(-2px);
     }
-    .stat-label {
-        font-size: var(--text-sm);
-        color: var(--gray-500);
-        margin-bottom: var(--space-1);
-    }
-    .stat-value {
-        font-size: var(--text-2xl);
-        font-weight: 600;
-        color: var(--gray-900);
-    }
-    .grid-2 {
+    .tech-kpi-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .tech-kpi-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; }
+    .tech-kpi-icon-wrap { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+    .tech-kpi-icon-blue { background: rgba(59,130,246,0.1); color: #3b82f6; }
+    .tech-kpi-icon-green { background: rgba(16,185,129,0.1); color: #10b981; }
+    .tech-kpi-icon-amber { background: rgba(245,158,11,0.1); color: #f59e0b; }
+    .tech-kpi-icon-purple { background: rgba(139,92,246,0.1); color: #8b5cf6; }
+    .tech-kpi-value { display: block; font-size: 30px; font-weight: 700; color: #1f2937; line-height: 1.1; margin-bottom: 4px; }
+    .tech-kpi-sub { font-size: 13px; color: #9ca3af; }
+
+    /* ── Grid Layout ── */
+    .tech-grid {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: var(--space-6);
+        grid-template-columns: 1.4fr 1fr;
+        gap: 24px;
     }
-    @@media (max-width: 1024px) {
-        .grid-2 { grid-template-columns: 1fr; }
+
+    /* ── Cards ── */
+    .tech-card {
+        background: white;
+        border-radius: 14px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        overflow: hidden;
     }
-    .activity-list { list-style: none; padding: 0; margin: 0; }
-    .activity-item {
+    .tech-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .tech-card-header-left { display: flex; align-items: center; gap: 8px; }
+    .tech-card-title { font-size: 15px; font-weight: 600; color: #1f2937; margin: 0; }
+    .tech-badge {
+        background: #3b82f6;
+        color: white;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 99px;
+    }
+    .tech-link { font-size: 13px; color: #3b82f6; text-decoration: none; font-weight: 500; }
+    .tech-link:hover { text-decoration: underline; }
+    .tech-card-body { padding: 16px 20px; }
+    .tech-card-body.p-0 { padding: 0; }
+
+    /* ── Job Cards in Queue ── */
+    .tech-job-card {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 20px;
+        border-bottom: 1px solid #f3f4f6;
+        text-decoration: none;
+        color: inherit;
+        transition: background 0.15s;
+    }
+    .tech-job-card:last-child { border-bottom: none; }
+    .tech-job-card:hover { background: #f8fafc; }
+    .tech-job-left { display: flex; align-items: center; gap: 12px; }
+    .tech-job-status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .tech-dot-pending { background: #9ca3af; }
+    .tech-dot-primary { background: #3b82f6; }
+    .tech-dot-warning { background: #f59e0b; }
+    .tech-dot-info { background: #06b6d4; }
+    .tech-dot-muted { background: #d1d5db; }
+    .tech-job-info { display: flex; flex-direction: column; }
+    .tech-job-number { font-size: 14px; font-weight: 600; color: #1f2937; }
+    .tech-job-device { font-size: 12px; color: #9ca3af; }
+    .tech-job-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .tech-job-customer { font-size: 13px; color: #6b7280; }
+
+    /* ── Status Badges ── */
+    .tech-status-badge {
+        font-size: 11px;
+        font-weight: 500;
+        padding: 2px 10px;
+        border-radius: 99px;
+    }
+    .tech-status-pending { background: #f3f4f6; color: #6b7280; }
+    .tech-status-primary { background: rgba(59,130,246,0.1); color: #2563eb; }
+    .tech-status-warning { background: rgba(245,158,11,0.1); color: #d97706; }
+    .tech-status-info { background: rgba(6,182,212,0.1); color: #0891b2; }
+    .tech-status-muted { background: #f3f4f6; color: #9ca3af; }
+
+    /* ── Activity Feed ── */
+    .tech-activity-item {
         display: flex;
         align-items: flex-start;
-        gap: var(--space-3);
-        padding: var(--space-4);
-        border-bottom: 1px solid var(--gray-100);
+        gap: 12px;
+        padding: 14px 20px;
+        border-bottom: 1px solid #f3f4f6;
     }
-    .activity-item:last-child { border-bottom: none; }
-    .activity-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: var(--radius-full);
+    .tech-activity-item:last-child { border-bottom: none; }
+    .tech-activity-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
     }
-    .activity-icon-success { background: var(--emerald-light); color: var(--emerald); }
-    .activity-icon-primary { background: var(--blue-light); color: var(--blue); }
-    .activity-icon-warning { background: var(--amber-light); color: var(--amber); }
-    .activity-content { flex: 1; min-width: 0; }
-    .activity-title { font-weight: 500; color: var(--gray-900); margin-bottom: 2px; }
-    .activity-description { font-size: var(--text-sm); color: var(--gray-500); }
-    .activity-time { font-size: var(--text-xs); color: var(--gray-400); white-space: nowrap; }
-    .job-list { list-style: none; padding: 0; margin: 0; }
-    .job-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: var(--space-4);
-        border-bottom: 1px solid var(--gray-100);
+    .tech-activity-success { background: rgba(16,185,129,0.1); color: #10b981; }
+    .tech-activity-primary { background: rgba(59,130,246,0.1); color: #3b82f6; }
+    .tech-activity-warning { background: rgba(245,158,11,0.1); color: #f59e0b; }
+    .tech-activity-content { flex: 1; min-width: 0; }
+    .tech-activity-title { font-size: 13px; font-weight: 500; color: #1f2937; margin-bottom: 2px; }
+    .tech-activity-desc { font-size: 12px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tech-activity-time { font-size: 11px; color: #d1d5db; white-space: nowrap; }
+
+    /* ── Empty State ── */
+    .tech-empty { padding: 40px 20px; text-align: center; }
+    .tech-empty p { color: #9ca3af; font-size: 14px; margin-top: 8px; }
+
+    @@media (max-width: 1024px) {
+        .tech-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        .tech-grid { grid-template-columns: 1fr; }
     }
-    .job-item:last-child { border-bottom: none; }
-    .job-number { font-weight: 500; color: var(--blue); text-decoration: none; }
-    .job-number:hover { text-decoration: underline; }
-    .job-device { font-size: var(--text-sm); color: var(--gray-700); margin-top: 2px; }
-    .job-customer { font-size: var(--text-sm); color: var(--gray-500); }
+    @@media (max-width: 640px) {
+        .tech-kpi-grid { grid-template-columns: 1fr; }
+        .tech-welcome { padding: 20px; }
+        .tech-welcome-title { font-size: 20px; }
+    }
 </style>

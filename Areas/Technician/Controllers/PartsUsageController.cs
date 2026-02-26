@@ -76,7 +76,6 @@ public class PartsUsageController : Controller
                 && j.AssignedTechUserId == userId
                 && !j.IsArchived
                 && j.Status != JobOrderStatus.Completed
-                && j.Status != JobOrderStatus.Delivered
                 && j.Status != JobOrderStatus.Cancelled)
             .OrderByDescending(j => j.CreatedAt)
             .Select(j => new

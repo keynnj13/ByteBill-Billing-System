@@ -35,7 +35,7 @@ public class CustomerService : ICustomerService
     public async Task<PagedResult<CustomerListItemDto>> GetListAsync(long shopId, PagedRequest req)
     {
         var query = _db.Customers
-            .Where(c => c.ShopId == shopId)
+            .Where(c => c.ShopId == shopId && c.IsActive)
             .AsNoTracking();
 
         // Search by name, email, phone

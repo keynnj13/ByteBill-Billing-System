@@ -161,7 +161,7 @@
                 </table>
             </div>
 
-            <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel { CurrentPage = Model.CurrentPage, TotalPages = Model.TotalPages, BaseUrl = Url.Action("Index") })" />
+            <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel { CurrentPage = Model.CurrentPage, TotalPages = Model.TotalPages, TotalItems = Model.TotalCount, PageSize = Model.PageSize, BaseUrl = Url.Action("Index") })" />
         }
         else
         {

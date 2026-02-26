@@ -16,10 +16,10 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
             Print
         </button>
-        <button type="button" class="btn btn-outline-primary btn-sm" onclick="exportPDF('Service Performance Report')">
+        <a href="@Url.Action("ExportServicePdf", "Reports", new { area = "Admin", from = Model.DateFrom.ToString("yyyy-MM-dd"), to = Model.DateTo.ToString("yyyy-MM-dd") })" class="btn btn-outline-primary btn-sm">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
             Export PDF
-        </button>
+        </a>
         <a asp-action="Index" class="btn btn-ghost btn-sm">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
             Back
@@ -143,18 +143,6 @@
         </div>
     </div>
 </div>
-
-<script>
-function exportPDF(title) {
-    var printWin = window.open('', '_blank');
-    var content = document.querySelector('.sp-stats').outerHTML;
-    document.querySelectorAll('.card').forEach(c => content += c.outerHTML);
-    var styles = document.querySelector('style').outerHTML;
-    printWin.document.write('<html><head><title>' + title + '<\/title>' + styles + '<link rel="stylesheet" href="/css/design-system.css" \/><\/head><body style="padding:24px;font-family:system-ui,-apple-system,sans-serif;">' + '<h1 style="font-size:20px;margin-bottom:4px;">' + title + '<\/h1><p style="color:#6b7280;font-size:13px;margin-bottom:20px;">Generated on ' + new Date().toLocaleDateString() + '<\/p>' + content + '<\/body><\/html>');
-    printWin.document.close();
-    setTimeout(function(){ printWin.print(); }, 500);
-}
-</script>
 
 <style>
     .sp-page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }

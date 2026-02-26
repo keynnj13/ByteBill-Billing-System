@@ -6,6 +6,7 @@ using ByteBill_BS.Services;
 using ByteBill_BS.ViewModels.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ByteBill_BS.Areas.Admin.Controllers;
 
@@ -14,10 +15,14 @@ namespace ByteBill_BS.Areas.Admin.Controllers;
 public class ServicesController : Controller
 {
     private readonly IServiceCatalogService _service;
+    private readonly ApplicationDbContext _db;
+    private readonly IAuditService _audit;
 
-    public ServicesController(IServiceCatalogService service)
+    public ServicesController(IServiceCatalogService service, ApplicationDbContext db, IAuditService audit)
     {
         _service = service;
+        _db = db;
+        _audit = audit;
     }
 
     private bool IsAuthorized()
@@ -229,5 +234,28 @@ public class ServicesController : Controller
             UsageCount = detail.UsageCount,
             TotalRevenue = detail.TotalRevenue
         };
+    }
+
+    // ─── ARCHIVE ────────────────────────────────────────────
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Archive(long id)
+    {
+        if (!IsAuthorized()) return Forbid();
+        var shopId = User.GetShopId();
+        var svc = await _db.ServiceCatalogs.FirstOrDefaultAsync(s => s.ShopId == shopId && s.ServiceId == id);
+        if (svc == null) return NotFound();
+
+        svc.IsActive = false;
+        await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(shopId, User.GetUserId(), "Archive", "Service", svc.ServiceId,
+            $"Archived service '{svc.ServiceName}'",
+            HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            return Json(new { success = true, message = "Service archived successfully!" });
+        TempData["Success"] = "Service archived.";
+        return RedirectToAction(nameof(Index));
     }
 }

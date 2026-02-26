@@ -460,14 +460,18 @@ a:hover {
     font-size: 14px;
 }
 
-.status-pending { color: #d97706; }
+.status-pending { color: #6b7280; }
 .status-info { color: #2563eb; }
 .status-primary { color: #4f46e5; }
 .status-warning { color: #ea580c; }
 .status-success { color: #16a34a; }
 .status-delivered { color: #0d9488; }
-.status-cancelled { color: #dc2626; }
+.status-cancelled { color: #6b7280; }
 .status-muted { color: #64748b; }
+.status-checkedin { color: #2563eb; }
+.status-diagnosis { color: #7c3aed; }
+.status-inprogress { color: #d97706; }
+.status-waitingparts { color: #dc2626; }
 .status-purple { color: #7c3aed; }
 .status-danger { color: #dc2626; }
 .status-partial { color: #ea580c; }
@@ -537,6 +541,29 @@ a:hover {
     margin-top: 4px;
     font-size: var(--font-size-sm);
     color: var(--destructive);
+}
+
+/* Input with currency prefix (₱) */
+.input-prefix-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-prefix {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6b7280;
+    font-weight: 500;
+    font-size: 14px;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.input-with-prefix {
+    padding-left: 28px !important;
 }
 
 /* Floating Label Input */

@@ -121,8 +121,7 @@ public class InvoicesController : Controller
             var availableJobOrders = await _db.JobOrders
                 .Include(j => j.Customer)
                 .Where(j => j.ShopId == shopId &&
-                       (j.Status == Models.Enums.JobOrderStatus.Completed ||
-                        j.Status == Models.Enums.JobOrderStatus.Delivered) &&
+                       (j.Status == Models.Enums.JobOrderStatus.Completed) &&
                        !_db.Invoices.Any(i => i.JobOrderId == j.JobOrderId && i.Status != Models.Enums.InvoiceStatus.Void))
                 .OrderByDescending(j => j.CreatedAt)
                 .Select(j => new AvailableJobOrderOption

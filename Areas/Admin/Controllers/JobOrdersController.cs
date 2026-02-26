@@ -65,7 +65,6 @@ public class JobOrdersController : Controller
                 ActiveJobOrders = _db.JobOrders.Count(j =>
                     j.AssignedTechUserId == u.UserId &&
                     j.Status != JobOrderStatus.Completed &&
-                    j.Status != JobOrderStatus.Delivered &&
                     j.Status != JobOrderStatus.Cancelled)
             })
             .ToListAsync();
@@ -349,7 +348,6 @@ public class JobOrdersController : Controller
                     "InProgress" => "wrench",
                     "WaitingForParts" => "pause",
                     "Completed" => "check-circle",
-                    "Delivered" => "truck",
                     "Cancelled" => "x-circle",
                     _ => "activity"
                 }

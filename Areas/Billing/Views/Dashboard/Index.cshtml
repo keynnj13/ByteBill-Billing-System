@@ -8,106 +8,137 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Billing Dashboard</h1>
-        <p class="text-muted">Invoicing and payment overview</p>
+        <p class="page-subtitle">Invoicing and payment overview</p>
     </div>
     <div class="page-actions">
-        <a asp-action="Create" asp-controller="Invoices" class="btn btn-primary">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            New Invoice
-        </a>
+        <button type="button" class="btn btn-primary" onclick="openAjaxModal('@Url.Action("CreateModal", "Payments", new { area = "Billing" })', 'Record Payment')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Record Payment
+        </button>
     </div>
 </div>
 
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-icon" style="background: var(--emerald-light); color: var(--emerald);">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success" style="margin-bottom: 20px; padding: 12px 16px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; color: #065f46; font-size: 14px;">
+        @TempData["Success"]
+    </div>
+}
+
+<!-- Stat Cards -->
+<div class="bd-stats">
+    <div class="bd-stat-card">
+        <div class="bd-stat-icon bd-stat-emerald">
+            <span style="font-size: 20px; font-weight: 700;">₱</span>
         </div>
-        <div class="stat-content">
-            <p class="stat-label">Today's Revenue</p>
-            <p class="stat-value">@Model.TodayRevenue.ToString("C")</p>
+        <div>
+            <span class="bd-stat-label">Today's Revenue</span>
+            <span class="bd-stat-value">@Model.TodayRevenue.ToString("C")</span>
         </div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon" style="background: var(--amber-light); color: var(--amber);">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+    <div class="bd-stat-card">
+        <div class="bd-stat-icon bd-stat-amber">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
         </div>
-        <div class="stat-content">
-            <p class="stat-label">Pending Invoices</p>
-            <p class="stat-value">@Model.PendingInvoices</p>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon" style="background: var(--blue-light); color: var(--blue);">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-        </div>
-        <div class="stat-content">
-            <p class="stat-label">Paid Today</p>
-            <p class="stat-value">@Model.PaidToday</p>
+        <div>
+            <span class="bd-stat-label">Pending Invoices</span>
+            <span class="bd-stat-value">@Model.PendingInvoices</span>
         </div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon" style="background: var(--red-light); color: var(--red);">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+    <div class="bd-stat-card">
+        <div class="bd-stat-icon bd-stat-blue">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
         </div>
-        <div class="stat-content">
-            <p class="stat-label">Outstanding</p>
-            <p class="stat-value">@Model.OutstandingBalance.ToString("C")</p>
+        <div>
+            <span class="bd-stat-label">Paid Today</span>
+            <span class="bd-stat-value">@Model.PaidToday</span>
+        </div>
+    </div>
+    <div class="bd-stat-card">
+        <div class="bd-stat-icon bd-stat-red">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </div>
+        <div>
+            <span class="bd-stat-label">Outstanding</span>
+            <span class="bd-stat-value">@Model.OutstandingBalance.ToString("C")</span>
         </div>
     </div>
 </div>
 
-<div class="grid-2">
+<!-- Two-column content -->
+<div class="bd-grid-2">
+    <!-- Recent Activity -->
     <div class="card">
         <div class="card-header">
-            <h3 class="card-title">Recent Activity</h3>
+            <h3 class="card-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                Recent Activity
+            </h3>
         </div>
         <div class="card-body p-0">
-            <ul class="activity-list">
-                @foreach (var activity in Model.RecentActivity)
-                {
-                    <li class="activity-item">
-                        <div class="activity-icon activity-icon-@activity.IconColor">
-                            <partial name="~/Views/Shared/_NavIcon.cshtml" model="activity.Icon" />
-                        </div>
-                        <div class="activity-content">
-                            <p class="activity-title">@activity.Title</p>
-                            <p class="activity-description">@activity.Description</p>
-                        </div>
-                        <span class="activity-time">@activity.TimeAgo</span>
-                    </li>
-                }
-            </ul>
+            @if (Model.RecentActivity.Any())
+            {
+                <ul class="bd-activity-list">
+                    @foreach (var activity in Model.RecentActivity)
+                    {
+                        <li class="bd-activity-item">
+                            <div class="bd-activity-icon bd-activity-icon-@activity.IconColor">
+                                <partial name="~/Views/Shared/_NavIcon.cshtml" model="activity.Icon" />
+                            </div>
+                            <div class="bd-activity-content">
+                                <p class="bd-activity-title">@activity.Title</p>
+                                <p class="bd-activity-desc">@activity.Description</p>
+                            </div>
+                            <span class="bd-activity-time">@activity.TimeAgo</span>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <div style="padding: 40px; text-align: center; color: #9ca3af; font-size: 14px;">No recent activity yet.</div>
+            }
         </div>
     </div>
 
+    <!-- Unpaid Invoices -->
     <div class="card">
-        <div class="card-header">
-            <h3 class="card-title">Ready for Invoicing</h3>
-            <a asp-action="Index" asp-controller="JobOrders" class="btn btn-ghost btn-sm">View All</a>
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 class="card-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                Unpaid Invoices
+            </h3>
+            <a asp-action="Index" asp-controller="Invoices" class="btn btn-ghost btn-sm">View All</a>
         </div>
         <div class="card-body p-0">
-            @if (Model.PendingJobOrders.Any())
+            @if (Model.RecentInvoices.Any())
             {
                 <div class="table-container">
-                    <table class="table">
+                    <table class="table table-compact">
                         <thead>
                             <tr>
-                                <th>Order</th>
+                                <th>Invoice</th>
                                 <th>Customer</th>
-                                <th>Device</th>
-                                <th></th>
+                                <th class="text-right">Balance</th>
+                                <th class="text-right">Due</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var job in Model.PendingJobOrders)
+                            @foreach (var inv in Model.RecentInvoices)
                             {
-                                <tr>
-                                    <td><span class="text-primary">@job.OrderNumber</span></td>
-                                    <td>@job.CustomerName</td>
-                                    <td>@job.DeviceType</td>
-                                    <td>
-                                        <a asp-action="Create" asp-controller="Invoices" asp-route-jobOrderId="@job.Id" class="btn btn-sm btn-outline-primary">Create Invoice</a>
+                                <tr class="clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "Invoices", new { area = "Billing", id = inv.Id })', 'Invoice @inv.InvoiceNumber')">
+                                    <td><span class="text-primary font-medium">@inv.InvoiceNumber</span></td>
+                                    <td><span class="text-sm">@inv.CustomerName</span></td>
+                                    <td class="text-right"><span class="text-danger font-medium">@inv.Balance.ToString("C")</span></td>
+                                    <td class="text-right">
+                                        @if (inv.DueDate.HasValue)
+                                        {
+                                            <span class="text-sm @(inv.DueDate < DateTime.Today ? "text-danger" : "")">@inv.DueDate.Value.ToString("MMM d")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
                                     </td>
                                 </tr>
                             }
@@ -117,94 +148,110 @@
             }
             else
             {
-                <partial name="~/Views/Shared/_EmptyState.cshtml" model="@(new { Icon = "check-circle", Title = "All caught up!", Description = "No jobs ready for invoicing" })" />
+                <div style="padding: 40px; text-align: center; color: #9ca3af; font-size: 14px;">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 8px; display: block;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    All invoices are paid!
+                </div>
             }
         </div>
     </div>
 </div>
 
+<!-- Recent Payments -->
+<div class="card" style="margin-top: 24px;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 class="card-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+            Recent Payments
+        </h3>
+        <a asp-action="Index" asp-controller="Payments" class="btn btn-ghost btn-sm">View All</a>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.RecentPayments.Any())
+        {
+            <div class="table-container">
+                <table class="table table-compact">
+                    <thead>
+                        <tr>
+                            <th>Payment</th>
+                            <th>Customer</th>
+                            <th class="text-center">Method</th>
+                            <th class="text-right">Amount</th>
+                            <th class="text-right">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var pay in Model.RecentPayments)
+                        {
+                            <tr class="clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "Payments", new { area = "Billing", id = pay.Id })', 'Payment @pay.PaymentNumber')">
+                                <td><span class="font-medium">@pay.PaymentNumber</span></td>
+                                <td><span class="text-sm">@pay.CustomerName</span></td>
+                                <td class="text-center">
+                                    @{
+                                        var methodClass = pay.Method switch
+                                        {
+                                            "Cash" => "status-success",
+                                            "GCash" => "status-primary",
+                                            "Card" => "status-info",
+                                            _ => "status-muted"
+                                        };
+                                    }
+                                    <span class="status-indicator @methodClass">@pay.Method</span>
+                                </td>
+                                <td class="text-right"><span class="font-medium">@pay.Amount.ToString("C")</span></td>
+                                <td class="text-right"><span class="text-muted text-sm">@pay.PaidAt.ToString("MMM d, yyyy")</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div style="padding: 40px; text-align: center; color: #9ca3af; font-size: 14px;">No payments recorded yet.</div>
+        }
+    </div>
+</div>
+
 <style>
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: var(--space-6);
-    }
-    .page-title {
-        font-size: var(--text-2xl);
-        font-weight: 600;
-        color: var(--gray-900);
-        margin-bottom: var(--space-1);
-    }
-    .page-actions {
-        display: flex;
-        gap: var(--space-3);
-    }
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: var(--space-4);
-        margin-bottom: var(--space-6);
-    }
-    .stat-card {
-        display: flex;
-        align-items: center;
-        gap: var(--space-4);
-        padding: var(--space-4);
-        background: white;
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-sm);
-    }
-    .stat-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: var(--radius-md);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .stat-label {
-        font-size: var(--text-sm);
-        color: var(--gray-500);
-        margin-bottom: var(--space-1);
-    }
-    .stat-value {
-        font-size: var(--text-2xl);
-        font-weight: 600;
-        color: var(--gray-900);
-    }
-    .grid-2 {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: var(--space-6);
-    }
-    @@media (max-width: 1024px) {
-        .grid-2 { grid-template-columns: 1fr; }
-        .page-header { flex-direction: column; gap: var(--space-4); }
-    }
-    .activity-list { list-style: none; padding: 0; margin: 0; }
-    .activity-item {
-        display: flex;
-        align-items: flex-start;
-        gap: var(--space-3);
-        padding: var(--space-4);
-        border-bottom: 1px solid var(--gray-100);
-    }
-    .activity-item:last-child { border-bottom: none; }
-    .activity-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: var(--radius-full);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-    .activity-icon-success { background: var(--emerald-light); color: var(--emerald); }
-    .activity-icon-primary { background: var(--blue-light); color: var(--blue); }
-    .activity-icon-warning { background: var(--amber-light); color: var(--amber); }
-    .activity-content { flex: 1; min-width: 0; }
-    .activity-title { font-weight: 500; color: var(--gray-900); margin-bottom: 2px; }
-    .activity-description { font-size: var(--text-sm); color: var(--gray-500); }
-    .activity-time { font-size: var(--text-xs); color: var(--gray-400); white-space: nowrap; }
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: #6b7280; }
+    .bd-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .bd-stat-card { display: flex; align-items: center; gap: 14px; padding: 16px 20px; background: white; border-radius: 10px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .bd-stat-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .bd-stat-emerald { background: rgba(16,185,129,0.1); color: #10b981; }
+    .bd-stat-amber { background: rgba(245,158,11,0.1); color: #f59e0b; }
+    .bd-stat-blue { background: rgba(59,130,246,0.1); color: #3b82f6; }
+    .bd-stat-red { background: rgba(239,68,68,0.1); color: #ef4444; }
+    .bd-stat-label { display: block; font-size: 12px; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .bd-stat-value { display: block; font-size: 22px; font-weight: 700; color: #1f2937; line-height: 1.2; }
+    .bd-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid #f3f4f6; }
+    .card-title { font-size: 14px; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 8px; margin: 0; }
+    .card-body { padding: 20px; }
+    .card-body.p-0 { padding: 0; }
+    .text-primary { color: #3b82f6; }
+    .text-danger { color: #dc2626; }
+    .text-muted { color: #9ca3af; }
+    .text-sm { font-size: 13px; }
+    .font-medium { font-weight: 500; }
+    .clickable-row { cursor: pointer; transition: background-color 0.15s; }
+    .clickable-row:hover { background-color: #f0f7ff; }
+
+    .bd-activity-list { list-style: none; padding: 0; margin: 0; }
+    .bd-activity-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px 20px; border-bottom: 1px solid #f3f4f6; }
+    .bd-activity-item:last-child { border-bottom: none; }
+    .bd-activity-icon { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .bd-activity-icon-success { background: rgba(16,185,129,0.1); color: #10b981; }
+    .bd-activity-icon-primary { background: rgba(59,130,246,0.1); color: #3b82f6; }
+    .bd-activity-icon-warning { background: rgba(245,158,11,0.1); color: #f59e0b; }
+    .bd-activity-content { flex: 1; min-width: 0; }
+    .bd-activity-title { font-size: 13px; font-weight: 600; color: #374151; margin: 0 0 2px 0; }
+    .bd-activity-desc { font-size: 12px; color: #6b7280; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bd-activity-time { font-size: 11px; color: #9ca3af; white-space: nowrap; }
+
+    @@media (max-width: 1024px) { .bd-stats { grid-template-columns: repeat(2, 1fr); } .bd-grid-2 { grid-template-columns: 1fr; } }
+    @@media (max-width: 768px) { .bd-stats { grid-template-columns: 1fr; } .page-header { flex-direction: column; gap: 12px; } }
 </style>

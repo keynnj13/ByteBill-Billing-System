@@ -167,8 +167,8 @@ public class PaymentCallbackController : Controller
                     }
                     else
                     {
-                        // Billing area has a standalone Details view
-                        return RedirectToAction("Details", "Invoices", new { area = "Billing", id = invoice.Value });
+                        // Billing area uses modals — redirect to Invoices index
+                        return RedirectToAction("Index", "Invoices", new { area = "Billing" });
                     }
                 }
             }
@@ -194,7 +194,7 @@ public class PaymentCallbackController : Controller
             if (role is "Admin" or "SuperAdmin")
                 return RedirectToAction("Index", "Invoices", new { area = "Admin" });
             else
-                return RedirectToAction("Details", "Invoices", new { area = "Billing", id = invoice.Value });
+                return RedirectToAction("Index", "Invoices", new { area = "Billing" });
         }
 
         ViewBag.InvoiceId = invoice;

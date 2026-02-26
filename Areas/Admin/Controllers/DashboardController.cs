@@ -20,31 +20,54 @@ public class DashboardController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? period, DateTime? from, DateTime? to)
     {
         if (!User.IsInRoles("Admin"))
             return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
-        var vm = await BuildDashboardAsync();
+        // Resolve date range from preset or custom
+        var (dateFrom, dateTo, activePeriod) = ResolveDateRange(period, from, to);
+
+        var vm = await BuildDashboardAsync(dateFrom, dateTo);
+        vm.ActivePeriod = activePeriod;
+        vm.FilterFrom = dateFrom;
+        vm.FilterTo = dateTo;
         return View(vm);
     }
 
     /// <summary>Real-time polling endpoint – returns all dashboard data as JSON.</summary>
     [HttpGet]
-    public async Task<IActionResult> Poll()
+    public async Task<IActionResult> Poll(string? period, DateTime? from, DateTime? to)
     {
         if (!User.IsInRoles("Admin"))
             return Unauthorized();
 
-        var data = await BuildDashboardDataAsync();
+        var (dateFrom, dateTo, _) = ResolveDateRange(period, from, to);
+        var data = await BuildDashboardDataAsync(dateFrom, dateTo);
         return Json(data);
+    }
+
+    private static (DateTime from, DateTime to, string period) ResolveDateRange(string? period, DateTime? from, DateTime? to)
+    {
+        var today = DateTime.UtcNow.Date;
+        return period switch
+        {
+            "today"    => (today, today.AddDays(1).AddTicks(-1), "today"),
+            "week"     => (today.AddDays(-(int)today.DayOfWeek), today.AddDays(1).AddTicks(-1), "week"),
+            "month"    => (new DateTime(today.Year, today.Month, 1), today.AddDays(1).AddTicks(-1), "month"),
+            "last30"   => (today.AddDays(-30), today.AddDays(1).AddTicks(-1), "last30"),
+            "last3mo"  => (today.AddMonths(-3), today.AddDays(1).AddTicks(-1), "last3mo"),
+            "custom" when from.HasValue && to.HasValue =>
+                (from.Value.Date, to.Value.Date.AddDays(1).AddTicks(-1), "custom"),
+            _ => (DateTime.MinValue, DateTime.MaxValue, "all")  // no filter = all time
+        };
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     //  Shared data-fetching helpers
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-    private async Task<DashboardViewModel> BuildDashboardAsync()
+    private async Task<DashboardViewModel> BuildDashboardAsync(DateTime dateFrom, DateTime dateTo)
     {
         var shopId = User.GetShopId();
         var shopName = await _db.Shops
@@ -52,7 +75,7 @@ public class DashboardController : Controller
             .Select(s => s.ShopName)
             .FirstOrDefaultAsync() ?? "My Shop";
 
-        var data = await BuildDashboardDataAsync();
+        var data = await BuildDashboardDataAsync(dateFrom, dateTo);
 
         return new DashboardViewModel
         {
@@ -75,15 +98,18 @@ public class DashboardController : Controller
         };
     }
 
-    private async Task<DashboardPollDto> BuildDashboardDataAsync()
+    private async Task<DashboardPollDto> BuildDashboardDataAsync(DateTime dateFrom, DateTime dateTo)
     {
         var shopId = User.GetShopId();
         var today = DateTime.UtcNow.Date;
         var weekStart = today.AddDays(-(int)today.DayOfWeek);
+        var hasDateFilter = dateFrom != DateTime.MinValue;
 
-        // ── Job Order counts ──
-        var jobOrders = await _db.JobOrders
-            .Where(j => j.ShopId == shopId)
+        // ── Job Order counts (filtered by CreatedAt if date range specified) ──
+        var joBase = _db.JobOrders.Where(j => j.ShopId == shopId);
+        if (hasDateFilter) joBase = joBase.Where(j => j.CreatedAt >= dateFrom && j.CreatedAt <= dateTo);
+
+        var jobOrders = await joBase
             .GroupBy(j => 1)
             .Select(g => new
             {
@@ -96,18 +122,27 @@ public class DashboardController : Controller
             })
             .FirstOrDefaultAsync();
 
-        // ── Revenue (confirmed payments) ──
-        var todayRevenue = await _db.Payments
-            .Where(p => p.ShopId == shopId && p.Status == PaymentStatus.Confirmed && p.PaymentDate.Date == today)
+        // ── Revenue (confirmed payments – filtered by date range) ──
+        var payBase = _db.Payments.Where(p => p.ShopId == shopId && p.Status == PaymentStatus.Confirmed);
+        if (hasDateFilter) payBase = payBase.Where(p => p.PaymentDate >= dateFrom && p.PaymentDate <= dateTo);
+
+        var todayRevenue = await payBase
+            .Where(p => p.PaymentDate.Date == today)
             .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
-        var weekRevenue = await _db.Payments
-            .Where(p => p.ShopId == shopId && p.Status == PaymentStatus.Confirmed && p.PaymentDate.Date >= weekStart)
+        var weekRevenue = await payBase
+            .Where(p => p.PaymentDate.Date >= weekStart)
             .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
-        // ── Invoices ──
-        var invoiceStats = await _db.Invoices
-            .Where(i => i.ShopId == shopId)
+        var periodRevenue = hasDateFilter
+            ? await payBase.SumAsync(p => (decimal?)p.Amount) ?? 0m
+            : weekRevenue;
+
+        // ── Invoices (filtered) ──
+        var invBase = _db.Invoices.Where(i => i.ShopId == shopId);
+        if (hasDateFilter) invBase = invBase.Where(i => i.InvoiceDate >= dateFrom && i.InvoiceDate <= dateTo);
+
+        var invoiceStats = await invBase
             .GroupBy(i => 1)
             .Select(g => new
             {
@@ -121,18 +156,23 @@ public class DashboardController : Controller
             .Where(i => i.ShopId == shopId && i.IsActive && i.QtyOnHand <= i.ReorderLevel)
             .CountAsync();
 
-        // ── Monthly Revenue chart (last 6 months) ──
-        var sixMonthsAgo = new DateTime(today.Year, today.Month, 1).AddMonths(-5);
+        // ── Monthly Revenue chart (last 6 months or within date range) ──
+        var chartStart = hasDateFilter ? new DateTime(dateFrom.Year, dateFrom.Month, 1) : new DateTime(today.Year, today.Month, 1).AddMonths(-5);
+        var chartEnd = hasDateFilter ? dateTo : DateTime.MaxValue;
         var monthlyRevenue = await _db.Payments
-            .Where(p => p.ShopId == shopId && p.Status == PaymentStatus.Confirmed && p.PaymentDate >= sixMonthsAgo)
+            .Where(p => p.ShopId == shopId && p.Status == PaymentStatus.Confirmed && p.PaymentDate >= chartStart && p.PaymentDate <= chartEnd)
             .GroupBy(p => new { p.PaymentDate.Year, p.PaymentDate.Month })
             .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(p => p.Amount) })
             .ToListAsync();
 
         var revenueChart = new List<ChartDataPoint>();
-        for (int i = 0; i < 6; i++)
+        var chartMonths = hasDateFilter
+            ? (int)((dateTo.Year - dateFrom.Year) * 12 + dateTo.Month - dateFrom.Month) + 1
+            : 6;
+        chartMonths = Math.Min(chartMonths, 12); // cap at 12
+        for (int i = 0; i < chartMonths; i++)
         {
-            var dt = sixMonthsAgo.AddMonths(i);
+            var dt = chartStart.AddMonths(i);
             var val = monthlyRevenue.FirstOrDefault(m => m.Year == dt.Year && m.Month == dt.Month);
             revenueChart.Add(new ChartDataPoint
             {
@@ -141,9 +181,11 @@ public class DashboardController : Controller
             });
         }
 
-        // ── Job Order Status distribution chart ──
-        var statusDistribution = await _db.JobOrders
-            .Where(j => j.ShopId == shopId)
+        // ── Job Order Status distribution chart (filtered) ──
+        var statusBase = _db.JobOrders.Where(j => j.ShopId == shopId);
+        if (hasDateFilter) statusBase = statusBase.Where(j => j.CreatedAt >= dateFrom && j.CreatedAt <= dateTo);
+
+        var statusDistribution = await statusBase
             .GroupBy(j => j.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToListAsync();
@@ -166,7 +208,7 @@ public class DashboardController : Controller
                 CustomerName = j.Customer!.FirstName + " " + j.Customer.LastName,
                 DeviceType = j.Device!.DeviceType,
                 Status = j.Status,
-                StatusBadgeClass = j.Status == JobOrderStatus.Completed || j.Status == JobOrderStatus.Delivered ? "success"
+                StatusBadgeClass = j.Status == JobOrderStatus.Completed ? "success"
                     : j.Status == JobOrderStatus.InProgress ? "primary"
                     : j.Status == JobOrderStatus.Pending ? "warning"
                     : j.Status == JobOrderStatus.Cancelled ? "danger"
@@ -206,7 +248,6 @@ public class DashboardController : Controller
                 "Completed" => ("check-circle", "success"),
                 "Cancelled" => ("x-circle", "danger"),
                 "WaitingForParts" => ("pause", "warning"),
-                "Delivered" => ("package", "success"),
                 _ => ("activity", "primary")
             };
             return new RecentActivityItem

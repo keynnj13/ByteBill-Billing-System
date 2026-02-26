@@ -8,22 +8,45 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Job Orders</h1>
-        <p class="page-subtitle">@Model.TotalCount total job orders</p>
-    </div>
-    <div class="page-actions">
-        <a href="@Url.Action("Create", "JobOrders", new { area = "Billing" })" class="btn btn-primary">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            New Job Order
-        </a>
+        <p class="page-subtitle">@Model.TotalCount total job orders — read-only billing view</p>
     </div>
 </div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success" style="margin-bottom: 20px; padding: 12px 16px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; color: #065f46; font-size: 14px;">
-        @TempData["Success"]
-    </div>
+<!-- Stat Cards -->
+@{
+    var totalJobs = Model.TotalCount;
+    var activeJobs = Model.JobOrders.Count(j => j.Status != JobOrderStatus.Completed && j.Status != JobOrderStatus.Cancelled);
+    var completedJobs = Model.JobOrders.Count(j => j.Status == JobOrderStatus.Completed);
 }
+<div class="stat-cards">
+    <div class="stat-card">
+        <div class="stat-icon bg-primary-light">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+        </div>
+        <div class="stat-content">
+            <span class="stat-value">@totalJobs</span>
+            <span class="stat-label">Total Job Orders</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon bg-warning-light">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </div>
+        <div class="stat-content">
+            <span class="stat-value">@activeJobs</span>
+            <span class="stat-label">Active</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon bg-success-light">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        </div>
+        <div class="stat-content">
+            <span class="stat-value">@completedJobs</span>
+            <span class="stat-label">Completed</span>
+        </div>
+    </div>
+</div>
 
 <div class="card">
     <div class="card-header">
@@ -48,13 +71,12 @@
             <div class="table-container">
                 <table class="table" style="table-layout: fixed;">
                     <colgroup>
-                        <col style="width: 12%;" />
-                        <col style="width: 20%;" />
-                        <col style="width: 18%;" />
-                        <col style="width: 12%;" />
-                        <col style="width: 15%;" />
                         <col style="width: 13%;" />
-                        <col style="width: 10%;" />
+                        <col style="width: 22%;" />
+                        <col style="width: 20%;" />
+                        <col style="width: 13%;" />
+                        <col style="width: 17%;" />
+                        <col style="width: 15%;" />
                     </colgroup>
                     <thead>
                         <tr>
@@ -64,13 +86,12 @@
                             <th class="text-center">Status</th>
                             <th>Technician</th>
                             <th class="text-right">Created</th>
-                            <th class="text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var jo in Model.JobOrders)
                         {
-                            <tr class="clickable-row" onclick="window.location.href='@Url.Action("Details", "JobOrders", new { area = "Billing", id = jo.Id })'">
+                            <tr class="clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "JobOrders", new { area = "Billing", id = jo.Id })', 'Job Order — @jo.JobNumber')">
                                 <td><span class="font-medium text-primary">@jo.JobNumber</span></td>
                                 <td>
                                     <div class="customer-cell">
@@ -82,15 +103,6 @@
                                 <td class="text-center"><span class="status-indicator @jo.StatusClass">@jo.StatusDisplay</span></td>
                                 <td><span class="text-muted">@(jo.TechnicianName ?? "Unassigned")</span></td>
                                 <td class="text-right"><span class="text-muted text-sm">@jo.CreatedAt.ToString("MMM dd, yyyy")</span></td>
-                                <td class="text-right">
-                                    <form asp-action="ArchiveJobOrder" asp-controller="JobOrders" asp-area="Billing" method="post" style="display: inline;" onclick="event.stopPropagation();">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="id" value="@jo.Id" />
-                                        <button type="submit" class="btn-action archive-btn" title="Archive" onclick="return confirm('Archive this job order?');">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
-                                        </button>
-                                    </form>
-                                </td>
                             </tr>
                         }
                     </tbody>
@@ -99,7 +111,7 @@
 
             @if (Model.TotalPages > 1)
             {
-                <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel { CurrentPage = Model.CurrentPage, TotalPages = Model.TotalPages, BaseUrl = Url.Action("Index") })" />
+                <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel { CurrentPage = Model.CurrentPage, TotalPages = Model.TotalPages, TotalItems = Model.TotalCount, PageSize = Model.PageSize, BaseUrl = Url.Action("Index") })" />
             }
         }
         else
@@ -107,7 +119,7 @@
             <div class="empty-state">
                 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
                 <h3>No job orders found</h3>
-                <p>@(string.IsNullOrEmpty(Model.SearchTerm) ? "Create your first job order to get started" : "Try a different search term")</p>
+                <p>@(string.IsNullOrEmpty(Model.SearchTerm) ? "No job orders available yet" : "Try a different search term")</p>
             </div>
         }
     </div>
@@ -117,6 +129,15 @@
     .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
     .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
     .page-subtitle { font-size: 14px; color: #6b7280; }
+    .stat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px; }
+    .stat-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .bg-primary-light { background: #eff6ff; }
+    .bg-warning-light { background: #fffbeb; }
+    .bg-success-light { background: #ecfdf5; }
+    .stat-content { display: flex; flex-direction: column; }
+    .stat-value { font-size: 22px; font-weight: 700; color: #1f2937; }
+    .stat-label { font-size: 13px; color: #6b7280; }
     .filter-form { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
     .search-input-wrapper { position: relative; flex: 1; min-width: 200px; }
     .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
@@ -137,5 +158,6 @@
         .page-header { flex-direction: column; gap: 12px; }
         .filter-form { flex-direction: column; width: 100%; }
         .search-input { min-width: 100%; }
+        .stat-cards { grid-template-columns: 1fr; }
     }
 </style>

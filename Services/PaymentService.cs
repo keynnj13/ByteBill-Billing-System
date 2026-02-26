@@ -63,6 +63,7 @@ public class PaymentService : IPaymentService
             .Select(p => new PaymentListItemDto
             {
                 PaymentId = p.PaymentId,
+                PaymentNo = (p.PaymentNo != null && p.PaymentNo != "") ? p.PaymentNo : ("PAY-" + p.PaymentId),
                 CustomerName = p.Customer!.FirstName + " " + p.Customer.LastName,
                 InvoiceNo = p.PaymentAllocations
                     .Select(pa => pa.Invoice!.InvoiceNo)
@@ -95,6 +96,7 @@ public class PaymentService : IPaymentService
             .Select(p => new PaymentDetailDto
             {
                 PaymentId = p.PaymentId,
+                PaymentNo = (p.PaymentNo != null && p.PaymentNo != "") ? p.PaymentNo : ("PAY-" + p.PaymentId),
                 Amount = p.Amount,
                 Method = p.Method.ToString(),
                 PaymentDate = p.PaymentDate,

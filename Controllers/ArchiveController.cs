@@ -42,7 +42,10 @@ public class ArchiveController : Controller
         InvoiceStatus? invStatus = null,
         int joPage = 1,
         int invPage = 1,
-        int usrPage = 1)
+        int usrPage = 1,
+        int custPage = 1,
+        int svcPage = 1,
+        int invtPage = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth");
 
@@ -199,6 +202,79 @@ public class ArchiveController : Controller
             }).ToList()
         };
 
+        // ── Archived Customers ──
+        var custQuery = _db.Customers
+            .Where(c => c.ShopId == shopId && !c.IsActive)
+            .AsNoTracking();
+
+        if (tab == "customers" && !string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            custQuery = custQuery.Where(c =>
+                (c.FirstName + " " + c.LastName).ToLower().Contains(term) ||
+                (c.Email != null && c.Email.ToLower().Contains(term)));
+        }
+
+        var custTotal = await custQuery.CountAsync();
+        var custItems = await custQuery
+            .OrderBy(c => c.FirstName).ThenBy(c => c.LastName)
+            .Skip((custPage - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        ViewBag.ArchivedCustomers = custItems;
+        ViewBag.ArchivedCustomersTotal = custTotal;
+        ViewBag.ArchivedCustomersPage = custPage;
+
+        // ── Archived Services ──
+        var svcQuery = _db.ServiceCatalogs
+            .Include(s => s.ServiceCategory)
+            .Where(s => s.ShopId == shopId && !s.IsActive)
+            .AsNoTracking();
+
+        if (tab == "services" && !string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            svcQuery = svcQuery.Where(s => s.ServiceName.ToLower().Contains(term));
+        }
+
+        var svcTotal = await svcQuery.CountAsync();
+        var svcItems = await svcQuery
+            .OrderBy(s => s.ServiceName)
+            .Skip((svcPage - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        ViewBag.ArchivedServices = svcItems;
+        ViewBag.ArchivedServicesTotal = svcTotal;
+        ViewBag.ArchivedServicesPage = svcPage;
+
+        // ── Archived Inventory Items ──
+        var invtQuery = _db.InventoryItems
+            .Include(i => i.InventoryCategory)
+            .Where(i => i.ShopId == shopId && !i.IsActive)
+            .AsNoTracking();
+
+        if (tab == "inventory" && !string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            invtQuery = invtQuery.Where(i =>
+                i.ItemName.ToLower().Contains(term) ||
+                i.SKU.ToLower().Contains(term));
+        }
+
+        var invtTotal = await invtQuery.CountAsync();
+        var invtItems = await invtQuery
+            .OrderBy(i => i.ItemName)
+            .Skip((invtPage - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        ViewBag.ArchivedInventory = invtItems;
+        ViewBag.ArchivedInventoryTotal = invtTotal;
+        ViewBag.ArchivedInventoryPage = invtPage;
+        ViewBag.PageSize = pageSize;
+
         return View();
     }
 
@@ -260,5 +336,62 @@ public class ArchiveController : Controller
 
         TempData["Success"] = $"User {user.FirstName} {user.LastName} reactivated.";
         return RedirectToAction(nameof(Index), new { tab = "users" });
+    }
+
+    [HttpPost("/Archive/RestoreCustomer/{id}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> RestoreCustomer(long id)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth");
+        var shopId = User.GetShopId();
+        var customer = await _db.Customers.FirstOrDefaultAsync(c => c.ShopId == shopId && c.CustomerId == id);
+        if (customer == null) return NotFound();
+
+        customer.IsActive = true;
+        await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(shopId, User.GetUserId(), "Restore", "Customer", customer.CustomerId,
+            $"Restored customer '{customer.FullName}' from archive",
+            HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        TempData["Success"] = $"Customer {customer.FullName} restored.";
+        return RedirectToAction(nameof(Index), new { tab = "customers" });
+    }
+
+    [HttpPost("/Archive/RestoreService/{id}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> RestoreService(long id)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth");
+        var shopId = User.GetShopId();
+        var svc = await _db.ServiceCatalogs.FirstOrDefaultAsync(s => s.ShopId == shopId && s.ServiceId == id);
+        if (svc == null) return NotFound();
+
+        svc.IsActive = true;
+        await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(shopId, User.GetUserId(), "Restore", "Service", svc.ServiceId,
+            $"Restored service '{svc.ServiceName}' from archive",
+            HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        TempData["Success"] = $"Service {svc.ServiceName} restored.";
+        return RedirectToAction(nameof(Index), new { tab = "services" });
+    }
+
+    [HttpPost("/Archive/RestoreInventory/{id}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> RestoreInventory(long id)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth");
+        var shopId = User.GetShopId();
+        var item = await _db.InventoryItems.FirstOrDefaultAsync(i => i.ShopId == shopId && i.ItemId == id);
+        if (item == null) return NotFound();
+
+        item.IsActive = true;
+        await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(shopId, User.GetUserId(), "Restore", "InventoryItem", item.ItemId,
+            $"Restored inventory item '{item.ItemName}' from archive",
+            HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        TempData["Success"] = $"Item {item.ItemName} restored.";
+        return RedirectToAction(nameof(Index), new { tab = "inventory" });
     }
 }

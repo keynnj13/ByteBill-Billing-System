@@ -58,12 +58,12 @@
 
 <div class="card">
     <div class="card-header">
-        <form method="get" class="filter-form">
+        <form method="get" class="filter-form" id="inventoryFilterForm">
             <div class="search-input-wrapper">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <input type="text" name="search" value="@Model.SearchTerm" placeholder="Search by SKU, name, or brand..." class="form-input search-input" />
+                <input type="text" name="search" value="@Model.SearchTerm" placeholder="Search by SKU, name, or brand..." class="form-input search-input" id="invSearch" />
             </div>
-            <select name="category" class="form-select" onchange="this.form.submit()">
+            <select name="category" class="form-select" id="invCategory">
                 <option value="">All Categories</option>
                 @foreach (var cat in Model.Categories)
                 {
@@ -71,10 +71,10 @@
                 }
             </select>
             <label class="low-stock-toggle">
-                <input type="checkbox" name="lowStock" value="true" @(Model.LowStockOnly == true ? "checked" : "") onchange="this.form.submit()" />
+                <input type="checkbox" name="lowStock" value="true" id="invLowStock" @(Model.LowStockOnly == true ? "checked" : "") />
                 <span>Low stock only</span>
             </label>
-            <button type="submit" class="btn btn-outline-primary">Filter</button>
+            <noscript><button type="submit" class="btn btn-outline-primary">Filter</button></noscript>
         </form>
     </div>
     <div class="card-body p-0">
@@ -107,7 +107,7 @@
                     <tbody>
                         @foreach (var item in Model.Items)
                         {
-                            <tr class="@(item.IsLowStock ? "row-warning" : "")">
+                            <tr class="inv-row @(item.IsLowStock ? "row-warning" : "")" data-sku="@item.SKU.ToLower()" data-name="@item.Name.ToLower()" data-brand="@((item.Brand ?? "").ToLower())" data-category="@item.Category" data-lowstock="@item.IsLowStock.ToString().ToLower()">
                                 <td><span class="sku-text">@item.SKU</span></td>
                                 <td>
                                     <div class="item-cell">
@@ -130,12 +130,9 @@
                                 <td class="text-center"><span class="status-indicator @item.StockStatusClass">@item.StockStatus</span></td>
                                 <td>
                                     <div class="action-buttons">
-                                        @if (item.IsLowStock)
-                                        {
-                                            <button type="button" class="btn-action restock-btn" title="Quick Restock" onclick="event.stopPropagation(); openRestockModal(@item.Id, '@item.Name.Replace("'", "\\'")' , @item.QuantityInStock, @item.ReorderLevel)">
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                                            </button>
-                                        }
+                                        <button type="button" class="btn-action restock-btn" title="Quick Restock" onclick="event.stopPropagation(); openRestockModal(@item.Id, '@item.Name.Replace("'", "\\'")' , @item.QuantityInStock, @item.ReorderLevel)">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                        </button>
                                         <button type="button" class="btn-action" title="Edit" onclick="openAjaxModal('@Url.Action("EditModal", "Inventory", new { area = "Admin", id = item.Id })', 'Edit Inventory Item')">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                         </button>
@@ -275,4 +272,55 @@ document.getElementById('restockForm').addEventListener('submit', function(e) {
     })
     .catch(() => { closeRestockModal(); alert('Error restocking item.'); });
 });
+
+// Client-side instant filtering — no page reload
+(function() {
+    var searchInput = document.getElementById('invSearch');
+    var categorySelect = document.getElementById('invCategory');
+    var lowStockCheckbox = document.getElementById('invLowStock');
+    var rows = document.querySelectorAll('tr.inv-row');
+    var emptyState = null;
+    var tableContainer = rows.length > 0 ? rows[0].closest('.table-container') : null;
+
+    function filterRows() {
+        var q = (searchInput ? searchInput.value : '').toLowerCase().trim();
+        var cat = categorySelect ? categorySelect.value : '';
+        var lowOnly = lowStockCheckbox ? lowStockCheckbox.checked : false;
+        var visibleCount = 0;
+
+        rows.forEach(function(row) {
+            var matchSearch = !q
+                || row.dataset.sku.indexOf(q) !== -1
+                || row.dataset.name.indexOf(q) !== -1
+                || row.dataset.brand.indexOf(q) !== -1;
+            var matchCategory = !cat || row.dataset.category === cat;
+            var matchLow = !lowOnly || row.dataset.lowstock === 'true';
+            var visible = matchSearch && matchCategory && matchLow;
+            row.style.display = visible ? '' : 'none';
+            if (visible) visibleCount++;
+        });
+
+        // Show/hide empty state
+        if (!emptyState) {
+            emptyState = document.createElement('div');
+            emptyState.className = 'inv-filter-empty';
+            emptyState.style.cssText = 'padding:40px 20px; text-align:center; color:#9ca3af; font-size:14px; display:none;';
+            emptyState.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" style="margin:0 auto 12px;display:block;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>No items match your filters';
+            if (tableContainer) tableContainer.parentNode.insertBefore(emptyState, tableContainer.nextSibling);
+        }
+        if (emptyState) {
+            emptyState.style.display = visibleCount === 0 && rows.length > 0 ? 'block' : 'none';
+        }
+        if (tableContainer) {
+            tableContainer.style.display = visibleCount === 0 && rows.length > 0 ? 'none' : '';
+        }
+    }
+
+    if (searchInput) searchInput.addEventListener('input', filterRows);
+    if (categorySelect) categorySelect.addEventListener('change', filterRows);
+    if (lowStockCheckbox) lowStockCheckbox.addEventListener('change', filterRows);
+
+    // Apply initial filters if any were set via query string
+    filterRows();
+})();
 </script>

@@ -17,11 +17,13 @@ public class CustomersController : Controller
 {
     private readonly ICustomerService _customerService;
     private readonly ApplicationDbContext _db;
+    private readonly IAuditService _audit;
 
-    public CustomersController(ICustomerService customerService, ApplicationDbContext db)
+    public CustomersController(ICustomerService customerService, ApplicationDbContext db, IAuditService audit)
     {
         _customerService = customerService;
         _db = db;
+        _audit = audit;
     }
 
     private bool IsAuthorized() => User.IsInRoles("Admin", "SuperAdmin");
@@ -272,5 +274,28 @@ public class CustomersController : Controller
                 CreatedAt = j.CreatedAt
             }).ToList()
         };
+    }
+
+    // ─── ARCHIVE ────────────────────────────────────────────
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Archive(long id)
+    {
+        if (!IsAuthorized()) return Forbid();
+        var shopId = User.GetShopId();
+        var customer = await _db.Customers.FirstOrDefaultAsync(c => c.ShopId == shopId && c.CustomerId == id);
+        if (customer == null) return NotFound();
+
+        customer.IsActive = false;
+        await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(shopId, User.GetUserId(), "Archive", "Customer", customer.CustomerId,
+            $"Archived customer '{customer.FullName}'",
+            HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            return Json(new { success = true, message = "Customer archived successfully!" });
+        TempData["Success"] = "Customer archived.";
+        return RedirectToAction(nameof(Index));
     }
 }

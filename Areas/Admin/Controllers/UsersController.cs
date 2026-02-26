@@ -47,6 +47,7 @@ public class UsersController : Controller
             .Where(u => u.ShopId == shopId)
             .Where(u => u.UserId != currentUserId) // Hide admin's own account
             .Where(u => !u.UserRoles.Any(ur => ur.Role!.RoleName == "SuperAdmin")) // Hide SuperAdmin users
+            .Where(u => u.IsActive) // Deactivated users only in Archive
             .AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -384,12 +385,30 @@ public class UsersController : Controller
             .Select(a => a.CreatedAt)
             .FirstOrDefaultAsync();
 
-        // Get activity stats
-        var jobOrdersHandled = await _db.AuditLogs
-            .CountAsync(a => a.UserId == id && a.EntityName == "JobOrder");
+        // Get activity stats – role-specific
+        int jobOrdersHandled = 0, partsUsed = 0, invoicesCreated = 0, paymentsProcessed = 0,
+            logsReviewed = 0, reportsGenerated = 0, usersManagedCount = 0, totalActivityCount = 0;
 
-        var paymentsProcessed = await _db.AuditLogs
-            .CountAsync(a => a.UserId == id && a.EntityName == "Payment");
+        switch (parsedRole)
+        {
+            case UserRole.Technician:
+                jobOrdersHandled = await _db.JobOrders.CountAsync(j => j.ShopId == shopId && j.AssignedTechUserId == id);
+                partsUsed = await _db.JobOrderParts.CountAsync(p => p.JobOrder!.ShopId == shopId && p.JobOrder.AssignedTechUserId == id);
+                break;
+            case UserRole.Billing:
+                invoicesCreated = await _db.AuditLogs.CountAsync(a => a.UserId == id && a.EntityName == "Invoice" && a.Action == "Create");
+                paymentsProcessed = await _db.AuditLogs.CountAsync(a => a.UserId == id && a.EntityName == "Payment");
+                break;
+            case UserRole.Auditor:
+                logsReviewed = await _db.AuditLogs.CountAsync(a => a.UserId == id);
+                reportsGenerated = await _db.AuditLogs.CountAsync(a => a.UserId == id && a.EntityName == "Report");
+                break;
+            case UserRole.Admin:
+            case UserRole.SuperAdmin:
+                usersManagedCount = await _db.AuditLogs.CountAsync(a => a.UserId == id && a.EntityName == "User");
+                totalActivityCount = await _db.AuditLogs.CountAsync(a => a.UserId == id);
+                break;
+        }
 
         // Get recent activity
         var recentActivity = await _db.AuditLogs
@@ -417,7 +436,13 @@ public class UsersController : Controller
             CreatedAt = user.CreatedAt,
             LastLoginAt = lastLogin == default ? null : lastLogin,
             JobOrdersHandled = jobOrdersHandled,
+            PartsUsed = partsUsed,
+            InvoicesCreated = invoicesCreated,
             PaymentsProcessed = paymentsProcessed,
+            LogsReviewed = logsReviewed,
+            ReportsGenerated = reportsGenerated,
+            UsersManagedCount = usersManagedCount,
+            TotalActivityCount = totalActivityCount,
             RecentActivity = recentActivity
         };
     }

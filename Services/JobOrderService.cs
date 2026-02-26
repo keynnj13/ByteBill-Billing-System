@@ -26,12 +26,14 @@ public class JobOrderService : IJobOrderService
     private readonly ApplicationDbContext _db;
     private readonly IAuditService _audit;
     private readonly IHttpContextAccessor _httpCtx;
+    private readonly IInvoiceService _invoiceService;
 
-    public JobOrderService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx)
+    public JobOrderService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx, IInvoiceService invoiceService)
     {
         _db = db;
         _audit = audit;
         _httpCtx = httpCtx;
+        _invoiceService = invoiceService;
     }
 
     private string? ClientIp => _httpCtx.HttpContext?.Connection.RemoteIpAddress?.ToString();
@@ -46,8 +48,7 @@ public class JobOrderService : IJobOrderService
         [JobOrderStatus.Diagnosis]       = new() { JobOrderStatus.InProgress, JobOrderStatus.WaitingForParts, JobOrderStatus.Cancelled },
         [JobOrderStatus.InProgress]      = new() { JobOrderStatus.WaitingForParts, JobOrderStatus.Completed, JobOrderStatus.Cancelled },
         [JobOrderStatus.WaitingForParts] = new() { JobOrderStatus.InProgress, JobOrderStatus.Cancelled },
-        [JobOrderStatus.Completed]       = new() { JobOrderStatus.Delivered },
-        // Terminal states: Delivered, Cancelled — no transitions out
+        // Terminal states: Completed, Cancelled — no transitions out
     };
 
     // Roles allowed to change status (all transitions).
@@ -62,8 +63,7 @@ public class JobOrderService : IJobOrderService
         },
         ["Billing"] = new()
         {
-            JobOrderStatus.CheckedIn,
-            JobOrderStatus.Delivered, JobOrderStatus.Cancelled
+            JobOrderStatus.CheckedIn, JobOrderStatus.Cancelled
         }
     };
 
@@ -324,6 +324,9 @@ public class JobOrderService : IJobOrderService
         long shopId, long userId, string userRole, long jobOrderId, UpdateJobOrderStatusRequest req)
     {
         var jobOrder = await _db.JobOrders
+            .Include(j => j.JobOrderServices)
+            .Include(j => j.JobOrderParts)
+            .Include(j => j.Invoice)
             .FirstOrDefaultAsync(j => j.ShopId == shopId && j.JobOrderId == jobOrderId);
 
         if (jobOrder is null)
@@ -343,6 +346,37 @@ public class JobOrderService : IJobOrderService
         if (RoleAllowedTargets.TryGetValue(userRole, out var roleTargets) && !roleTargets.Contains(newStatus))
             return ApiResponse<bool>.Fail($"Role '{userRole}' is not allowed to set status to '{newStatus}'.");
 
+        // ── Workflow step validations ───────────────────────────────────
+        // CheckedIn → Diagnosis: must have a technician assigned
+        if (newStatus == JobOrderStatus.Diagnosis && jobOrder.AssignedTechUserId == null)
+            return ApiResponse<bool>.Fail("A technician must be assigned before moving to Diagnosis.");
+
+        // Diagnosis → InProgress: must have diagnosis notes filled in
+        if (newStatus == JobOrderStatus.InProgress && jobOrder.Status == JobOrderStatus.Diagnosis
+            && string.IsNullOrWhiteSpace(jobOrder.DiagnosisNotes))
+            return ApiResponse<bool>.Fail("Diagnosis notes are required before moving to In Progress. Please add your findings first.");
+
+        // → WaitingForParts: must provide notes explaining which parts are needed
+        if (newStatus == JobOrderStatus.WaitingForParts && string.IsNullOrWhiteSpace(req.Remarks))
+            return ApiResponse<bool>.Fail("Please provide notes explaining which parts are needed.");
+
+        // WaitingForParts → InProgress: must have confirmation notes (either in status remarks or already added to diagnosis notes)
+        if (newStatus == JobOrderStatus.InProgress && jobOrder.Status == JobOrderStatus.WaitingForParts
+            && string.IsNullOrWhiteSpace(req.Remarks)
+            && (string.IsNullOrWhiteSpace(jobOrder.DiagnosisNotes) || !jobOrder.DiagnosisNotes.Contains("Confirm", StringComparison.OrdinalIgnoreCase)))
+            return ApiResponse<bool>.Fail("Please provide notes confirming parts have been received (either in the notes field above or via Add Notes).");
+
+        // → Completed: must have at least one service line item
+        if (newStatus == JobOrderStatus.Completed)
+        {
+            var hasService = jobOrder.JobOrderServices.Any();
+            if (!hasService)
+                return ApiResponse<bool>.Fail("At least one service must be listed before marking as Completed.");
+
+            if (string.IsNullOrWhiteSpace(jobOrder.DiagnosisNotes))
+                return ApiResponse<bool>.Fail("Diagnosis notes are required before marking as Completed.");
+        }
+
         var oldStatus = jobOrder.Status;
         jobOrder.Status = newStatus;
         jobOrder.UpdatedAt = DateTime.UtcNow;
@@ -361,6 +395,20 @@ public class JobOrderService : IJobOrderService
 
         await _audit.LogAsync(shopId, userId, "StatusChange", "JobOrder", jobOrderId,
             $"Status changed from '{oldStatus}' to '{newStatus}'. {req.Remarks}", ClientIp);
+
+        // ── Auto-generate invoice when job is marked Completed ──────────
+        if (newStatus == JobOrderStatus.Completed && jobOrder.Invoice is null)
+        {
+            var invoiceResult = await _invoiceService.CreateFromJobOrderAsync(shopId, userId,
+                new DTOs.Invoices.CreateInvoiceRequest { JobOrderId = jobOrderId });
+
+            // If invoice creation fails, log it but don't block the status change
+            if (!invoiceResult.Success)
+            {
+                await _audit.LogAsync(shopId, userId, "Warning", "Invoice", 0,
+                    $"Auto-invoice for JO #{jobOrderId} failed: {invoiceResult.Message}", ClientIp);
+            }
+        }
 
         return ApiResponse<bool>.Ok(true);
     }
@@ -429,8 +477,8 @@ public class JobOrderService : IJobOrderService
             return ApiResponse<JobOrderServiceLineDto>.Fail("Job order not found.");
 
         // Only allow adding lines before invoice is created and while in active states
-        if (jobOrder.Status == JobOrderStatus.Delivered || jobOrder.Status == JobOrderStatus.Cancelled)
-            return ApiResponse<JobOrderServiceLineDto>.Fail("Cannot modify a delivered or cancelled job order.");
+        if (jobOrder.Status == JobOrderStatus.Completed || jobOrder.Status == JobOrderStatus.Cancelled)
+            return ApiResponse<JobOrderServiceLineDto>.Fail("Cannot modify a completed or cancelled job order.");
 
         var existingInvoice = await _db.Invoices.AnyAsync(i => i.JobOrderId == jobOrderId);
         if (existingInvoice)
@@ -441,6 +489,12 @@ public class JobOrderService : IJobOrderService
             .FirstOrDefaultAsync(s => s.ServiceId == dto.ServiceId && s.IsActive);
         if (service is null)
             return ApiResponse<JobOrderServiceLineDto>.Fail("Service not found or inactive.");
+
+        // Prevent duplicate service
+        var alreadyAdded = await _db.JobOrderServices
+            .AnyAsync(s => s.JobOrderId == jobOrderId && s.ServiceId == dto.ServiceId);
+        if (alreadyAdded)
+            return ApiResponse<JobOrderServiceLineDto>.Fail($"'{service.ServiceName}' has already been added to this job order.");
 
         var line = new Models.JobOrderService
         {
@@ -478,8 +532,8 @@ public class JobOrderService : IJobOrderService
         if (jobOrder is null)
             return ApiResponse<bool>.Fail("Job order not found.");
 
-        if (jobOrder.Status == JobOrderStatus.Delivered || jobOrder.Status == JobOrderStatus.Cancelled)
-            return ApiResponse<bool>.Fail("Cannot modify a delivered or cancelled job order.");
+        if (jobOrder.Status == JobOrderStatus.Completed || jobOrder.Status == JobOrderStatus.Cancelled)
+            return ApiResponse<bool>.Fail("Cannot modify a completed or cancelled job order.");
 
         var existingInvoice = await _db.Invoices.AnyAsync(i => i.JobOrderId == jobOrderId);
         if (existingInvoice)
@@ -511,8 +565,8 @@ public class JobOrderService : IJobOrderService
         if (jobOrder is null)
             return ApiResponse<JobOrderPartLineDto>.Fail("Job order not found.");
 
-        if (jobOrder.Status == JobOrderStatus.Delivered || jobOrder.Status == JobOrderStatus.Cancelled)
-            return ApiResponse<JobOrderPartLineDto>.Fail("Cannot modify a delivered or cancelled job order.");
+        if (jobOrder.Status == JobOrderStatus.Completed || jobOrder.Status == JobOrderStatus.Cancelled)
+            return ApiResponse<JobOrderPartLineDto>.Fail("Cannot modify a completed or cancelled job order.");
 
         var existingInvoice = await _db.Invoices.AnyAsync(i => i.JobOrderId == jobOrderId);
         if (existingInvoice)
@@ -580,8 +634,8 @@ public class JobOrderService : IJobOrderService
         if (jobOrder is null)
             return ApiResponse<bool>.Fail("Job order not found.");
 
-        if (jobOrder.Status == JobOrderStatus.Delivered || jobOrder.Status == JobOrderStatus.Cancelled)
-            return ApiResponse<bool>.Fail("Cannot modify a delivered or cancelled job order.");
+        if (jobOrder.Status == JobOrderStatus.Completed || jobOrder.Status == JobOrderStatus.Cancelled)
+            return ApiResponse<bool>.Fail("Cannot modify a completed or cancelled job order.");
 
         var existingInvoice = await _db.Invoices.AnyAsync(i => i.JobOrderId == jobOrderId);
         if (existingInvoice)

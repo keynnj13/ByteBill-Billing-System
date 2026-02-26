@@ -28,14 +28,20 @@ public class JobOrderItemViewModel
     public string? DeviceModel { get; set; }
     public string? Brand { get; set; }
     public JobOrderStatus Status { get; set; }
-    public string StatusDisplay => Status.ToString();
+    public string StatusDisplay => Status switch
+    {
+        JobOrderStatus.CheckedIn => "Checked In",
+        JobOrderStatus.InProgress => "In Progress",
+        JobOrderStatus.WaitingForParts => "Waiting for Parts",
+        _ => Status.ToString()
+    };
     public string StatusClass => Status switch
     {
         JobOrderStatus.Pending => "status-pending",
-        JobOrderStatus.CheckedIn => "status-info",
-        JobOrderStatus.Diagnosis => "status-info",
-        JobOrderStatus.InProgress => "status-primary",
-        JobOrderStatus.WaitingForParts => "status-warning",
+        JobOrderStatus.CheckedIn => "status-checkedin",
+        JobOrderStatus.Diagnosis => "status-diagnosis",
+        JobOrderStatus.InProgress => "status-inprogress",
+        JobOrderStatus.WaitingForParts => "status-waitingparts",
         JobOrderStatus.Completed => "status-success",
         JobOrderStatus.Delivered => "status-delivered",
         JobOrderStatus.Cancelled => "status-cancelled",
@@ -81,14 +87,20 @@ public class JobOrderDetailViewModel
     
     // Status
     public JobOrderStatus Status { get; set; }
-    public string StatusDisplay => Status.ToString();
+    public string StatusDisplay => Status switch
+    {
+        JobOrderStatus.CheckedIn => "Checked In",
+        JobOrderStatus.InProgress => "In Progress",
+        JobOrderStatus.WaitingForParts => "Waiting for Parts",
+        _ => Status.ToString()
+    };
     public string StatusClass => Status switch
     {
         JobOrderStatus.Pending => "status-pending",
-        JobOrderStatus.CheckedIn => "status-info",
-        JobOrderStatus.Diagnosis => "status-info",
-        JobOrderStatus.InProgress => "status-primary",
-        JobOrderStatus.WaitingForParts => "status-warning",
+        JobOrderStatus.CheckedIn => "status-checkedin",
+        JobOrderStatus.Diagnosis => "status-diagnosis",
+        JobOrderStatus.InProgress => "status-inprogress",
+        JobOrderStatus.WaitingForParts => "status-waitingparts",
         JobOrderStatus.Completed => "status-success",
         JobOrderStatus.Delivered => "status-delivered",
         JobOrderStatus.Cancelled => "status-cancelled",

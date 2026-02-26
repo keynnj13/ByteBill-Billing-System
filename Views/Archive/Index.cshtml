@@ -1,3 +1,4 @@
+@using ByteBill_BS.Models
 @using ByteBill_BS.Models.Enums
 @using ByteBill_BS.ViewModels.Admin
 @using ByteBill_BS.ViewModels.JobOrders
@@ -9,6 +10,19 @@
     var joModel = (JobOrderListViewModel)ViewBag.JobOrders;
     var invModel = (InvoiceListViewModel)ViewBag.Invoices;
     var usrModel = (UserListViewModel)ViewBag.DeactivatedUsers;
+    var archivedCustomers = (List<Customer>)ViewBag.ArchivedCustomers;
+    var archivedServices = (List<ServiceCatalog>)ViewBag.ArchivedServices;
+    var archivedInventory = (List<InventoryItem>)ViewBag.ArchivedInventory;
+    int custTotal = (int)ViewBag.ArchivedCustomersTotal;
+    int svcTotal = (int)ViewBag.ArchivedServicesTotal;
+    int invtTotal = (int)ViewBag.ArchivedInventoryTotal;
+    int custPage = (int)ViewBag.ArchivedCustomersPage;
+    int svcPage = (int)ViewBag.ArchivedServicesPage;
+    int invtPage = (int)ViewBag.ArchivedInventoryPage;
+    int pageSize = (int)ViewBag.PageSize;
+    int custTotalPages = (int)Math.Ceiling((double)custTotal / pageSize);
+    int svcTotalPages = (int)Math.Ceiling((double)svcTotal / pageSize);
+    int invtTotalPages = (int)Math.Ceiling((double)invtTotal / pageSize);
 }
 
 <partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Home") }, new() { Label = "Archive", IsActive = true } } })" />
@@ -19,7 +33,7 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
             Archive
         </h1>
-        <p class="arc-subtitle">Archived job orders, invoices, and deactivated users</p>
+        <p class="arc-subtitle">Archived records and deactivated users</p>
     </div>
 </div>
 
@@ -46,6 +60,21 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="23" y1="13" x2="17" y2="13"></line></svg>
         Users
         <span class="arc-tab-badge">@usrModel.TotalCount</span>
+    </button>
+    <button class="arc-tab @(tab == "customers" ? "arc-tab-active" : "")" data-tab="customers" onclick="switchArchiveTab('customers')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        Customers
+        <span class="arc-tab-badge">@custTotal</span>
+    </button>
+    <button class="arc-tab @(tab == "services" ? "arc-tab-active" : "")" data-tab="services" onclick="switchArchiveTab('services')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"></path></svg>
+        Services
+        <span class="arc-tab-badge">@svcTotal</span>
+    </button>
+    <button class="arc-tab @(tab == "inventory" ? "arc-tab-active" : "")" data-tab="inventory" onclick="switchArchiveTab('inventory')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+        Inventory
+        <span class="arc-tab-badge">@invtTotal</span>
     </button>
 </div>
 
@@ -374,6 +403,200 @@
     </div>
 </div>
 
+<!-- ═══════ CUSTOMERS TAB ═══════ -->
+<div class="arc-tab-panel @(tab == "customers" ? "arc-tab-panel-active" : "")" id="tab-customers">
+    <div class="card">
+        <div class="card-header">
+            <form method="get" class="filter-form">
+                <input type="hidden" name="tab" value="customers" />
+                <div class="search-input-wrapper">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" name="search" value="@(tab == "customers" ? ViewBag.Search : "")" placeholder="Search archived customers..." class="form-input search-input" />
+                </div>
+                <button type="submit" class="btn btn-outline-primary">Filter</button>
+            </form>
+        </div>
+        <div class="card-body p-0">
+            @if (archivedCustomers.Any())
+            {
+                <div class="table-container">
+                    <table class="table" style="table-layout: fixed;">
+                        <colgroup>
+                            <col style="width: 25%;" /><col style="width: 25%;" /><col style="width: 20%;" /><col style="width: 20%;" /><col style="width: 10%;" />
+                        </colgroup>
+                        <thead>
+                            <tr><th>Customer</th><th>Email</th><th>Phone</th><th>Created</th><th class="text-right">Actions</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var c in archivedCustomers)
+                            {
+                                <tr>
+                                    <td><div class="customer-cell"><div class="avatar-xs">@c.Initials</div><span class="customer-text">@c.FullName</span></div></td>
+                                    <td style="font-size:13px;color:#6b7280;">@(c.Email ?? "—")</td>
+                                    <td style="font-size:13px;color:#6b7280;">@(c.Phone ?? "—")</td>
+                                    <td><span class="date-text">@c.CreatedAt.ToString("MMM d, yyyy")</span></td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <form asp-action="RestoreCustomer" asp-controller="Archive" asp-route-id="@c.CustomerId" method="post" style="display:inline;">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn-action restore-btn" title="Restore" onclick="return confirm('Restore this customer?');">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                @if (custTotalPages > 1)
+                {
+                    <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel { CurrentPage = custPage, TotalPages = custTotalPages, TotalItems = custTotal, PageSize = pageSize, BaseUrl = Url.Action("Index", "Archive", new { tab = "customers", search = (tab == "customers" ? (string?)ViewBag.Search : null) })! })" />
+                }
+            }
+            else
+            {
+                <div class="empty-state" style="padding: 60px 20px; text-align: center;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                    <h3 style="color: #6b7280; font-size: 16px; margin-bottom: 4px;">No archived customers</h3>
+                    <p style="color: #9ca3af; font-size: 14px;">Archived customers will appear here.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- ═══════ SERVICES TAB ═══════ -->
+<div class="arc-tab-panel @(tab == "services" ? "arc-tab-panel-active" : "")" id="tab-services">
+    <div class="card">
+        <div class="card-header">
+            <form method="get" class="filter-form">
+                <input type="hidden" name="tab" value="services" />
+                <div class="search-input-wrapper">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" name="search" value="@(tab == "services" ? ViewBag.Search : "")" placeholder="Search archived services..." class="form-input search-input" />
+                </div>
+                <button type="submit" class="btn btn-outline-primary">Filter</button>
+            </form>
+        </div>
+        <div class="card-body p-0">
+            @if (archivedServices.Any())
+            {
+                <div class="table-container">
+                    <table class="table" style="table-layout: fixed;">
+                        <colgroup>
+                            <col style="width: 30%;" /><col style="width: 20%;" /><col style="width: 15%;" /><col style="width: 15%;" /><col style="width: 10%;" />
+                        </colgroup>
+                        <thead>
+                            <tr><th>Service</th><th>Category</th><th class="text-right">Price</th><th>Duration</th><th class="text-right">Actions</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var s in archivedServices)
+                            {
+                                <tr>
+                                    <td style="font-size:13px;font-weight:500;color:#1f2937;">@s.ServiceName</td>
+                                    <td><span class="category-badge">@(s.ServiceCategory?.CategoryName ?? "—")</span></td>
+                                    <td class="text-right" style="font-size:13px;">@s.BasePrice.ToString("C")</td>
+                                    <td style="font-size:13px;color:#6b7280;">@s.EstimatedDuration min</td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <form asp-action="RestoreService" asp-controller="Archive" asp-route-id="@s.ServiceId" method="post" style="display:inline;">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn-action restore-btn" title="Restore" onclick="return confirm('Restore this service?');">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                @if (svcTotalPages > 1)
+                {
+                    <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel { CurrentPage = svcPage, TotalPages = svcTotalPages, TotalItems = svcTotal, PageSize = pageSize, BaseUrl = Url.Action("Index", "Archive", new { tab = "services", search = (tab == "services" ? (string?)ViewBag.Search : null) })! })" />
+                }
+            }
+            else
+            {
+                <div class="empty-state" style="padding: 60px 20px; text-align: center;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                    <h3 style="color: #6b7280; font-size: 16px; margin-bottom: 4px;">No archived services</h3>
+                    <p style="color: #9ca3af; font-size: 14px;">Archived services will appear here.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- ═══════ INVENTORY TAB ═══════ -->
+<div class="arc-tab-panel @(tab == "inventory" ? "arc-tab-panel-active" : "")" id="tab-inventory">
+    <div class="card">
+        <div class="card-header">
+            <form method="get" class="filter-form">
+                <input type="hidden" name="tab" value="inventory" />
+                <div class="search-input-wrapper">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" name="search" value="@(tab == "inventory" ? ViewBag.Search : "")" placeholder="Search archived inventory..." class="form-input search-input" />
+                </div>
+                <button type="submit" class="btn btn-outline-primary">Filter</button>
+            </form>
+        </div>
+        <div class="card-body p-0">
+            @if (archivedInventory.Any())
+            {
+                <div class="table-container">
+                    <table class="table" style="table-layout: fixed;">
+                        <colgroup>
+                            <col style="width: 12%;" /><col style="width: 22%;" /><col style="width: 15%;" /><col style="width: 12%;" /><col style="width: 12%;" /><col style="width: 15%;" /><col style="width: 12%;" />
+                        </colgroup>
+                        <thead>
+                            <tr><th>SKU</th><th>Item</th><th>Category</th><th class="text-center">Stock</th><th class="text-right">Cost</th><th class="text-right">Price</th><th class="text-right">Actions</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var i in archivedInventory)
+                            {
+                                <tr>
+                                    <td><span style="font-family:monospace;font-size:12px;color:#6b7280;background:#f9fafb;padding:3px 8px;border-radius:4px;">@i.SKU</span></td>
+                                    <td style="font-size:13px;font-weight:500;color:#1f2937;">@i.ItemName</td>
+                                    <td><span class="category-badge">@(i.InventoryCategory?.CategoryName ?? "—")</span></td>
+                                    <td class="text-center" style="font-size:13px;">@i.QtyOnHand</td>
+                                    <td class="text-right" style="font-size:13px;">@i.UnitCost.ToString("C")</td>
+                                    <td class="text-right" style="font-size:13px;font-weight:500;">@i.UnitPrice.ToString("C")</td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <form asp-action="RestoreInventory" asp-controller="Archive" asp-route-id="@i.ItemId" method="post" style="display:inline;">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn-action restore-btn" title="Restore" onclick="return confirm('Restore this item?');">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                @if (invtTotalPages > 1)
+                {
+                    <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel { CurrentPage = invtPage, TotalPages = invtTotalPages, TotalItems = invtTotal, PageSize = pageSize, BaseUrl = Url.Action("Index", "Archive", new { tab = "inventory", search = (tab == "inventory" ? (string?)ViewBag.Search : null) })! })" />
+                }
+            }
+            else
+            {
+                <div class="empty-state" style="padding: 60px 20px; text-align: center;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                    <h3 style="color: #6b7280; font-size: 16px; margin-bottom: 4px;">No archived inventory items</h3>
+                    <p style="color: #9ca3af; font-size: 14px;">Archived inventory items will appear here.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
 <script>
 function switchArchiveTab(tab) {
     document.querySelectorAll('.arc-tab').forEach(t => t.classList.remove('arc-tab-active'));
@@ -425,6 +648,7 @@ function switchArchiveTab(tab) {
     .action-buttons { display: flex; gap: 4px; justify-content: flex-end; }
     .btn-action { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: #6b7280; transition: all 0.15s; border: none; background: none; cursor: pointer; }
     .restore-btn:hover { background: #ecfdf5; color: #16a34a; }
+    .category-badge { font-size: 11px; padding: 3px 10px; border-radius: 99px; background: #f3f4f6; color: #374151; font-weight: 500; display: inline-block; }
     @@media (max-width: 768px) {
         .arc-page-header { flex-direction: column; gap: 12px; }
         .arc-tabs { flex-direction: column; }

@@ -124,9 +124,15 @@ public class UserDetailViewModel
     public DateTime CreatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
 
-    // Activity summary
-    public int JobOrdersHandled { get; set; }
-    public int PaymentsProcessed { get; set; }
+    // Activity summary – role-specific
+    public int JobOrdersHandled { get; set; }      // Technician
+    public int PartsUsed { get; set; }              // Technician
+    public int InvoicesCreated { get; set; }        // Billing
+    public int PaymentsProcessed { get; set; }      // Billing
+    public int LogsReviewed { get; set; }           // Auditor
+    public int ReportsGenerated { get; set; }       // Auditor
+    public int UsersManagedCount { get; set; }      // Admin
+    public int TotalActivityCount { get; set; }     // Admin
     public List<UserActivityItem> RecentActivity { get; set; } = new();
 }
 

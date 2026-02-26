@@ -128,7 +128,7 @@ public class InventoryService : IInventoryService
     {
         var query = _db.InventoryItems
             .Include(i => i.InventoryCategory)
-            .Where(i => i.ShopId == shopId)
+            .Where(i => i.ShopId == shopId && i.IsActive)
             .AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(req.Search))
