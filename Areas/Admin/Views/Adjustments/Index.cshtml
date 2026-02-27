@@ -104,8 +104,18 @@
             }
             else
             {
-                <div class="table-container">
-                    <table class="table">
+                <div class="table-container" style="overflow-x: auto;">
+                    <table class="table" style="min-width: 900px; table-layout: fixed;">
+                        <colgroup>
+                            <col style="width: 8%;" />
+                            <col style="width: 13%;" />
+                            <col style="width: 14%;" />
+                            <col style="width: 11%;" />
+                            <col style="width: 16%;" />
+                            <col style="width: 11%;" />
+                            <col style="width: 14%;" />
+                            <col style="width: 13%;" />
+                        </colgroup>
                         <thead>
                             <tr>
                                 <th>TYPE</th>
@@ -115,7 +125,7 @@
                                 <th>REASON</th>
                                 <th>REQUESTED BY</th>
                                 <th>DATE</th>
-                                <th style="min-width: 220px; text-align: center;">ACTIONS</th>
+                                <th class="text-center">ACTIONS</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -130,13 +140,13 @@
                                     <td class="text-right"><span class="@(isCredit ? "adj-amount-credit" : "adj-amount-debit")">@(isCredit ? "−" : "+")₱@req.Amount.ToString("N2")</span></td>
                                     <td><span class="adj-reason" title="@req.Reason">@(req.Reason.Length > 40 ? req.Reason[..37] + "..." : req.Reason)</span></td>
                                     <td>@req.RequestedBy</td>
-                                    <td class="text-muted" style="white-space:nowrap;">@req.CreatedAt.ToString("MMM dd, yyyy h:mm tt")</td>
+                                    <td class="text-muted" style="white-space:nowrap; font-size:12px;">@req.CreatedAt.ToString("MMM dd, yyyy")</td>
                                     <td>
                                         <div class="adj-action-group">
                                             <form asp-action="Approve" method="post" style="display:inline;">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="id" value="@req.AdjustmentId" />
-                                                <button type="submit" class="adj-btn-approve" onclick="return confirm('Approve this adjustment?');">
+                                                <button type="submit" class="adj-btn-approve" title="Approve" onclick="return confirm('Approve this adjustment?');">
                                                     <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                                                     Approve
                                                 </button>
@@ -144,7 +154,7 @@
                                             <form asp-action="Reject" method="post" style="display:inline;">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="id" value="@req.AdjustmentId" />
-                                                <button type="submit" class="adj-btn-reject" onclick="return confirm('Reject this adjustment?');">
+                                                <button type="submit" class="adj-btn-reject" title="Reject" onclick="return confirm('Reject this adjustment?');">
                                                     <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                                     Reject
                                                 </button>
@@ -259,31 +269,78 @@
             else
             {
                 <div class="table-container">
-                    <table class="table">
+                    <table class="table" style="table-layout: fixed;">
+                        <colgroup>
+                            <col style="width: 30%;" />
+                            <col style="width: 20%;" />
+                            <col style="width: 20%;" />
+                            <col style="width: 30%;" />
+                        </colgroup>
                         <thead>
                             <tr>
                                 <th>NAME</th>
                                 <th>CATEGORY</th>
                                 <th class="text-right">PERCENTAGE</th>
-                                <th style="width: 80px; text-align: center;">REMOVE</th>
+                                <th class="text-center">ACTIONS</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var tc in typeConfigs)
                             {
                                 var catClass = tc.Category == "Credit" ? "status-info" : tc.Category == "Refund" ? "status-warning" : "status-purple";
-                                <tr>
-                                    <td class="fw-medium">@tc.Name</td>
-                                    <td><span class="status-indicator @catClass">@tc.Category</span></td>
-                                    <td class="text-right" style="font-weight: 600;">@tc.Percentage%</td>
-                                    <td class="text-center">
-                                        <form asp-action="DeleteTypeConfig" method="post" style="display:inline;">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="configId" value="@tc.Id" />
-                                            <button type="submit" class="adj-btn-reject" onclick="return confirm('Remove this adjustment type?');" style="padding: 4px 8px;">
-                                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                <tr id="type-row-@tc.Id" data-id="@tc.Id">
+                                    <!-- Display Mode -->
+                                    <td class="fw-medium type-display" data-field="name">@tc.Name</td>
+                                    <td class="type-display" data-field="category"><span class="status-indicator @catClass">@tc.Category</span></td>
+                                    <td class="text-right type-display" data-field="percentage" style="font-weight: 600;">@tc.Percentage.ToString("F2")%</td>
+                                    <td class="text-center type-display">
+                                        <div style="display: flex; gap: 6px; justify-content: center;">
+                                            <button type="button" class="adj-btn-edit" title="Edit" onclick="startEditType(@tc.Id, this)">
+                                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                                             </button>
-                                        </form>
+                                            <form asp-action="DeleteTypeConfig" method="post" style="display:inline;">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="configId" value="@tc.Id" />
+                                                <button type="submit" class="adj-btn-reject" title="Delete" onclick="return confirm('Remove this adjustment type?');" style="padding: 4px 8px;">
+                                                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                    <!-- Edit Mode (hidden by default) -->
+                                    <td class="type-edit" style="display:none;">
+                                        <input type="text" class="form-input form-input-sm edit-name" value="@tc.Name" style="font-size:13px; padding:5px 8px;" />
+                                    </td>
+                                    <td class="type-edit" style="display:none;">
+                                        <select class="form-input form-input-sm edit-category" style="font-size:13px; padding:5px 8px;">
+                                            @{
+                                                var cats = new[] { "Credit", "Debit", "Refund" };
+                                                foreach (var cat in cats)
+                                                {
+                                                    if (tc.Category == cat)
+                                                    {
+                                                        <option value="@cat" selected="selected">@cat</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@cat">@cat</option>
+                                                    }
+                                                }
+                                            }
+                                        </select>
+                                    </td>
+                                    <td class="type-edit" style="display:none;">
+                                        <input type="number" class="form-input form-input-sm edit-percentage" value="@tc.Percentage" min="0" max="100" step="0.01" style="font-size:13px; padding:5px 8px;" />
+                                    </td>
+                                    <td class="text-center type-edit" style="display:none;">
+                                        <div style="display: flex; gap: 6px; justify-content: center;">
+                                            <button type="button" class="adj-btn-approve" title="Save" onclick="saveEditType(@tc.Id)" style="padding: 4px 8px;">
+                                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                            </button>
+                                            <button type="button" class="adj-btn-reject" title="Cancel" onclick="cancelEditType(@tc.Id)" style="padding: 4px 8px;">
+                                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             }
@@ -321,6 +378,8 @@
     .adj-btn-approve:hover { background: #10b981; color: white; }
     .adj-btn-reject { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: inherit; border: 1px solid #ef4444; color: #ef4444; background: transparent; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
     .adj-btn-reject:hover { background: #ef4444; color: white; }
+    .adj-btn-edit { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: inherit; border: 1px solid #3b82f6; color: #3b82f6; background: transparent; cursor: pointer; transition: all 0.15s; }
+    .adj-btn-edit:hover { background: #3b82f6; color: white; }
 
     /* Status Badges */
     .adj-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
@@ -344,4 +403,40 @@
         if (document.querySelector('.modal:not(.hidden)') || document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'SELECT') return;
         location.reload();
     }, 30000);
+
+    function startEditType(id) {
+        var row = document.getElementById('type-row-' + id);
+        row.querySelectorAll('.type-display').forEach(el => el.style.display = 'none');
+        row.querySelectorAll('.type-edit').forEach(el => el.style.display = '');
+    }
+
+    function cancelEditType(id) {
+        var row = document.getElementById('type-row-' + id);
+        row.querySelectorAll('.type-display').forEach(el => el.style.display = '');
+        row.querySelectorAll('.type-edit').forEach(el => el.style.display = 'none');
+    }
+
+    function saveEditType(id) {
+        var row = document.getElementById('type-row-' + id);
+        var name = row.querySelector('.edit-name').value;
+        var category = row.querySelector('.edit-category').value;
+        var percentage = row.querySelector('.edit-percentage').value;
+
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '@Url.Action("UpdateTypeConfig", "Adjustments", new { area = "Admin" })';
+        form.style.display = 'none';
+
+        var token = document.querySelector('#tab-types input[name="__RequestVerificationToken"]').value;
+        var fields = { '__RequestVerificationToken': token, 'configId': id, 'name': name, 'category': category, 'percentage': percentage, 'isActive': 'true' };
+        for (var key in fields) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = fields[key];
+            form.appendChild(input);
+        }
+        document.body.appendChild(form);
+        form.submit();
+    }
 </script>
