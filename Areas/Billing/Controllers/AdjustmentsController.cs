@@ -36,6 +36,7 @@ public class AdjustmentsController : Controller
         var userId = User.GetUserId();
         var metrics = await _adjustmentService.GetUserMetricsAsync(shopId, userId);
         var adjustments = await _adjustmentService.GetByUserAsync(shopId, userId);
+        var typeConfigs = await _adjustmentService.GetTypeConfigsAsync(shopId);
 
         // Get invoices for the create form
         var invoices = await _db.Invoices
@@ -47,6 +48,7 @@ public class AdjustmentsController : Controller
         ViewBag.Metrics = metrics;
         ViewBag.Adjustments = adjustments;
         ViewBag.Invoices = invoices;
+        ViewBag.TypeConfigs = typeConfigs;
         return View();
     }
 

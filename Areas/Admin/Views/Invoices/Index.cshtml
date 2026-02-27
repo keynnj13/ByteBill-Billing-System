@@ -183,3 +183,10 @@
         .search-input { min-width: 100%; }
     }
 </style>
+
+<script>
+    setInterval(function() {
+        if (document.querySelector('.modal:not(.hidden)') || document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'SELECT') return;
+        location.reload();
+    }, 30000);
+</script>

@@ -4,6 +4,7 @@
     var metrics = (AdjustmentMetricsDto)ViewBag.Metrics;
     var pendingRequests = (List<AdjustmentListItemDto>)ViewBag.PendingRequests;
     var historyItems = (List<AdjustmentListItemDto>)ViewBag.AllAdjustments;
+    var typeConfigs = (List<AdjustmentTypeConfigDto>)ViewBag.TypeConfigs;
 }
 
 <partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Adjustments", IsActive = true } } })" />
@@ -68,138 +69,229 @@
     </div>
 </div>
 
-<!-- Pending Requests -->
-<div class="card" style="margin-bottom: 24px;">
-    <div class="card-body" style="padding: 0;">
-        <div style="padding: 20px 24px 12px;">
-            <h3 class="adj-section-title">
-                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                Pending Requests
-            </h3>
-            <p class="adj-section-desc">@pendingRequests.Count adjustment request(s) awaiting your review</p>
-        </div>
+<!-- Tabs -->
+<div class="adj-tabs">
+    <button class="adj-tab active" data-tab="pending" onclick="switchTab('pending')">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+        Pending Requests
+        @if (pendingRequests.Count > 0) { <span class="adj-tab-badge">@pendingRequests.Count</span> }
+    </button>
+    <button class="adj-tab" data-tab="history" onclick="switchTab('history')">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        Adjustment History
+    </button>
+    <button class="adj-tab" data-tab="settings" onclick="switchTab('settings')">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+        Type Settings
+    </button>
+</div>
 
-        @if (pendingRequests.Count == 0)
-        {
-            <div style="padding: 40px 24px; text-align: center;">
-                <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: #9ca3af; margin: 0 auto 12px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                <p style="color: #6b7280; font-weight: 600;">All caught up!</p>
-                <p style="color: #9ca3af; font-size: 14px;">No pending adjustment requests at this time.</p>
+<!-- Tab: Pending Requests -->
+<div class="adj-tab-content active" id="tab-pending">
+    <div class="card">
+        <div class="card-body" style="padding: 0;">
+            <div style="padding: 20px 24px 12px;">
+                <p class="adj-section-desc">@pendingRequests.Count adjustment request(s) awaiting your review</p>
             </div>
-        }
-        else
-        {
-            <div class="table-container">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>TYPE</th>
-                            <th>INVOICE</th>
-                            <th>CUSTOMER</th>
-                            <th class="text-right">AMOUNT</th>
-                            <th>REASON</th>
-                            <th>REQUESTED BY</th>
-                            <th>DATE</th>
-                            <th class="text-center">ACTIONS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var req in pendingRequests)
-                        {
-                            var badgeClass = req.AdjustmentType == "Credit" ? "status-info" : req.AdjustmentType == "Refund" ? "status-warning" : "status-purple";
-                            var isCredit = req.AdjustmentType is "Credit" or "Refund";
+
+            @if (pendingRequests.Count == 0)
+            {
+                <div style="padding: 40px 24px; text-align: center;">
+                    <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: #9ca3af; margin: 0 auto 12px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <p style="color: #6b7280; font-weight: 600;">All caught up!</p>
+                    <p style="color: #9ca3af; font-size: 14px;">No pending adjustment requests at this time.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
                             <tr>
-                                <td><span class="status-indicator @badgeClass">@req.AdjustmentType</span></td>
-                                <td class="adj-inv-link">@req.InvoiceNumber</td>
-                                <td class="fw-medium">@req.CustomerName</td>
-                                <td class="text-right"><span class="@(isCredit ? "adj-amount-credit" : "adj-amount-debit")">@(isCredit ? "−" : "+")₱@req.Amount.ToString("N2")</span></td>
-                                <td><span class="adj-reason" title="@req.Reason">@(req.Reason.Length > 40 ? req.Reason[..37] + "..." : req.Reason)</span></td>
-                                <td>@req.RequestedBy</td>
-                                <td class="text-muted" style="white-space:nowrap;">@req.CreatedAt.ToString("MMM dd, yyyy h:mm tt")</td>
-                                <td class="text-center">
-                                    <div style="display: flex; gap: 6px; justify-content: center;">
-                                        <form asp-action="Approve" method="post" style="display:inline;">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="id" value="@req.AdjustmentId" />
-                                            <button type="submit" class="adj-btn-approve" onclick="return confirm('Approve this adjustment? The invoice balance will be updated automatically.');">
-                                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                                Approve
-                                            </button>
-                                        </form>
-                                        <form asp-action="Reject" method="post" style="display:inline;">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="id" value="@req.AdjustmentId" />
-                                            <button type="submit" class="adj-btn-reject" onclick="return confirm('Reject this adjustment?');">
-                                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                                Reject
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
+                                <th>TYPE</th>
+                                <th>INVOICE</th>
+                                <th>CUSTOMER</th>
+                                <th class="text-right">AMOUNT</th>
+                                <th>REASON</th>
+                                <th>REQUESTED BY</th>
+                                <th>DATE</th>
+                                <th style="min-width: 160px; text-align: center;">ACTIONS</th>
                             </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        }
+                        </thead>
+                        <tbody>
+                            @foreach (var req in pendingRequests)
+                            {
+                                var badgeClass = req.AdjustmentType == "Credit" ? "status-info" : req.AdjustmentType == "Refund" ? "status-warning" : "status-purple";
+                                var isCredit = req.AdjustmentType is "Credit" or "Refund";
+                                <tr>
+                                    <td><span class="status-indicator @badgeClass">@req.AdjustmentType</span></td>
+                                    <td class="adj-inv-link">@req.InvoiceNumber</td>
+                                    <td class="fw-medium">@req.CustomerName</td>
+                                    <td class="text-right"><span class="@(isCredit ? "adj-amount-credit" : "adj-amount-debit")">@(isCredit ? "−" : "+")₱@req.Amount.ToString("N2")</span></td>
+                                    <td><span class="adj-reason" title="@req.Reason">@(req.Reason.Length > 40 ? req.Reason[..37] + "..." : req.Reason)</span></td>
+                                    <td>@req.RequestedBy</td>
+                                    <td class="text-muted" style="white-space:nowrap;">@req.CreatedAt.ToString("MMM dd, yyyy h:mm tt")</td>
+                                    <td>
+                                        <div class="adj-action-group">
+                                            <form asp-action="Approve" method="post" style="display:inline;">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@req.AdjustmentId" />
+                                                <button type="submit" class="adj-btn-approve" onclick="return confirm('Approve this adjustment?');">
+                                                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                                    Approve
+                                                </button>
+                                            </form>
+                                            <form asp-action="Reject" method="post" style="display:inline;">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@req.AdjustmentId" />
+                                                <button type="submit" class="adj-btn-reject" onclick="return confirm('Reject this adjustment?');">
+                                                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                    Reject
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
     </div>
 </div>
 
-<!-- Adjustment History -->
-<div class="card">
-    <div class="card-body" style="padding: 0;">
-        <div style="padding: 20px 24px 12px;">
-            <h3 class="adj-section-title">
-                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                Adjustment History
-            </h3>
-        </div>
-
-        @if (historyItems.Count == 0)
-        {
-            <div style="padding: 40px 24px; text-align: center;">
-                <p style="color: #9ca3af; font-size: 14px;">No adjustment history yet.</p>
-            </div>
-        }
-        else
-        {
-            <div class="table-container">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>TYPE</th>
-                            <th>INVOICE</th>
-                            <th>CUSTOMER</th>
-                            <th class="text-right">AMOUNT</th>
-                            <th>REASON</th>
-                            <th>REQUESTED BY</th>
-                            <th>REVIEWED BY</th>
-                            <th>STATUS</th>
-                            <th>DATE</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var adj in historyItems)
-                        {
-                            var badgeClass = adj.AdjustmentType == "Credit" ? "status-info" : adj.AdjustmentType == "Refund" ? "status-warning" : "status-purple";
-                            var statusBadge = adj.Status == "Approved" ? "status-success" : adj.Status == "Rejected" ? "status-danger" : "status-pending";
-                            var isCredit = adj.AdjustmentType is "Credit" or "Refund";
+<!-- Tab: Adjustment History -->
+<div class="adj-tab-content" id="tab-history">
+    <div class="card">
+        <div class="card-body" style="padding: 0;">
+            @if (historyItems.Count == 0)
+            {
+                <div style="padding: 40px 24px; text-align: center;">
+                    <p style="color: #9ca3af; font-size: 14px;">No adjustment history yet.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
                             <tr>
-                                <td><span class="status-indicator @badgeClass">@adj.AdjustmentType</span></td>
-                                <td class="adj-inv-link">@adj.InvoiceNumber</td>
-                                <td class="fw-medium">@adj.CustomerName</td>
-                                <td class="text-right"><span class="@(isCredit ? "adj-amount-credit" : "adj-amount-debit")">@(isCredit ? "−" : "+")₱@adj.Amount.ToString("N2")</span></td>
-                                <td><span class="adj-reason" title="@adj.Reason">@(adj.Reason.Length > 35 ? adj.Reason[..32] + "..." : adj.Reason)</span></td>
-                                <td>@adj.RequestedBy</td>
-                                <td class="text-muted">@(adj.ReviewedBy ?? "—")</td>
-                                <td><span class="status-indicator @statusBadge">@adj.Status</span></td>
-                                <td class="text-muted" style="white-space:nowrap;">@adj.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                <th>TYPE</th>
+                                <th>INVOICE</th>
+                                <th>CUSTOMER</th>
+                                <th class="text-right">AMOUNT</th>
+                                <th>REASON</th>
+                                <th>REQUESTED BY</th>
+                                <th>REVIEWED BY</th>
+                                <th>STATUS</th>
+                                <th>DATE</th>
                             </tr>
-                        }
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            @foreach (var adj in historyItems)
+                            {
+                                var badgeClass = adj.AdjustmentType == "Credit" ? "status-info" : adj.AdjustmentType == "Refund" ? "status-warning" : "status-purple";
+                                var statusBadge = adj.Status == "Approved" ? "adj-badge-approved" : adj.Status == "Rejected" ? "adj-badge-rejected" : "adj-badge-pending";
+                                var isCredit = adj.AdjustmentType is "Credit" or "Refund";
+                                <tr>
+                                    <td><span class="status-indicator @badgeClass">@adj.AdjustmentType</span></td>
+                                    <td class="adj-inv-link">@adj.InvoiceNumber</td>
+                                    <td class="fw-medium">@adj.CustomerName</td>
+                                    <td class="text-right"><span class="@(isCredit ? "adj-amount-credit" : "adj-amount-debit")">@(isCredit ? "−" : "+")₱@adj.Amount.ToString("N2")</span></td>
+                                    <td><span class="adj-reason" title="@adj.Reason">@(adj.Reason.Length > 35 ? adj.Reason[..32] + "..." : adj.Reason)</span></td>
+                                    <td>@adj.RequestedBy</td>
+                                    <td class="text-muted">@(adj.ReviewedBy ?? "—")</td>
+                                    <td><span class="adj-badge @statusBadge">@adj.Status</span></td>
+                                    <td class="text-muted" style="white-space:nowrap;">@adj.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Tab: Type Settings -->
+<div class="adj-tab-content" id="tab-settings">
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="card-body">
+            <h3 class="adj-section-title" style="margin-bottom: 16px;">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                Add Adjustment Type
+            </h3>
+            <form asp-action="CreateTypeConfig" method="post" style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+                @Html.AntiForgeryToken()
+                <div class="form-group" style="flex: 2; min-width: 180px;">
+                    <label class="form-label">Name</label>
+                    <input type="text" name="name" class="form-input" placeholder="e.g. Senior Citizen Discount" required />
+                </div>
+                <div class="form-group" style="flex: 1; min-width: 120px;">
+                    <label class="form-label">Category</label>
+                    <select name="category" class="form-input" required>
+                        <option value="Credit">Credit</option>
+                        <option value="Debit">Debit</option>
+                        <option value="Refund">Refund</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1; min-width: 100px;">
+                    <label class="form-label">Percentage (%)</label>
+                    <input type="number" name="percentage" class="form-input" placeholder="0" min="0" max="100" step="0.01" required />
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm" style="height: 38px;">Add Type</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body" style="padding: 0;">
+            <div style="padding: 20px 24px 12px;">
+                <h3 class="adj-section-title">Configured Adjustment Types</h3>
             </div>
-        }
+            @if (typeConfigs.Count == 0)
+            {
+                <div style="padding: 40px 24px; text-align: center;">
+                    <p style="color: #9ca3af; font-size: 14px;">No adjustment types configured yet. Add one above.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>NAME</th>
+                                <th>CATEGORY</th>
+                                <th class="text-right">PERCENTAGE</th>
+                                <th style="width: 80px; text-align: center;">REMOVE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var tc in typeConfigs)
+                            {
+                                var catClass = tc.Category == "Credit" ? "status-info" : tc.Category == "Refund" ? "status-warning" : "status-purple";
+                                <tr>
+                                    <td class="fw-medium">@tc.Name</td>
+                                    <td><span class="status-indicator @catClass">@tc.Category</span></td>
+                                    <td class="text-right" style="font-weight: 600;">@tc.Percentage%</td>
+                                    <td class="text-center">
+                                        <form asp-action="DeleteTypeConfig" method="post" style="display:inline;">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="configId" value="@tc.Id" />
+                                            <button type="submit" class="adj-btn-reject" onclick="return confirm('Remove this adjustment type?');" style="padding: 4px 8px;">
+                                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
     </div>
 </div>
 
@@ -213,10 +305,43 @@
     .adj-reason { color: #374151; font-size: 13px; max-width: 200px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .adj-amount-credit { color: #059669; font-weight: 600; font-size: 13px; }
     .adj-amount-debit { color: #dc2626; font-weight: 600; font-size: 13px; }
-    .adj-btn-approve { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: inherit; border: 1px solid #10b981; color: #10b981; background: transparent; cursor: pointer; transition: all 0.2s; }
+
+    /* Tabs */
+    .adj-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; }
+    .adj-tab { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; font-size: 13px; font-weight: 600; color: #6b7280; background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; font-family: inherit; }
+    .adj-tab:hover { color: #1f2937; }
+    .adj-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+    .adj-tab-badge { background: #ef4444; color: white; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 99px; min-width: 18px; text-align: center; }
+    .adj-tab-content { display: none; }
+    .adj-tab-content.active { display: block; }
+
+    /* Action Buttons - proper spacing */
+    .adj-action-group { display: flex; gap: 8px; justify-content: center; flex-wrap: nowrap; }
+    .adj-btn-approve { display: inline-flex; align-items: center; gap: 4px; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: inherit; border: 1px solid #10b981; color: #10b981; background: transparent; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
     .adj-btn-approve:hover { background: #10b981; color: white; }
-    .adj-btn-reject { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: inherit; border: 1px solid #ef4444; color: #ef4444; background: transparent; cursor: pointer; transition: all 0.2s; }
+    .adj-btn-reject { display: inline-flex; align-items: center; gap: 4px; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: inherit; border: 1px solid #ef4444; color: #ef4444; background: transparent; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
     .adj-btn-reject:hover { background: #ef4444; color: white; }
+
+    /* Status Badges */
+    .adj-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .adj-badge-pending  { background: rgba(245,176,65,0.12); color: #d97706; }
+    .adj-badge-approved { background: rgba(16,185,129,0.12); color: #059669; }
+    .adj-badge-rejected { background: rgba(239,68,68,0.12);  color: #dc2626; }
+
     @@media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr) !important; } }
     @@media (max-width: 640px) { .stats-grid { grid-template-columns: 1fr !important; } }
 </style>
+
+<script>
+    function switchTab(tabName) {
+        document.querySelectorAll('.adj-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.adj-tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+        document.getElementById(`tab-${tabName}`).classList.add('active');
+    }
+
+    setInterval(function() {
+        if (document.querySelector('.modal:not(.hidden)') || document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'SELECT') return;
+        location.reload();
+    }, 30000);
+</script>

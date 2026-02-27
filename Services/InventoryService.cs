@@ -109,10 +109,12 @@ public class AdjustStockRequest
 public class InventoryService : IInventoryService
 {
     private readonly ApplicationDbContext _db;
+    private readonly INotificationService _notif;
 
-    public InventoryService(ApplicationDbContext db)
+    public InventoryService(ApplicationDbContext db, INotificationService notif)
     {
         _db = db;
+        _notif = notif;
     }
 
     public async Task<List<string>> GetCategoriesAsync(long shopId)
@@ -353,6 +355,32 @@ public class InventoryService : IInventoryService
         });
 
         await _db.SaveChangesAsync();
+
+        // Notify technicians working on WaitingForParts JOs that use this item
+        if (req.TxnType == InventoryTxnType.IN)
+        {
+            var techsToNotify = await _db.JobOrderParts
+                .Include(p => p.JobOrder)
+                .Include(p => p.Item)
+                .Where(p => p.ItemId == itemId
+                    && p.JobOrder!.ShopId == shopId
+                    && p.JobOrder.Status == JobOrderStatus.WaitingForParts
+                    && p.JobOrder.AssignedTechUserId != null)
+                .Select(p => new { p.JobOrder!.AssignedTechUserId, p.Item!.ItemName })
+                .Distinct()
+                .ToListAsync();
+
+            foreach (var t in techsToNotify)
+            {
+                await _notif.CreateAsync(
+                    t.AssignedTechUserId!.Value, shopId,
+                    "Parts Restocked",
+                    $"{t.ItemName} has been restocked and is now available.",
+                    "info",
+                    null);
+            }
+        }
+
         return true;
     }
 

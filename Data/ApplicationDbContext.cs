@@ -33,6 +33,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<PaymentAllocation> PaymentAllocations => Set<PaymentAllocation>();
     public DbSet<PayMongoTxn> PayMongoTxns => Set<PayMongoTxn>();
     public DbSet<CreditDebitAdjustment> CreditDebitAdjustments => Set<CreditDebitAdjustment>();
+    public DbSet<AdjustmentTypeConfig> AdjustmentTypeConfigs => Set<AdjustmentTypeConfig>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<AccountingEntry> AccountingEntries => Set<AccountingEntry>();
@@ -672,6 +673,28 @@ public class ApplicationDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.ReviewedByUserId)
                   .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // T1b. ADJUSTMENT_TYPE_CONFIG
+        // ═══════════════════════════════════════════════════════════════
+        modelBuilder.Entity<AdjustmentTypeConfig>(entity =>
+        {
+            entity.ToTable("ADJUSTMENT_TYPE_CONFIG");
+            entity.HasKey(e => e.AdjustmentTypeConfigId);
+            entity.Property(e => e.AdjustmentTypeConfigId).HasColumnName("AdjustmentTypeConfigID");
+            entity.Property(e => e.ShopId).HasColumnName("ShopID");
+            entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Category).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.Percentage).HasColumnType("decimal(5,2)");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime2(0)");
+
+            entity.HasOne(e => e.Shop)
+                  .WithMany()
+                  .HasForeignKey(e => e.ShopId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         // ═══════════════════════════════════════════════════════════════

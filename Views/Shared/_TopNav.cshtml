@@ -279,6 +279,17 @@
     }
 
     window.handleNotifClick = async function (id, url) {
+        // Immediately update UI: mark item as read & decrement badge
+        const item = document.querySelector(`.notif-item[data-id="${id}"]`);
+        if (item && item.classList.contains('unread')) {
+            item.classList.remove('unread');
+            const dot = item.querySelector('.notif-dot');
+            if (dot) dot.classList.add('read');
+            let cnt = parseInt(badge.textContent || '0', 10);
+            cnt = Math.max(0, cnt - 1);
+            badge.textContent = cnt;
+            if (cnt === 0) badge.classList.add('hidden');
+        }
         try {
             await fetch(`/api/notifications/read/${id}`, { method: 'POST' });
         } catch { }
@@ -302,6 +313,14 @@
 
     // Mark all read
     markAll.addEventListener('click', async function () {
+        // Immediately update UI
+        badge.textContent = '0';
+        badge.classList.add('hidden');
+        document.querySelectorAll('.notif-item.unread').forEach(el => {
+            el.classList.remove('unread');
+            const dot = el.querySelector('.notif-dot');
+            if (dot) dot.classList.add('read');
+        });
         try {
             await fetch('/api/notifications/read-all', { method: 'POST' });
             loadNotifications();

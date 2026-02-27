@@ -4,6 +4,7 @@
     var metrics = (AdjustmentMetricsDto)ViewBag.Metrics;
     var myRequests = (List<AdjustmentListItemDto>)ViewBag.Adjustments;
     var invoices = (IEnumerable<dynamic>)ViewBag.Invoices;
+    var typeConfigs = (List<AdjustmentTypeConfigDto>)ViewBag.TypeConfigs;
 }
 
 <partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Adjustments", IsActive = true } } })" />
@@ -83,7 +84,9 @@
                         @foreach (var req in myRequests)
                         {
                             var badgeClass = req.AdjustmentType == "Credit" ? "status-info" : req.AdjustmentType == "Refund" ? "status-warning" : "status-purple";
-                            var statusBadge = req.Status == "Approved" ? "status-success" : req.Status == "Rejected" ? "status-danger" : "status-pending";
+                            var statusClass = req.Status == "Approved" ? "bil-adj-badge-approved"
+                                            : req.Status == "Rejected" ? "bil-adj-badge-rejected"
+                                            : "bil-adj-badge-pending";
                             var isCredit = req.AdjustmentType is "Credit" or "Refund";
                             <tr>
                                 <td><span class="status-indicator @badgeClass">@req.AdjustmentType</span></td>
@@ -91,7 +94,7 @@
                                 <td><span class="bil-adj-customer">@req.CustomerName</span></td>
                                 <td class="text-right"><span class="@(isCredit ? "bil-adj-amount-credit" : "bil-adj-amount-debit")">@(isCredit ? "−" : "+")₱@req.Amount.ToString("N2")</span></td>
                                 <td><span class="bil-adj-reason" title="@req.Reason">@(req.Reason.Length > 40 ? req.Reason[..37] + "..." : req.Reason)</span></td>
-                                <td><span class="status-indicator @statusBadge">@req.Status</span></td>
+                                <td><span class="bil-adj-badge @statusClass">@req.Status</span></td>
                                 <td><span class="bil-adj-date">@req.CreatedAt.ToString("MMM dd, yyyy h:mm tt")</span></td>
                                 <td><span class="bil-adj-reviewer">@(req.ReviewedBy ?? "—")</span></td>
                             </tr>
@@ -119,28 +122,56 @@
 
             <div class="form-group" style="margin-bottom: 16px;">
                 <label class="form-label">Invoice <span style="color: var(--destructive);">*</span></label>
-                <select name="InvoiceId" class="form-input" required>
-                    <option value="">Select an invoice...</option>
+                <select name="InvoiceId" id="invoiceSelect" class="form-input" required>
+                    <option value="" data-balance="0">Select an invoice...</option>
                     @foreach (var inv in invoices)
                     {
-                        <option value="@inv.InvoiceId">@inv.InvoiceNo — @inv.CustomerName (₱@((inv.Balance as decimal?).GetValueOrDefault().ToString("N2")))</option>
+                        <option value="@inv.InvoiceId" data-balance="@((inv.Balance as decimal?).GetValueOrDefault())">@inv.InvoiceNo — @inv.CustomerName (₱@((inv.Balance as decimal?).GetValueOrDefault().ToString("N2")))</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label class="form-label">Adjustment Type <span style="color: var(--destructive);">*</span></label>
+                <select name="AdjustmentType" id="adjTypeSelect" class="form-input" required>
+                    <option value="" data-pct="0" data-cat="">Select type...</option>
+                    @foreach (var tc in typeConfigs)
+                    {
+                        <option value="@tc.Category" data-pct="@tc.Percentage" data-cat="@tc.Category" data-name="@tc.Name">@tc.Name (@tc.Percentage%)</option>
                     }
                 </select>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
                 <div class="form-group">
-                    <label class="form-label">Adjustment Type <span style="color: var(--destructive);">*</span></label>
-                    <select name="AdjustmentType" class="form-input" required>
-                        <option value="">Select type...</option>
-                        <option value="Credit">Credit (reduce balance)</option>
-                        <option value="Debit">Debit (increase balance)</option>
-                        <option value="Refund">Refund</option>
-                    </select>
+                    <label class="form-label">Percentage</label>
+                    <input type="text" id="adjPctDisplay" class="form-input" readonly style="background: #f9fafb; color: #6b7280;" />
                 </div>
                 <div class="form-group">
                     <label class="form-label">Amount (₱) <span style="color: var(--destructive);">*</span></label>
-                    <input type="number" name="Amount" class="form-input" placeholder="0.00" min="0.01" step="0.01" required />
+                    <input type="number" name="Amount" id="adjAmountInput" class="form-input" placeholder="0.00" min="0.01" step="0.01" required />
+                </div>
+            </div>
+
+            <!-- Refund Extra Fields (hidden by default) -->
+            <div id="refundFields" style="display: none; margin-bottom: 16px;">
+                <div style="background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px;">
+                    <p style="font-size: 12px; font-weight: 600; color: #92400e; margin: 0;">Refund requires additional information</p>
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label class="form-label">Refund Reason Category <span style="color: var(--destructive);">*</span></label>
+                    <select name="RefundCategory" id="refundCategorySelect" class="form-input">
+                        <option value="">Select reason...</option>
+                        <option value="Unit Damage">Unit Damage During Repair</option>
+                        <option value="Misdiagnosis">Misdiagnosis</option>
+                        <option value="Service Not Rendered">Service Not Rendered</option>
+                        <option value="Overcharge">Overcharge</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label class="form-label">Detailed Explanation</label>
+                    <textarea name="RefundExplanation" class="form-input" rows="2" placeholder="Provide details about the refund reason..."></textarea>
                 </div>
             </div>
 
@@ -177,6 +208,11 @@
     .bil-adj-reviewer { color: #6b7280; font-size: 13px; }
     .bil-adj-amount-credit { color: #059669; font-weight: 600; font-size: 13px; }
     .bil-adj-amount-debit  { color: #dc2626; font-weight: 600; font-size: 13px; }
+    /* Status Badges with Color */
+    .bil-adj-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; }
+    .bil-adj-badge-pending  { background: rgba(245,176,65,0.12); color: #d97706; }
+    .bil-adj-badge-approved { background: rgba(16,185,129,0.12); color: #059669; }
+    .bil-adj-badge-rejected { background: rgba(239,68,68,0.12);  color: #dc2626; }
     .bil-adj-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 9998; }
     .bil-adj-overlay.active { display: block; }
     .bil-adj-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 520px; max-width: 95vw; max-height: 90vh; overflow-y: auto; background: var(--card); border: 1px solid var(--gray-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-modal); z-index: 9999; }
@@ -206,5 +242,44 @@
         closeBtn.addEventListener('click', closeModal);
         cancelBtn.addEventListener('click', closeModal);
         overlay.addEventListener('click', closeModal);
+
+        // ── Auto-compute amount from percentage × invoice balance ──
+        const invoiceSelect = document.getElementById('invoiceSelect');
+        const adjTypeSelect = document.getElementById('adjTypeSelect');
+        const adjAmountInput = document.getElementById('adjAmountInput');
+        const adjPctDisplay = document.getElementById('adjPctDisplay');
+        const refundFields = document.getElementById('refundFields');
+        const refundCategorySelect = document.getElementById('refundCategorySelect');
+
+        function computeAmount() {
+            const invOpt = invoiceSelect.selectedOptions[0];
+            const typeOpt = adjTypeSelect.selectedOptions[0];
+            const balance = parseFloat(invOpt?.dataset.balance || '0');
+            const pct = parseFloat(typeOpt?.dataset.pct || '0');
+            const cat = typeOpt?.dataset.cat || '';
+
+            adjPctDisplay.value = pct > 0 ? pct + '%' : '—';
+
+            if (pct > 0 && balance > 0) {
+                adjAmountInput.value = (balance * pct / 100).toFixed(2);
+            }
+
+            // Show/hide refund fields
+            if (cat === 'Refund') {
+                refundFields.style.display = 'block';
+                refundCategorySelect.setAttribute('required', 'required');
+            } else {
+                refundFields.style.display = 'none';
+                refundCategorySelect.removeAttribute('required');
+            }
+        }
+
+        invoiceSelect.addEventListener('change', computeAmount);
+        adjTypeSelect.addEventListener('change', computeAmount);
     });
+
+    setInterval(function() {
+        if (document.querySelector('.modal:not(.hidden)') || document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'SELECT') return;
+        location.reload();
+    }, 30000);
 </script>

@@ -173,8 +173,9 @@
                             </tbody>
                             <tfoot>
                                 <tr style="background: #f0fdf4; border-top: 2px solid #10b981;">
-                                    <td colspan="@(ViewBag.CanModifyLines == true ? 5 : 4)" class="text-right" style="font-size: 15px; font-weight: 700; color: #065f46; padding: 14px 12px;">Grand Total</td>
-                                    <td class="text-right" style="font-size: 18px; font-weight: 700; color: #065f46; padding: 14px 12px;">₱@Model.Total.ToString("N2")</td>
+                                    <td colspan="@(ViewBag.CanModifyLines == true ? 6 : 5)" class="text-right" style="font-size: 15px; font-weight: 700; color: #065f46; padding: 14px 16px;">
+                                        Grand Total &nbsp;&nbsp; <span style="font-size: 20px;">₱@Model.Total.ToString("N2")</span>
+                                    </td>
                                 </tr>
                             </tfoot>
                         </table>

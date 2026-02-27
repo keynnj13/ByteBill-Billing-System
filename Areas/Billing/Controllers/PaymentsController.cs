@@ -8,6 +8,9 @@ using ByteBill_BS.ViewModels.Payments;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
 
 namespace ByteBill_BS.Areas.Billing.Controllers;
 
@@ -270,6 +273,84 @@ public class PaymentsController : Controller
         ViewBag.ShopEmail = shop?.Email ?? "";
 
         return View("~/Views/Shared/_Receipt.cshtml", vm);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ReceiptPdf(long id)
+    {
+        if (!IsAuthorized()) return Forbid();
+
+        var vm = await GetPaymentDetailAsync(id);
+        if (vm == null) return NotFound();
+
+        var shop = await _db.Shops.AsNoTracking().FirstOrDefaultAsync(s => s.ShopId == User.GetShopId());
+        var shopName = shop?.ShopName ?? "ByteBill";
+        var shopAddress = shop?.Address ?? "";
+        var shopPhone = shop?.Phone ?? "";
+        var shopEmail = shop?.Email ?? "";
+
+        var pdf = GenerateReceiptPdf(vm, shopName, shopAddress, shopPhone, shopEmail);
+        return File(pdf, "application/pdf", $"Receipt_{vm.PaymentNumber}.pdf");
+    }
+
+    private static byte[] GenerateReceiptPdf(PaymentDetailViewModel vm, string shopName, string shopAddress, string shopPhone, string shopEmail)
+    {
+        return Document.Create(doc =>
+        {
+            doc.Page(page =>
+            {
+                page.Size(PageSizes.A6);
+                page.Margin(24);
+                page.DefaultTextStyle(x => x.FontSize(10));
+
+                page.Content().Column(col =>
+                {
+                    // Header
+                    col.Item().AlignCenter().Text(shopName).Bold().FontSize(16);
+                    if (!string.IsNullOrEmpty(shopAddress))
+                        col.Item().AlignCenter().Text(shopAddress).FontSize(8).FontColor(Colors.Grey.Medium);
+                    if (!string.IsNullOrEmpty(shopPhone) || !string.IsNullOrEmpty(shopEmail))
+                        col.Item().AlignCenter().Text($"{shopPhone}  {shopEmail}".Trim()).FontSize(8).FontColor(Colors.Grey.Medium);
+
+                    col.Item().PaddingVertical(8).AlignCenter().Text("PAYMENT RECEIPT").Bold().FontSize(11).FontColor(Colors.Grey.Darken2);
+                    col.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
+                    col.Item().PaddingVertical(6);
+
+                    // Details
+                    col.Item().Row(r => { r.RelativeItem().Text("Receipt #").FontColor(Colors.Grey.Medium); r.RelativeItem().AlignRight().Text(vm.PaymentNumber ?? "").Bold(); });
+                    col.Item().Row(r => { r.RelativeItem().Text("Date").FontColor(Colors.Grey.Medium); r.RelativeItem().AlignRight().Text(vm.PaidAt.ToString("MMM dd, yyyy h:mm tt")); });
+                    col.Item().Row(r => { r.RelativeItem().Text("Customer").FontColor(Colors.Grey.Medium); r.RelativeItem().AlignRight().Text(vm.CustomerName ?? "").Bold(); });
+                    col.Item().Row(r => { r.RelativeItem().Text("Method").FontColor(Colors.Grey.Medium); r.RelativeItem().AlignRight().Text(vm.Method.ToString()); });
+                    if (!string.IsNullOrEmpty(vm.ReferenceNumber))
+                        col.Item().Row(r => { r.RelativeItem().Text("Reference #").FontColor(Colors.Grey.Medium); r.RelativeItem().AlignRight().Text(vm.ReferenceNumber); });
+                    col.Item().Row(r => { r.RelativeItem().Text("Received By").FontColor(Colors.Grey.Medium); r.RelativeItem().AlignRight().Text(vm.ReceivedByName ?? "\u2014"); });
+
+                    col.Item().PaddingVertical(6).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
+
+                    // Amount
+                    col.Item().PaddingVertical(10).AlignCenter().Text(t =>
+                    {
+                        t.Span("Amount Paid: ").FontColor(Colors.Grey.Medium);
+                        t.Span($"\u20B1{vm.Amount:N2}").Bold().FontSize(18).FontColor(Colors.Green.Darken3);
+                    });
+
+                    // Allocations
+                    if (vm.Allocations.Count > 0)
+                    {
+                        col.Item().PaddingVertical(4).Text("Applied to Invoices").Bold().FontSize(9).FontColor(Colors.Grey.Darken1);
+                        foreach (var a in vm.Allocations)
+                            col.Item().Row(r => { r.RelativeItem().Text(a.InvoiceNumber ?? "").FontColor(Colors.Blue.Medium); r.RelativeItem().AlignRight().Text($"\u20B1{a.AmountApplied:N2}").Bold(); });
+                        col.Item().PaddingVertical(4).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
+                    }
+
+                    if (!string.IsNullOrEmpty(vm.Notes))
+                        col.Item().PaddingVertical(4).Text($"Notes: {vm.Notes}").FontSize(8).FontColor(Colors.Grey.Medium);
+
+                    col.Item().PaddingVertical(10).AlignCenter().Text("Thank you for your payment!").Bold().FontSize(10);
+                    col.Item().AlignCenter().Text("This is a computer-generated receipt.").FontSize(7).FontColor(Colors.Grey.Medium);
+                });
+            });
+        }).GeneratePdf();
     }
 
     private async Task<PaymentDetailViewModel?> GetPaymentDetailAsync(long id)

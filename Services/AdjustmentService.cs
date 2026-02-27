@@ -37,6 +37,17 @@ public class CreateAdjustmentRequest
     public string AdjustmentType { get; set; } = "";
     public decimal Amount { get; set; }
     public string Reason { get; set; } = "";
+    // Refund-specific fields
+    public string? RefundCategory { get; set; }
+    public string? RefundExplanation { get; set; }
+}
+
+public class AdjustmentTypeConfigDto
+{
+    public long Id { get; set; }
+    public string Name { get; set; } = "";
+    public string Category { get; set; } = "";  // Credit, Debit, Refund
+    public decimal Percentage { get; set; }
 }
 
 // ─── Interface ───────────────────────────────────────────────────────
@@ -50,6 +61,10 @@ public interface IAdjustmentService
     Task<CreditDebitAdjustment> CreateAsync(long shopId, long userId, CreateAdjustmentRequest request);
     Task<bool> ApproveAsync(long adjustmentId, long shopId, long reviewerId);
     Task<bool> RejectAsync(long adjustmentId, long shopId, long reviewerId);
+    Task<List<AdjustmentTypeConfigDto>> GetTypeConfigsAsync(long shopId);
+    Task<AdjustmentTypeConfig> CreateTypeConfigAsync(long shopId, string name, string category, decimal percentage);
+    Task<bool> UpdateTypeConfigAsync(long shopId, long configId, string name, string category, decimal percentage, bool isActive);
+    Task<bool> DeleteTypeConfigAsync(long shopId, long configId);
 }
 
 // ─── Implementation ──────────────────────────────────────────────────
@@ -158,6 +173,15 @@ public class AdjustmentService : IAdjustmentService
             .FirstOrDefaultAsync(i => i.InvoiceId == request.InvoiceId && i.ShopId == shopId)
             ?? throw new ArgumentException("Invoice not found.");
 
+        // Build reason with refund details if applicable
+        var reason = request.Reason;
+        if (adjType == AdjustmentType.Refund && !string.IsNullOrWhiteSpace(request.RefundCategory))
+        {
+            reason = $"[{request.RefundCategory}] {reason}";
+            if (!string.IsNullOrWhiteSpace(request.RefundExplanation))
+                reason += $" | Detail: {request.RefundExplanation}";
+        }
+
         var adjustment = new CreditDebitAdjustment
         {
             ShopId = shopId,
@@ -165,7 +189,7 @@ public class AdjustmentService : IAdjustmentService
             CreatedByUserId = userId,
             AdjustmentType = adjType,
             Amount = request.Amount,
-            Reason = request.Reason,
+            Reason = reason,
             Status = AdjustmentStatus.Pending,
             CreatedAt = DateTime.UtcNow
         };
@@ -279,6 +303,65 @@ public class AdjustmentService : IAdjustmentService
             "/Billing/Adjustments"
         );
 
+        return true;
+    }
+
+    // ── Adjustment Type Config CRUD ──────────────────────────────────
+    public async Task<List<AdjustmentTypeConfigDto>> GetTypeConfigsAsync(long shopId)
+    {
+        return await _db.AdjustmentTypeConfigs
+            .Where(c => c.ShopId == shopId && c.IsActive)
+            .OrderBy(c => c.Category).ThenBy(c => c.Name)
+            .Select(c => new AdjustmentTypeConfigDto
+            {
+                Id = c.AdjustmentTypeConfigId,
+                Name = c.Name,
+                Category = c.Category,
+                Percentage = c.Percentage
+            })
+            .ToListAsync();
+    }
+
+    public async Task<AdjustmentTypeConfig> CreateTypeConfigAsync(long shopId, string name, string category, decimal percentage)
+    {
+        var config = new AdjustmentTypeConfig
+        {
+            ShopId = shopId,
+            Name = name.Trim(),
+            Category = category,
+            Percentage = percentage,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.AdjustmentTypeConfigs.Add(config);
+        await _db.SaveChangesAsync();
+        return config;
+    }
+
+    public async Task<bool> UpdateTypeConfigAsync(long shopId, long configId, string name, string category, decimal percentage, bool isActive)
+    {
+        var config = await _db.AdjustmentTypeConfigs
+            .FirstOrDefaultAsync(c => c.AdjustmentTypeConfigId == configId && c.ShopId == shopId);
+        if (config == null) return false;
+
+        config.Name = name.Trim();
+        config.Category = category;
+        config.Percentage = percentage;
+        config.IsActive = isActive;
+        config.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> DeleteTypeConfigAsync(long shopId, long configId)
+    {
+        var config = await _db.AdjustmentTypeConfigs
+            .FirstOrDefaultAsync(c => c.AdjustmentTypeConfigId == configId && c.ShopId == shopId);
+        if (config == null) return false;
+
+        config.IsActive = false;
+        config.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
         return true;
     }
 }

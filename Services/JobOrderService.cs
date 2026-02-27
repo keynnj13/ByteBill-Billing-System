@@ -27,13 +27,15 @@ public class JobOrderService : IJobOrderService
     private readonly IAuditService _audit;
     private readonly IHttpContextAccessor _httpCtx;
     private readonly IInvoiceService _invoiceService;
+    private readonly INotificationService _notif;
 
-    public JobOrderService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx, IInvoiceService invoiceService)
+    public JobOrderService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx, IInvoiceService invoiceService, INotificationService notif)
     {
         _db = db;
         _audit = audit;
         _httpCtx = httpCtx;
         _invoiceService = invoiceService;
+        _notif = notif;
     }
 
     private string? ClientIp => _httpCtx.HttpContext?.Connection.RemoteIpAddress?.ToString();
@@ -315,6 +317,17 @@ public class JobOrderService : IJobOrderService
         await _audit.LogAsync(shopId, userId, "Create", "JobOrder", jobOrder.JobOrderId,
             $"Created job order '{jobOrderNo}'.", ClientIp);
 
+        // Notify assigned technician
+        if (jobOrder.AssignedTechUserId.HasValue)
+        {
+            await _notif.CreateAsync(
+                jobOrder.AssignedTechUserId.Value, shopId,
+                "New Job Order Assigned",
+                $"You have been assigned to {jobOrderNo}.",
+                "info",
+                $"/Technician/JobOrders/Details/{jobOrder.JobOrderId}");
+        }
+
         var detail = await GetDetailAsync(shopId, jobOrder.JobOrderId);
         return ApiResponse<JobOrderDetailDto>.Ok(detail!);
     }
@@ -439,6 +452,14 @@ public class JobOrderService : IJobOrderService
 
         await _audit.LogAsync(shopId, userId, "AssignTechnician", "JobOrder", jobOrderId,
             $"Technician (UserID={req.TechnicianUserId}) assigned.", ClientIp);
+
+        // Notify the technician
+        await _notif.CreateAsync(
+            req.TechnicianUserId, shopId,
+            "New Job Order Assigned",
+            $"You have been assigned to {jobOrder.JobOrderNo}.",
+            "info",
+            $"/Technician/JobOrders/Details/{jobOrderId}");
 
         return ApiResponse<bool>.Ok(true);
     }

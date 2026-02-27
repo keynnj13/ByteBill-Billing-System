@@ -255,3 +255,10 @@
     @@media (max-width: 1024px) { .bd-stats { grid-template-columns: repeat(2, 1fr); } .bd-grid-2 { grid-template-columns: 1fr; } }
     @@media (max-width: 768px) { .bd-stats { grid-template-columns: 1fr; } .page-header { flex-direction: column; gap: 12px; } }
 </style>
+
+<script>
+    setInterval(function() {
+        if (document.querySelector('.modal:not(.hidden)') || document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'SELECT') return;
+        location.reload();
+    }, 30000);
+</script>
