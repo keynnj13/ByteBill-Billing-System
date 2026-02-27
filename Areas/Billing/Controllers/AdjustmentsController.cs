@@ -1,6 +1,10 @@
+using ByteBill_BS.Data;
+using ByteBill_BS.Extensions;
 using ByteBill_BS.Models.Enums;
+using ByteBill_BS.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ByteBill_BS.Areas.Billing.Controllers;
 
@@ -8,32 +12,62 @@ namespace ByteBill_BS.Areas.Billing.Controllers;
 [Authorize]
 public class AdjustmentsController : Controller
 {
+    private readonly IAdjustmentService _adjustmentService;
+    private readonly ApplicationDbContext _db;
+
+    public AdjustmentsController(IAdjustmentService adjustmentService, ApplicationDbContext db)
+    {
+        _adjustmentService = adjustmentService;
+        _db = db;
+    }
+
     private bool IsAuthorized()
     {
-        var roleClaim = User.Claims.FirstOrDefault(c => c.Type == "Role")?.Value;
-        return roleClaim == UserRole.Billing.ToString();
+        var role = User.GetRole();
+        return role is "Billing" or "Admin" or "SuperAdmin";
     }
 
     [HttpGet]
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
-        var adjustments = new[]
-        {
-            new { Id = 1, Type = "Discount", InvoiceNumber = "INV-2024-0140", CustomerName = "Alice Thompson", Amount = -50.00m, Reason = "Loyal customer discount", CreatedAt = DateTime.Now.AddDays(-1), ApprovedBy = "John Anderson" },
-            new { Id = 2, Type = "Refund", InvoiceNumber = "INV-2024-0135", CustomerName = "Bob Martinez", Amount = -25.00m, Reason = "Parts return", CreatedAt = DateTime.Now.AddDays(-3), ApprovedBy = "John Anderson" },
-            new { Id = 3, Type = "Credit", InvoiceNumber = "INV-2024-0128", CustomerName = "Carol White", Amount = -15.00m, Reason = "Service credit for inconvenience", CreatedAt = DateTime.Now.AddDays(-5), ApprovedBy = "John Anderson" }
-        };
-        
+        var shopId = User.GetShopId();
+        var userId = User.GetUserId();
+        var metrics = await _adjustmentService.GetUserMetricsAsync(shopId, userId);
+        var adjustments = await _adjustmentService.GetByUserAsync(shopId, userId);
+
+        // Get invoices for the create form
+        var invoices = await _db.Invoices
+            .Where(i => i.ShopId == shopId && i.Status != InvoiceStatus.Void)
+            .OrderByDescending(i => i.CreatedAt)
+            .Select(i => new { i.InvoiceId, i.InvoiceNo, CustomerName = i.Customer != null ? i.Customer.FullName : "", i.Balance })
+            .ToListAsync();
+
+        ViewBag.Metrics = metrics;
         ViewBag.Adjustments = adjustments;
+        ViewBag.Invoices = invoices;
         return View();
     }
 
-    [HttpGet]
-    public IActionResult Create()
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(CreateAdjustmentRequest request)
     {
-        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        return View();
+        if (!IsAuthorized()) return Forbid();
+
+        try
+        {
+            var shopId = User.GetShopId();
+            var userId = User.GetUserId();
+            await _adjustmentService.CreateAsync(shopId, userId, request);
+            TempData["Success"] = "Adjustment request submitted successfully. Awaiting admin approval.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Index));
     }
 }

@@ -72,7 +72,7 @@ public class InvoicesApiController : ControllerBase
     // POST api/invoicesapi/5/adjustments
     [HttpPost("{id:long}/adjustments")]
     [Authorize(Policy = "BillingOrAbove")]
-    public async Task<IActionResult> CreateAdjustment(long id, [FromBody] CreateAdjustmentRequest req)
+    public async Task<IActionResult> CreateAdjustment(long id, [FromBody] DTOs.Invoices.CreateAdjustmentRequest req)
     {
         if (!ModelState.IsValid)
             return BadRequest(ApiResponse<object>.Fail("Validation failed.",

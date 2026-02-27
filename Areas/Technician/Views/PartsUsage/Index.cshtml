@@ -2,28 +2,17 @@
     ViewData["Title"] = "Parts Usage";
     var usageHistory = ViewBag.UsageHistory as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
     var availableParts = ViewBag.AvailableParts as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
-    var activeJobOrders = ViewBag.ActiveJobOrders as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+    var totalPartsUsed = (int)(ViewBag.TotalPartsUsed ?? 0);
+    var totalValue = (decimal)(ViewBag.TotalValue ?? 0m);
+    var lowStockCount = (int)(ViewBag.LowStockCount ?? 0);
 }
 
 <partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Parts Usage", IsActive = true } } })" />
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success" style="margin-bottom: 20px; padding: 12px 16px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; color: #065f46; font-size: 14px;">
-        @TempData["Success"]
-    </div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger" style="margin-bottom: 20px; padding: 12px 16px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #991b1b; font-size: 14px;">
-        @TempData["Error"]
-    </div>
-}
-
 <div class="pu-header">
     <div>
-        <h1 class="pu-title">Parts Usage</h1>
-        <p class="pu-subtitle">Track and record parts used in your job orders</p>
+        <h1 class="pu-title">Parts & Inventory</h1>
+        <p class="pu-subtitle">Track parts used in your job orders and view inventory availability</p>
     </div>
 </div>
 
@@ -35,98 +24,42 @@
         </div>
         <div>
             <span class="pu-stat-label">Parts Used</span>
-            <span class="pu-stat-value">@usageHistory.Count()</span>
+            <span class="pu-stat-value">@totalPartsUsed</span>
         </div>
     </div>
     <div class="pu-stat-card">
         <div class="pu-stat-icon pu-icon-green">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
         </div>
         <div>
-            <span class="pu-stat-label">Available Parts</span>
+            <span class="pu-stat-label">Total Value</span>
+            <span class="pu-stat-value">₱@totalValue.ToString("N2")</span>
+        </div>
+    </div>
+    <div class="pu-stat-card">
+        <div class="pu-stat-icon pu-icon-green2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+        </div>
+        <div>
+            <span class="pu-stat-label">Inventory Items</span>
             <span class="pu-stat-value">@availableParts.Count()</span>
         </div>
     </div>
     <div class="pu-stat-card">
-        <div class="pu-stat-icon pu-icon-amber">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+        <div class="pu-stat-icon pu-icon-red">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
         </div>
         <div>
-            <span class="pu-stat-label">Active Jobs</span>
-            <span class="pu-stat-value">@activeJobOrders.Count()</span>
+            <span class="pu-stat-label">Low / Out of Stock</span>
+            <span class="pu-stat-value @(lowStockCount > 0 ? "pu-val-red" : "")">@lowStockCount</span>
         </div>
     </div>
 </div>
 
-<!-- Record Usage Card -->
-<div class="pu-card pu-card-highlight" style="margin-bottom: 24px;">
-    <div class="pu-card-header">
-        <div class="pu-card-header-left">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            <h3 class="pu-card-title">Record Parts Usage</h3>
-        </div>
-    </div>
-    <div class="pu-card-body">
-        @if (activeJobOrders.Any())
-        {
-            <form asp-action="RecordUsage" asp-controller="PartsUsage" asp-area="Technician" method="post">
-                @Html.AntiForgeryToken()
-                <div class="pu-form-grid">
-                    <div class="pu-form-group pu-form-lg">
-                        <label class="pu-label">Job Order</label>
-                        <select name="jobOrderId" class="form-select" required>
-                            <option value="">Select a job order...</option>
-                            @foreach (var jo in activeJobOrders)
-                            {
-                                var isSelected = ViewBag.JobOrderId != null && (long)ViewBag.JobOrderId == (long)jo.JobOrderId;
-                                if (isSelected)
-                                {
-                                    <option value="@jo.JobOrderId" selected>
-                                        @jo.JobOrderNo — @jo.CustomerName (@jo.DeviceSummary)
-                                    </option>
-                                }
-                                else
-                                {
-                                    <option value="@jo.JobOrderId">
-                                        @jo.JobOrderNo — @jo.CustomerName (@jo.DeviceSummary)
-                                    </option>
-                                }
-                            }
-                        </select>
-                    </div>
-                    <div class="pu-form-group pu-form-lg">
-                        <label class="pu-label">Part</label>
-                        <select name="partId" class="form-select" required>
-                            <option value="">Select a part...</option>
-                            @foreach (var part in availableParts)
-                            {
-                                <option value="@part.ItemId">
-                                    @part.ItemName (@part.SKU) — @part.QtyOnHand in stock — ₱@(((decimal)part.UnitPrice).ToString("N2"))
-                                </option>
-                            }
-                        </select>
-                    </div>
-                    <div class="pu-form-group pu-form-sm">
-                        <label class="pu-label">Qty</label>
-                        <input type="number" name="quantity" class="form-input" min="1" value="1" required />
-                    </div>
-                    <div class="pu-form-group pu-form-btn">
-                        <button type="submit" class="btn btn-primary">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                            Add Part
-                        </button>
-                    </div>
-                </div>
-            </form>
-        }
-        else
-        {
-            <div class="pu-no-jobs">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                <span>No active job orders assigned to you. Parts can only be added to active job orders.</span>
-            </div>
-        }
-    </div>
+<!-- Tip Banner -->
+<div class="pu-tip">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+    <span>Parts are added directly from your <a href="@Url.Action("Index", "JobOrders", new { area = "Technician" })">Job Orders</a>. This page shows your usage history and current inventory levels.</span>
 </div>
 
 <!-- Content Grid -->
@@ -136,15 +69,20 @@
         <div class="pu-card-header">
             <div class="pu-card-header-left">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-                <h3 class="pu-card-title">Recent Parts Usage</h3>
+                <h3 class="pu-card-title">Usage History</h3>
+                <span class="pu-badge">@usageHistory.Count()</span>
+            </div>
+            <div class="pu-search-wrap">
+                <svg class="pu-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" id="usageSearch" class="pu-search" placeholder="Search usage..." />
             </div>
         </div>
-        <div class="pu-card-body p-0">
+        <div class="pu-card-body p-0" id="usageList">
             @if (usageHistory.Any())
             {
                 @foreach (var item in usageHistory)
                 {
-                    <div class="pu-usage-item">
+                    <div class="pu-usage-item" data-search="@item.PartName @item.SKU @item.JobOrderNumber">
                         <div class="pu-usage-left">
                             <div class="pu-usage-icon">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
@@ -168,7 +106,7 @@
             {
                 <div class="pu-empty">
                     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
-                    <p>No parts usage recorded yet.</p>
+                    <p>No parts usage recorded yet. Add parts from your job order details page.</p>
                 </div>
             }
         </div>
@@ -179,25 +117,39 @@
         <div class="pu-card-header">
             <div class="pu-card-header-left">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
-                <h3 class="pu-card-title">Available Inventory</h3>
+                <h3 class="pu-card-title">Inventory Availability</h3>
+                <span class="pu-badge pu-badge-green">@availableParts.Count(p => (int)p.QtyOnHand > 0) in stock</span>
+            </div>
+            <div class="pu-search-wrap">
+                <svg class="pu-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" id="inventorySearch" class="pu-search" placeholder="Search parts..." />
             </div>
         </div>
-        <div class="pu-card-body p-0">
+        <div class="pu-card-body p-0" id="inventoryList">
             @if (availableParts.Any())
             {
                 @foreach (var part in availableParts)
                 {
-                    <div class="pu-inv-item">
+                    var stockClass = (int)part.QtyOnHand <= 0 ? "pu-out-of-stock" : ((bool)part.IsLowStock ? "pu-inv-low" : "");
+                    <div class="pu-inv-item @stockClass" data-search="@part.ItemName @part.SKU">
                         <div class="pu-inv-left">
                             <span class="pu-inv-name">@part.ItemName</span>
                             <span class="pu-inv-sku">@part.SKU</span>
                         </div>
                         <div class="pu-inv-right">
-                            <span class="pu-inv-stock @((bool)part.IsLowStock ? "pu-inv-low" : "")">
-                                @part.QtyOnHand in stock
-                                @if ((bool)part.IsLowStock)
+                            <span class="pu-inv-stock">
+                                @if ((int)part.QtyOnHand <= 0)
                                 {
-                                    <span class="pu-low-badge">Low</span>
+                                    <span class="pu-stock-badge pu-stock-out">Out of Stock</span>
+                                }
+                                else if ((bool)part.IsLowStock)
+                                {
+                                    <text>@part.QtyOnHand in stock</text>
+                                    <span class="pu-stock-badge pu-stock-low">Low</span>
+                                }
+                                else
+                                {
+                                    <text>@part.QtyOnHand in stock</text>
                                 }
                             </span>
                             <span class="pu-inv-price">₱@(((decimal)part.UnitPrice).ToString("N2"))</span>
@@ -221,45 +173,54 @@
     .pu-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
     .pu-subtitle { font-size: 14px; color: #6b7280; }
 
+    /* ── Tip Banner ── */
+    .pu-tip {
+        display: flex; align-items: center; gap: 10px;
+        padding: 12px 16px; margin-bottom: 24px;
+        background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px;
+        font-size: 13px; color: #1e40af;
+    }
+    .pu-tip a { color: #2563eb; font-weight: 600; text-decoration: underline; }
+
     /* ── Stats ── */
-    .pu-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .pu-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
     .pu-stat-card { display: flex; align-items: center; gap: 14px; padding: 16px 20px; background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
     .pu-stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .pu-icon-blue { background: rgba(59,130,246,0.1); color: #3b82f6; }
     .pu-icon-green { background: rgba(16,185,129,0.1); color: #10b981; }
-    .pu-icon-amber { background: rgba(245,158,11,0.1); color: #f59e0b; }
+    .pu-icon-green2 { background: rgba(5,150,105,0.1); color: #059669; }
+    .pu-icon-red { background: rgba(239,68,68,0.1); color: #ef4444; }
     .pu-stat-label { display: block; font-size: 12px; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
     .pu-stat-value { display: block; font-size: 22px; font-weight: 700; color: #1f2937; line-height: 1.2; }
+    .pu-val-red { color: #ef4444; }
 
     /* ── Cards ── */
     .pu-card { background: white; border-radius: 14px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; }
-    .pu-card-highlight { border-color: #bfdbfe; }
-    .pu-card-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f3f4f6; }
-    .pu-card-header-left { display: flex; align-items: center; gap: 8px; }
-    .pu-card-title { font-size: 15px; font-weight: 600; color: #1f2937; margin: 0; }
+    .pu-card-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f3f4f6; gap: 12px; }
+    .pu-card-header-left { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .pu-card-title { font-size: 15px; font-weight: 600; color: #1f2937; margin: 0; white-space: nowrap; }
     .pu-card-body { padding: 20px; }
     .pu-card-body.p-0 { padding: 0; }
+    .pu-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: rgba(139,92,246,0.1); color: #7c3aed; }
+    .pu-badge-green { background: rgba(16,185,129,0.1); color: #059669; }
 
-    /* ── Form ── */
-    .pu-form-grid { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
-    .pu-form-group { display: flex; flex-direction: column; gap: 6px; }
-    .pu-form-lg { flex: 1; min-width: 200px; }
-    .pu-form-sm { width: 100px; }
-    .pu-form-btn { align-self: flex-end; }
-    .pu-label { font-size: 13px; font-weight: 500; color: #374151; }
-    .pu-no-jobs { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #6b7280; }
+    /* ── Search ── */
+    .pu-search-wrap { position: relative; }
+    .pu-search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+    .pu-search {
+        padding: 7px 10px 7px 30px; border: 1px solid #e5e7eb; border-radius: 8px;
+        font-size: 13px; width: 180px; outline: none; background: #f9fafb;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .pu-search:focus { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); background: white; }
 
     /* ── Grid ── */
     .pu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
 
     /* ── Usage Items ── */
     .pu-usage-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 14px 20px;
-        border-bottom: 1px solid #f3f4f6;
-        transition: background 0.15s;
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 14px 20px; border-bottom: 1px solid #f3f4f6; transition: background 0.15s;
     }
     .pu-usage-item:last-child { border-bottom: none; }
     .pu-usage-item:hover { background: #f8fafc; }
@@ -276,32 +237,56 @@
 
     /* ── Inventory Items ── */
     .pu-inv-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 14px 20px;
-        border-bottom: 1px solid #f3f4f6;
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 14px 20px; border-bottom: 1px solid #f3f4f6;
     }
     .pu-inv-item:last-child { border-bottom: none; }
     .pu-inv-left { display: flex; flex-direction: column; gap: 2px; }
     .pu-inv-name { font-size: 14px; font-weight: 500; color: #1f2937; }
     .pu-inv-sku { font-size: 12px; color: #9ca3af; font-family: 'SF Mono','Cascadia Code','Consolas',monospace; }
     .pu-inv-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
-    .pu-inv-stock { font-size: 13px; color: #374151; }
-    .pu-inv-low { color: #ef4444; font-weight: 600; }
-    .pu-low-badge { font-size: 10px; background: rgba(245,158,11,0.1); color: #d97706; padding: 1px 6px; border-radius: 99px; margin-left: 4px; font-weight: 600; }
+    .pu-inv-stock { font-size: 13px; color: #374151; display: flex; align-items: center; gap: 6px; }
     .pu-inv-price { font-size: 13px; color: #6b7280; }
+    .pu-stock-badge { font-size: 10px; padding: 1px 7px; border-radius: 99px; font-weight: 600; }
+    .pu-stock-low { background: rgba(245,158,11,0.1); color: #d97706; }
+    .pu-stock-out { background: rgba(239,68,68,0.1); color: #dc2626; }
+    .pu-out-of-stock { opacity: 0.6; }
+    .pu-out-of-stock .pu-inv-name { text-decoration: line-through; }
 
     /* ── Empty State ── */
     .pu-empty { padding: 40px 20px; text-align: center; }
     .pu-empty p { color: #9ca3af; font-size: 14px; margin-top: 12px; }
 
     @@media (max-width: 1024px) {
-        .pu-stats { grid-template-columns: 1fr; }
+        .pu-stats { grid-template-columns: repeat(2, 1fr); }
         .pu-grid { grid-template-columns: 1fr; }
     }
     @@media (max-width: 768px) {
-        .pu-form-grid { flex-direction: column; }
-        .pu-form-lg, .pu-form-sm { min-width: 100%; width: 100%; }
+        .pu-stats { grid-template-columns: 1fr; }
+        .pu-card-header { flex-direction: column; align-items: flex-start; }
+        .pu-search { width: 100%; }
     }
 </style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Generic client-side search filter
+        function setupSearch(inputId, listId) {
+            const input = document.getElementById(inputId);
+            const list = document.getElementById(listId);
+            if (!input || !list) return;
+
+            input.addEventListener('input', function () {
+                const q = this.value.toLowerCase().trim();
+                const items = list.querySelectorAll('[data-search]');
+                items.forEach(item => {
+                    const text = item.getAttribute('data-search').toLowerCase();
+                    item.style.display = text.includes(q) ? '' : 'none';
+                });
+            });
+        }
+
+        setupSearch('usageSearch', 'usageList');
+        setupSearch('inventorySearch', 'inventoryList');
+    });
+</script>

@@ -252,6 +252,26 @@ public class PaymentsController : Controller
         return PartialView("_DetailsModal", vm);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> Receipt(long id)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var vm = await GetPaymentDetailAsync(id);
+        if (vm == null) return NotFound();
+
+        var shop = await _db.Shops
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.ShopId == User.GetShopId());
+
+        ViewBag.ShopName = shop?.ShopName ?? "ByteBill";
+        ViewBag.ShopAddress = shop?.Address ?? "";
+        ViewBag.ShopPhone = shop?.Phone ?? "";
+        ViewBag.ShopEmail = shop?.Email ?? "";
+
+        return View("~/Views/Shared/_Receipt.cshtml", vm);
+    }
+
     private async Task<PaymentDetailViewModel?> GetPaymentDetailAsync(long id)
     {
         var shopId = User.GetShopId();

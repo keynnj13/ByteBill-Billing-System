@@ -277,6 +277,64 @@ public class JobOrdersController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddItems(long jobOrderId, long? serviceCatalogId, long? inventoryItemId, int quantity = 1)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var shopId = User.GetShopId();
+        var userId = User.GetUserId();
+        var messages = new List<string>();
+        var errors = new List<string>();
+
+        // Add service if selected
+        if (serviceCatalogId.HasValue && serviceCatalogId.Value > 0)
+        {
+            var svc = await _db.ServiceCatalogs.FindAsync(serviceCatalogId.Value);
+            if (svc != null)
+            {
+                var dto = new DTOs.JobOrders.AddServiceLineDto
+                {
+                    ServiceId = serviceCatalogId.Value,
+                    Qty = 1,
+                    UnitPrice = svc.BasePrice
+                };
+                var result = await _jobOrderService.AddServiceLineAsync(shopId, userId, jobOrderId, dto);
+                if (result.Success) messages.Add("Service added");
+                else errors.Add(result.Message ?? "Failed to add service");
+            }
+            else errors.Add("Service not found");
+        }
+
+        // Add part if selected
+        if (inventoryItemId.HasValue && inventoryItemId.Value > 0)
+        {
+            var item = await _db.InventoryItems.FindAsync(inventoryItemId.Value);
+            if (item != null)
+            {
+                var dto = new DTOs.JobOrders.AddPartLineDto
+                {
+                    ItemId = inventoryItemId.Value,
+                    QtyUsed = quantity,
+                    UnitPrice = item.UnitPrice
+                };
+                var result = await _jobOrderService.AddPartLineAsync(shopId, userId, jobOrderId, dto);
+                if (result.Success) messages.Add("Part added");
+                else errors.Add(result.Message ?? "Failed to add part");
+            }
+            else errors.Add("Part not found");
+        }
+
+        if (!serviceCatalogId.HasValue && !inventoryItemId.HasValue)
+            errors.Add("Please select at least a service or a part to add.");
+
+        if (messages.Any()) TempData["Success"] = string.Join(" & ", messages) + " successfully.";
+        if (errors.Any()) TempData["Error"] = string.Join("; ", errors);
+
+        return RedirectToAction(nameof(Details), new { id = jobOrderId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddServiceLine(long jobOrderId, long serviceCatalogId)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });

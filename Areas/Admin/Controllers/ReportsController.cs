@@ -115,6 +115,35 @@ public class ReportsController : Controller
             },
             RecentActivity = recentActivity
         };
+
+        // Financial Summary (passed via ViewBag)
+        var totalOutstanding = await _db.Invoices
+            .Where(i => i.ShopId == shopId && !i.IsArchived && i.Status != InvoiceStatus.Void)
+            .SumAsync(i => (decimal?)i.Balance) ?? 0;
+
+        var adjustments = await _db.CreditDebitAdjustments
+            .Where(a => a.ShopId == shopId && a.Status == AdjustmentStatus.Approved)
+            .ToListAsync();
+
+        var totalCredits = adjustments
+            .Where(a => a.AdjustmentType == AdjustmentType.Credit || a.AdjustmentType == AdjustmentType.Refund)
+            .Sum(a => a.Amount);
+        var totalDebits = adjustments
+            .Where(a => a.AdjustmentType == AdjustmentType.Debit)
+            .Sum(a => a.Amount);
+        var netAdjustments = totalDebits - totalCredits;
+
+        ViewBag.FinancialSummary = new
+        {
+            TotalRevenue = thisMonthRevenue,
+            TotalCollected = payTotal,
+            TotalOutstanding = totalOutstanding,
+            TotalCredits = totalCredits,
+            TotalDebits = totalDebits,
+            NetAdjustments = netAdjustments,
+            NetRevenue = thisMonthRevenue + netAdjustments
+        };
+
         return View(vm);
     }
 

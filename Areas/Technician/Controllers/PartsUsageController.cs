@@ -1,8 +1,6 @@
 using ByteBill_BS.Data;
-using ByteBill_BS.DTOs.JobOrders;
 using ByteBill_BS.Extensions;
 using ByteBill_BS.Models.Enums;
-using ByteBill_BS.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,12 +12,10 @@ namespace ByteBill_BS.Areas.Technician.Controllers;
 public class PartsUsageController : Controller
 {
     private readonly ApplicationDbContext _db;
-    private readonly IJobOrderService _jobOrderService;
 
-    public PartsUsageController(ApplicationDbContext db, IJobOrderService jobOrderService)
+    public PartsUsageController(ApplicationDbContext db)
     {
         _db = db;
-        _jobOrderService = jobOrderService;
     }
 
     private bool IsAuthorized()
@@ -29,7 +25,7 @@ public class PartsUsageController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(long? jobOrderId)
+    public async Task<IActionResult> Index()
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
@@ -40,7 +36,7 @@ public class PartsUsageController : Controller
         var usageHistory = await _db.JobOrderParts
             .Where(p => p.JobOrder!.ShopId == shopId && p.JobOrder.AssignedTechUserId == userId)
             .OrderByDescending(p => p.JobOrder!.UpdatedAt ?? p.JobOrder.CreatedAt)
-            .Take(20)
+            .Take(50)
             .Select(p => new
             {
                 p.JobOrderPartId,
@@ -55,9 +51,9 @@ public class PartsUsageController : Controller
             })
             .ToListAsync();
 
-        // Get available parts (in-stock inventory)
+        // Get available parts (all inventory — show out-of-stock too for visibility)
         var availableParts = await _db.InventoryItems
-            .Where(i => i.ShopId == shopId && i.IsActive && i.QtyOnHand > 0)
+            .Where(i => i.ShopId == shopId && i.IsActive)
             .OrderBy(i => i.ItemName)
             .Select(i => new
             {
@@ -70,80 +66,17 @@ public class PartsUsageController : Controller
             })
             .ToListAsync();
 
-        // Get active job orders for the technician (for the "Record Usage" dropdown)
-        var activeJobOrders = await _db.JobOrders
-            .Where(j => j.ShopId == shopId
-                && j.AssignedTechUserId == userId
-                && !j.IsArchived
-                && j.Status != JobOrderStatus.Completed
-                && j.Status != JobOrderStatus.Cancelled)
-            .OrderByDescending(j => j.CreatedAt)
-            .Select(j => new
-            {
-                j.JobOrderId,
-                j.JobOrderNo,
-                CustomerName = j.Customer!.FirstName + " " + j.Customer.LastName,
-                DeviceSummary = j.Device!.DeviceType + " - " + j.Device.Brand + " " + j.Device.Model
-            })
-            .ToListAsync();
+        // Compute stats
+        var totalPartsUsed = usageHistory.Sum(u => u.Quantity);
+        var totalValue = usageHistory.Sum(u => u.LineTotal);
+        var lowStockCount = availableParts.Count(p => p.IsLowStock || p.QtyOnHand <= 0);
 
         ViewBag.UsageHistory = usageHistory;
         ViewBag.AvailableParts = availableParts;
-        ViewBag.ActiveJobOrders = activeJobOrders;
-        ViewBag.JobOrderId = jobOrderId;
+        ViewBag.TotalPartsUsed = totalPartsUsed;
+        ViewBag.TotalValue = totalValue;
+        ViewBag.LowStockCount = lowStockCount;
 
         return View();
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RecordUsage(long jobOrderId, long partId, int quantity)
-    {
-        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-
-        var shopId = User.GetShopId();
-        var userId = User.GetUserId();
-
-        // Verify technician owns this job order
-        var jobOrder = await _db.JobOrders
-            .FirstOrDefaultAsync(j => j.ShopId == shopId
-                && j.JobOrderId == jobOrderId
-                && j.AssignedTechUserId == userId);
-
-        if (jobOrder == null)
-        {
-            TempData["Error"] = "Job order not found or not assigned to you.";
-            return RedirectToAction(nameof(Index));
-        }
-
-        // Get the inventory item price
-        var item = await _db.InventoryItems
-            .FirstOrDefaultAsync(i => i.ItemId == partId && i.ShopId == shopId);
-
-        if (item == null)
-        {
-            TempData["Error"] = "Part not found.";
-            return RedirectToAction(nameof(Index));
-        }
-
-        var dto = new AddPartLineDto
-        {
-            ItemId = partId,
-            QtyUsed = quantity,
-            UnitPrice = item.UnitPrice
-        };
-
-        var result = await _jobOrderService.AddPartLineAsync(shopId, userId, jobOrderId, dto);
-
-        if (!result.Success)
-        {
-            TempData["Error"] = result.Message ?? "Failed to record parts usage.";
-        }
-        else
-        {
-            TempData["Success"] = $"Added {quantity}x {item.ItemName} to {jobOrder.JobOrderNo}";
-        }
-
-        return RedirectToAction(nameof(Index));
     }
 }

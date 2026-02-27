@@ -14,7 +14,7 @@ public interface IInvoiceService
     Task<InvoiceDetailDto?> GetDetailAsync(long shopId, long invoiceId);
     Task<InvoiceMetricsDto> GetMetricsAsync(long shopId);
     Task<ApiResponse<InvoiceDetailDto>> CreateFromJobOrderAsync(long shopId, long userId, CreateInvoiceRequest req);
-    Task<ApiResponse<AdjustmentDto>> CreateAdjustmentAsync(long shopId, long userId, long invoiceId, CreateAdjustmentRequest req);
+    Task<ApiResponse<AdjustmentDto>> CreateAdjustmentAsync(long shopId, long userId, long invoiceId, DTOs.Invoices.CreateAdjustmentRequest req);
 }
 
 public class InvoiceService : IInvoiceService
@@ -261,7 +261,7 @@ public class InvoiceService : IInvoiceService
 
     // ── Create Adjustment ────────────────────────────────────────────────
     public async Task<ApiResponse<AdjustmentDto>> CreateAdjustmentAsync(
-        long shopId, long userId, long invoiceId, CreateAdjustmentRequest req)
+        long shopId, long userId, long invoiceId, DTOs.Invoices.CreateAdjustmentRequest req)
     {
         var invoice = await _db.Invoices
             .FirstOrDefaultAsync(i => i.ShopId == shopId && i.InvoiceId == invoiceId);
@@ -288,11 +288,11 @@ public class InvoiceService : IInvoiceService
         _db.CreditDebitAdjustments.Add(adjustment);
 
         // Update invoice totals
-        if (adjType == AdjustmentType.CREDIT)
+        if (adjType == AdjustmentType.Credit)
         {
             invoice.TotalAdjustments -= req.Amount;
         }
-        else // DEBIT
+        else // Debit
         {
             invoice.TotalAdjustments += req.Amount;
         }

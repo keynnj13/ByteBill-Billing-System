@@ -33,6 +33,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<PaymentAllocation> PaymentAllocations => Set<PaymentAllocation>();
     public DbSet<PayMongoTxn> PayMongoTxns => Set<PayMongoTxn>();
     public DbSet<CreditDebitAdjustment> CreditDebitAdjustments => Set<CreditDebitAdjustment>();
+    public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<AccountingEntry> AccountingEntries => Set<AccountingEntry>();
     public DbSet<XeroSyncLog> XeroSyncLogs => Set<XeroSyncLog>();
@@ -635,15 +636,27 @@ public class ApplicationDbContext : DbContext
             entity.ToTable("CREDIT_DEBIT_ADJUSTMENT");
             entity.HasKey(e => e.AdjustmentId);
             entity.Property(e => e.AdjustmentId).HasColumnName("AdjustmentID");
+            entity.Property(e => e.ShopId).HasColumnName("ShopID");
             entity.Property(e => e.InvoiceId).HasColumnName("InvoiceID");
             entity.Property(e => e.CreatedByUserId).HasColumnName("CreatedByUserID");
+            entity.Property(e => e.ReviewedByUserId).HasColumnName("ReviewedByUserID");
             entity.Property(e => e.AdjustmentType).HasMaxLength(10).IsRequired()
                   .HasConversion<string>();
             entity.Property(e => e.Amount).HasPrecision(18, 2).IsRequired();
-            entity.Property(e => e.Reason).HasMaxLength(150).IsRequired();
+            entity.Property(e => e.Reason).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(10).IsRequired()
+                  .HasConversion<string>()
+                  .HasDefaultValue(Models.Enums.AdjustmentStatus.Pending);
             entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
+            entity.Property(e => e.ReviewedAt).HasColumnType("datetime2(0)");
             entity.HasIndex(e => e.InvoiceId);
             entity.HasIndex(e => e.CreatedByUserId);
+            entity.HasIndex(e => e.ShopId);
+
+            entity.HasOne(e => e.Shop)
+                  .WithMany()
+                  .HasForeignKey(e => e.ShopId)
+                  .OnDelete(DeleteBehavior.NoAction);
 
             entity.HasOne(e => e.Invoice)
                   .WithMany(i => i.Adjustments)
@@ -653,6 +666,40 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.CreatedByUser)
                   .WithMany()
                   .HasForeignKey(e => e.CreatedByUserId)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(e => e.ReviewedByUser)
+                  .WithMany()
+                  .HasForeignKey(e => e.ReviewedByUserId)
+                  .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // T2. NOTIFICATION
+        // ═══════════════════════════════════════════════════════════════
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.ToTable("NOTIFICATION");
+            entity.HasKey(e => e.NotificationId);
+            entity.Property(e => e.NotificationId).HasColumnName("NotificationID");
+            entity.Property(e => e.UserId).HasColumnName("UserID");
+            entity.Property(e => e.ShopId).HasColumnName("ShopID");
+            entity.Property(e => e.Title).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Message).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.Type).HasMaxLength(20).IsRequired().HasDefaultValue("info");
+            entity.Property(e => e.Url).HasMaxLength(200);
+            entity.Property(e => e.IsRead).HasDefaultValue(false);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
+            entity.HasIndex(e => new { e.UserId, e.IsRead });
+
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Shop)
+                  .WithMany()
+                  .HasForeignKey(e => e.ShopId)
                   .OnDelete(DeleteBehavior.NoAction);
         });
 

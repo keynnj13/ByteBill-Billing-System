@@ -18,7 +18,7 @@
     <div class="nav-actions">
         <!-- Notification Bell -->
         <div class="notif-wrapper" style="position: relative;">
-            <button class="btn btn-ghost btn-icon btn-sm" id="notif-bell" aria-label="Notifications" style="color: var(--gray-500); position: relative;">
+            <button class="btn btn-ghost btn-icon" id="notif-bell" aria-label="Notifications" style="color: var(--gray-500); position: relative; width: 40px; height: 40px;">
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
                 </svg>
@@ -228,37 +228,13 @@
 
 <script>
 (function () {
-    // ── Mock notifications (role-aware) ──
-    const role = '@userRole.ToString()';
-
-    const adminNotifications = [
-        { id: 1, type: 'adjustment', icon: 'adjustment', title: 'New Adjustment Request', desc: 'Juan Cruz requested a ₱150.00 credit on INV-2025-0142.', time: '2 hours ago', unread: true, url: '/Admin/Adjustments' },
-        { id: 2, type: 'adjustment', icon: 'adjustment', title: 'New Adjustment Request', desc: 'Juan Cruz requested a ₱75.00 refund on INV-2025-0138.', time: '5 hours ago', unread: true, url: '/Admin/Adjustments' },
-        { id: 3, type: 'adjustment', icon: 'adjustment', title: 'New Adjustment Request', desc: 'Juan Cruz requested a ₱200.00 debit on INV-2025-0130.', time: '1 day ago', unread: true, url: '/Admin/Adjustments' },
-        { id: 4, type: 'info', icon: 'info', title: 'Monthly report ready', desc: 'Your February 2025 billing summary is available.', time: '2 days ago', unread: false, url: '#' }
-    ];
-
-    const billingNotifications = [
-        { id: 1, type: 'approved', icon: 'approved', title: 'Adjustment Approved', desc: 'Maria Santos approved your ₱50.00 credit on INV-2025-0120.', time: '3 days ago', unread: true, url: '/Billing/Adjustments' },
-        { id: 2, type: 'approved', icon: 'approved', title: 'Adjustment Approved', desc: 'Maria Santos approved your ₱30.00 refund on INV-2025-0115.', time: '5 days ago', unread: true, url: '/Billing/Adjustments' },
-        { id: 3, type: 'rejected', icon: 'rejected', title: 'Adjustment Rejected', desc: 'Maria Santos rejected your ₱200.00 credit on INV-2025-0095.', time: '10 days ago', unread: false, url: '/Billing/Adjustments' }
-    ];
-
-    const defaultNotifications = [
-        { id: 1, type: 'info', icon: 'info', title: 'Welcome to ByteBill', desc: 'Explore new features in the latest update.', time: '1 day ago', unread: false, url: '#' }
-    ];
-
-    let notifications;
-    if (role === 'Admin')        notifications = adminNotifications;
-    else if (role === 'Billing') notifications = billingNotifications;
-    else                          notifications = defaultNotifications;
-
-    // ── Bell & Dropdown ──
     const bell     = document.getElementById('notif-bell');
     const badge    = document.getElementById('notif-badge');
     const dropdown = document.getElementById('notif-dropdown');
     const list     = document.getElementById('notif-list');
     const markAll  = document.getElementById('notif-mark-all');
+
+    let notifications = [];
 
     function iconSvg(type) {
         switch (type) {
@@ -269,8 +245,7 @@
         }
     }
 
-    function render() {
-        const unreadCount = notifications.filter(n => n.unread).length;
+    function render(unreadCount) {
         badge.textContent = unreadCount;
         if (unreadCount === 0) badge.classList.add('hidden');
         else badge.classList.remove('hidden');
@@ -281,19 +256,41 @@
         }
 
         list.innerHTML = notifications.map(n => `
-            <div class="notif-item ${n.unread ? 'unread' : ''}" data-id="${n.id}" onclick="window.location.href='${n.url}'">
-                <div class="notif-icon ${n.icon}">${iconSvg(n.icon)}</div>
+            <div class="notif-item ${!n.isRead ? 'unread' : ''}" data-id="${n.notificationId}" onclick="handleNotifClick(${n.notificationId}, '${n.url || '#'}')">
+                <div class="notif-icon ${n.type}">${iconSvg(n.type)}</div>
                 <div class="notif-content">
                     <div class="notif-title">${n.title}</div>
-                    <div class="notif-desc">${n.desc}</div>
-                    <div class="notif-time">${n.time}</div>
+                    <div class="notif-desc">${n.message}</div>
+                    <div class="notif-time">${n.timeAgo}</div>
                 </div>
-                <div class="notif-dot ${n.unread ? '' : 'read'}"></div>
+                <div class="notif-dot ${n.isRead ? 'read' : ''}"></div>
             </div>
         `).join('');
     }
 
-    render();
+    async function loadNotifications() {
+        try {
+            const res = await fetch('/api/notifications');
+            if (!res.ok) return;
+            const data = await res.json();
+            notifications = data.notifications || [];
+            render(data.unreadCount || 0);
+        } catch { }
+    }
+
+    window.handleNotifClick = async function (id, url) {
+        try {
+            await fetch(`/api/notifications/read/${id}`, { method: 'POST' });
+        } catch { }
+        if (url && url !== '#') window.location.href = url;
+        else loadNotifications();
+    };
+
+    // Initial load
+    loadNotifications();
+
+    // Poll every 30 seconds
+    setInterval(loadNotifications, 30000);
 
     // Toggle dropdown
     bell.addEventListener('click', function (e) {
@@ -304,9 +301,11 @@
     });
 
     // Mark all read
-    markAll.addEventListener('click', function () {
-        notifications.forEach(n => n.unread = false);
-        render();
+    markAll.addEventListener('click', async function () {
+        try {
+            await fetch('/api/notifications/read-all', { method: 'POST' });
+            loadNotifications();
+        } catch { }
     });
 
     // Close on outside click

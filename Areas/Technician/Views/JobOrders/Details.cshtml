@@ -172,9 +172,9 @@
                                 }
                             </tbody>
                             <tfoot>
-                                <tr>
-                                    <td colspan="@(ViewBag.CanModifyLines == true ? 5 : 4)" class="text-right"><strong>Total</strong></td>
-                                    <td class="text-right"><strong>@Model.Total.ToString("C")</strong></td>
+                                <tr style="background: #f0fdf4; border-top: 2px solid #10b981;">
+                                    <td colspan="@(ViewBag.CanModifyLines == true ? 5 : 4)" class="text-right" style="font-size: 15px; font-weight: 700; color: #065f46; padding: 14px 12px;">Grand Total</td>
+                                    <td class="text-right" style="font-size: 18px; font-weight: 700; color: #065f46; padding: 14px 12px;">₱@Model.Total.ToString("N2")</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -201,14 +201,16 @@
                         <span style="font-size:11px; color:#9ca3af;">(e.g. cleaning, diagnostics, software service)</span>
                     </div>
 
-                    <div class="add-line-grid">
-                        <!-- Add Service -->
-                        <div class="add-line-section">
-                            <h4 class="add-line-title">Add Service</h4>
-                            <form asp-action="AddServiceLine" asp-controller="JobOrders" asp-area="Technician" method="post" id="addServiceForm">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="jobOrderId" value="@Model.Id" />
-                                <input type="hidden" name="serviceCatalogId" id="serviceCatalogIdInput" value="" />
+                    <form asp-action="AddItems" asp-controller="JobOrders" asp-area="Technician" method="post" id="addItemsForm">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="jobOrderId" value="@Model.Id" />
+                        <input type="hidden" name="serviceCatalogId" id="serviceCatalogIdInput" value="" />
+                        <input type="hidden" name="inventoryItemId" id="inventoryItemIdInput" value="" />
+
+                        <div class="add-line-grid">
+                            <!-- Service Selection -->
+                            <div class="add-line-section">
+                                <h4 class="add-line-title">Service</h4>
                                 <div class="form-group" style="margin-bottom:8px;">
                                     <div class="combo-wrapper" id="serviceComboWrapper">
                                         <div class="combo-input-row">
@@ -228,20 +230,11 @@
                                         <button type="button" class="combo-clear-btn" id="serviceClearBtn" title="Clear">&times;</button>
                                     </div>
                                 </div>
-                                <button type="submit" class="btn btn-outline-primary btn-sm">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                                    Add Service
-                                </button>
-                            </form>
-                        </div>
+                            </div>
 
-                        <!-- Add Part -->
-                        <div class="add-line-section" id="addPartSection">
-                            <h4 class="add-line-title">Add Part</h4>
-                            <form asp-action="AddPartLine" asp-controller="JobOrders" asp-area="Technician" method="post" id="addPartForm">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="jobOrderId" value="@Model.Id" />
-                                <input type="hidden" name="inventoryItemId" id="inventoryItemIdInput" value="" />
+                            <!-- Part Selection -->
+                            <div class="add-line-section" id="addPartSection">
+                                <h4 class="add-line-title">Part</h4>
                                 <div class="form-group" style="margin-bottom:8px;">
                                     <div class="combo-wrapper" id="partComboWrapper">
                                         <div class="combo-input-row">
@@ -262,15 +255,20 @@
                                     </div>
                                 </div>
                                 <div class="form-group" style="margin-bottom:8px;">
-                                    <input type="number" name="quantity" class="form-input" value="1" min="1" required placeholder="Qty" style="width:80px; font-size:13px;" />
+                                    <input type="number" name="quantity" class="form-input" value="1" min="1" placeholder="Qty" style="width:80px; font-size:13px;" />
                                 </div>
-                                <button type="submit" class="btn btn-outline-primary btn-sm">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                                    Add Part
-                                </button>
-                            </form>
+                            </div>
                         </div>
-                    </div>
+
+                        <!-- Single Add Button -->
+                        <div style="margin-top: 12px;">
+                            <button type="submit" class="btn btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                Add Items
+                            </button>
+                            <span style="font-size: 12px; color: #9ca3af; margin-left: 8px;">Select a service, a part, or both to add at once</span>
+                        </div>
+                    </form>
 
                     <!-- Service-only hint shown when toggled -->
                     <div id="serviceOnlyHint" style="display:none; margin-top:12px; padding:10px 14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; font-size:13px; color:#1e40af;">
@@ -643,7 +641,20 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ── Part quantity input ──
-    var qtyInput = document.querySelector('#addPartForm input[name="quantity"]');
+    var qtyInput = document.querySelector('#addItemsForm input[name="quantity"]');
+
+    // ── Combined form validation ──
+    var addItemsForm = document.getElementById('addItemsForm');
+    if (addItemsForm) {
+        addItemsForm.addEventListener('submit', function(e) {
+            var svcId = document.getElementById('serviceCatalogIdInput').value;
+            var partId = document.getElementById('inventoryItemIdInput').value;
+            if (!svcId && !partId) {
+                e.preventDefault();
+                alert('Please select at least a service or a part to add.');
+            }
+        });
+    }
 
     // ── Setup Service Combo ──
     setupCombo({
@@ -651,7 +662,7 @@ document.addEventListener('DOMContentLoaded', function () {
         chevronId: 'serviceChevron', hiddenId: 'serviceCatalogIdInput',
         selectedCardId: 'serviceSelectedCard', selectedNameId: 'serviceSelectedName',
         selectedDetailId: 'serviceSelectedDetail', clearBtnId: 'serviceClearBtn',
-        formId: 'addServiceForm',
+        formId: null,
         items: servicesData,
         excludeFn: function(item) { return existingServiceNames.has(item.name); },
         detailFn: function(s) { return formatPeso(s.price); },
@@ -664,7 +675,7 @@ document.addEventListener('DOMContentLoaded', function () {
         chevronId: 'partChevron', hiddenId: 'inventoryItemIdInput',
         selectedCardId: 'partSelectedCard', selectedNameId: 'partSelectedName',
         selectedDetailId: 'partSelectedDetail', clearBtnId: 'partClearBtn',
-        formId: 'addPartForm',
+        formId: null,
         items: partsData,
         detailFn: function(p) { return 'Stock: ' + p.stock + ' &middot; ' + formatPeso(p.price); },
         detailTextFn: function(p) { return 'Stock: ' + p.stock + ' · ' + formatPeso(p.price); },

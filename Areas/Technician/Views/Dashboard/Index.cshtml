@@ -10,11 +10,12 @@
 <!-- Welcome Banner -->
 <div class="tech-welcome">
     <div class="tech-welcome-content">
-        <h1 class="tech-welcome-title">Welcome back, @firstName</h1>
+        <p class="tech-welcome-date">@DateTime.Now.ToString("dddd, MMMM d yyyy")</p>
+        <h1 class="tech-welcome-title">Welcome back, @firstName!</h1>
         <p class="tech-welcome-sub">You have <strong>@totalActive active job@(totalActive != 1 ? "s" : "")</strong> in your queue today.</p>
     </div>
     <div class="tech-welcome-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
     </div>
 </div>
 
@@ -150,14 +151,15 @@
         align-items: center;
         background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
         border-radius: 16px;
-        padding: 28px 32px;
+        padding: 32px 36px;
         margin-bottom: 24px;
         color: white;
     }
-    .tech-welcome-title { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
-    .tech-welcome-sub { font-size: 14px; opacity: 0.85; }
-    .tech-welcome-sub strong { opacity: 1; }
-    .tech-welcome-icon { opacity: 0.2; }
+    .tech-welcome-date { font-size: 13px; opacity: 0.7; margin-bottom: 4px; letter-spacing: 0.02em; }
+    .tech-welcome-title { font-size: 26px; font-weight: 700; margin-bottom: 8px; text-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+    .tech-welcome-sub { font-size: 15px; color: rgba(255,255,255,0.9); }
+    .tech-welcome-sub strong { color: #ffffff; font-weight: 600; }
+    .tech-welcome-icon { opacity: 0.15; flex-shrink: 0; }
 
     /* ── KPI Cards ── */
     .tech-kpi-grid {

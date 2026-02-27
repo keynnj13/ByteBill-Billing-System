@@ -3,7 +3,13 @@ using ByteBill_BS.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using System.Threading.RateLimiting;
+
+// ── Set Philippine Peso as default currency culture ──────────────────
+var phpCulture = new CultureInfo("en-PH");
+CultureInfo.DefaultThreadCurrentCulture = phpCulture;
+CultureInfo.DefaultThreadCurrentUICulture = phpCulture;
 
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
@@ -74,6 +80,8 @@ builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IServiceCatalogService, ServiceCatalogService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<IAdjustmentService, AdjustmentService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // ── PayMongo integration ─────────────────────────────────────────────
 builder.Services.Configure<PayMongoSettings>(builder.Configuration.GetSection("PayMongo"));
