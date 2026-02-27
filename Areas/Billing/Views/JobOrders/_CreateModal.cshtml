@@ -1,0 +1,476 @@
+@model JobOrderCreateViewModel
+
+<form asp-action="Create" asp-controller="JobOrders" asp-area="Billing" method="post" data-ajax="true">
+    @Html.AntiForgeryToken()
+    <partial name="~/Views/Shared/_ValidationSummary.cshtml" />
+    
+    <div class="modal-form-body modal-wizard">
+        <!-- Wizard Progress Steps -->
+        <div class="modal-wizard-steps">
+            <div class="modal-wizard-step active" data-step="1">
+                <span class="step-number">1</span>
+                <span class="step-label">Customer</span>
+            </div>
+            <div class="modal-wizard-connector"></div>
+            <div class="modal-wizard-step" data-step="2">
+                <span class="step-number">2</span>
+                <span class="step-label">Device</span>
+            </div>
+            <div class="modal-wizard-connector"></div>
+            <div class="modal-wizard-step" data-step="3">
+                <span class="step-number">3</span>
+                <span class="step-label">Issue & Assignment</span>
+            </div>
+        </div>
+        
+        <!-- Wizard Panels -->
+        <div class="modal-wizard-content">
+            <!-- Step 1: Customer -->
+            <div class="modal-wizard-panel active" data-panel="1">
+                <div class="wizard-panel-card">
+                    <div class="wizard-panel-header">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        </svg>
+                        <div>
+                            <h3>Select Customer</h3>
+                            <p>Choose the customer for this job order</p>
+                        </div>
+                    </div>
+                    <div class="wizard-panel-body">
+                        <div class="form-group">
+                            <label class="form-label">Customer <span class="text-danger">*</span></label>
+                            <input type="hidden" name="CustomerId" id="CustomerId" value="" />
+                            <div class="customer-combo-wrapper" id="customerSearchWrapper">
+                                <div class="customer-combo-input">
+                                    <svg class="combo-search-icon" width="15" height="15" fill="none" stroke="#9ca3af" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                    <input type="text" class="form-select" id="customerSearchInput" placeholder="Select a customer..." autocomplete="off" style="padding-left:34px;padding-right:36px;cursor:pointer;" />
+                                    <button type="button" class="combo-chevron-btn" id="comboChevronBtn" tabindex="-1">
+                                        <svg width="16" height="16" fill="none" stroke="#6b7280" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    </button>
+                                </div>
+                                <div class="customer-combo-results" id="customerSearchResults"></div>
+                            </div>
+                            <div class="selected-customer-card" id="selectedCustomer" style="display: none;">
+                                <div class="selected-customer-info">
+                                    <span class="selected-customer-name" id="selectedCustomerName"></span>
+                                    <span class="selected-customer-detail" id="selectedCustomerDetail"></span>
+                                </div>
+                                <button type="button" class="btn-clear-customer" id="clearCustomerBtn" title="Clear selection">&times;</button>
+                            </div>
+                            <span class="text-danger text-sm" id="customerError"></span>
+                        </div>
+                        <p class="text-sm text-muted" style="margin-top: 8px;">
+                            <a href="#" id="toggleAddCustomerLink" class="text-primary">+ Add new customer</a>
+                        </p>
+
+                        <!-- Inline Add Customer Form -->
+                        <div id="inlineAddCustomerForm" style="display: none; margin-top: 12px; padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+                            <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">New Customer</h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">First Name <span class="text-danger">*</span></label>
+                                    <input type="text" id="newCustFirstName" class="form-input" maxlength="20" placeholder="First name" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Middle Name</label>
+                                    <input type="text" id="newCustMiddleName" class="form-input" maxlength="10" placeholder="Middle name" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Last Name <span class="text-danger">*</span></label>
+                                    <input type="text" id="newCustLastName" class="form-input" maxlength="10" placeholder="Last name" />
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" id="newCustEmail" class="form-input" maxlength="50" placeholder="customer@email.com" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Phone</label>
+                                    <input type="tel" id="newCustPhone" class="form-input" maxlength="11" inputmode="numeric" placeholder="09XXXXXXXXX" />
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Address</label>
+                                <input type="text" id="newCustAddress" class="form-input" maxlength="100" placeholder="Street address, city" />
+                            </div>
+                            <span class="text-danger text-sm" id="newCustError" style="display:none;"></span>
+                            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                                <button type="button" class="btn btn-ghost btn-sm" id="cancelAddCustomerBtn">Cancel</button>
+                                <button type="button" class="btn btn-primary btn-sm" id="saveNewCustomerBtn">
+                                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    Save & Select
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 2: Device -->
+            <div class="modal-wizard-panel" data-panel="2">
+                <div class="wizard-panel-card">
+                    <div class="wizard-panel-header">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                        </svg>
+                        <div>
+                            <h3>Device Information</h3>
+                            <p>Enter device details and accessories</p>
+                        </div>
+                    </div>
+                    <div class="wizard-panel-body">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label asp-for="DeviceType" class="form-label">Device Type <span class="text-danger">*</span></label>
+                                <input asp-for="DeviceType" class="form-input" placeholder="e.g., Laptop, Desktop, Phone" />
+                                <span asp-validation-for="DeviceType" class="text-danger text-sm"></span>
+                            </div>
+                            <div class="form-group">
+                                <label asp-for="Brand" class="form-label">Brand</label>
+                                <input asp-for="Brand" class="form-input" placeholder="e.g., Dell, HP, Apple" />
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                            <label asp-for="DeviceModel" class="form-label">Model</label>
+                            <input asp-for="DeviceModel" class="form-input" placeholder="e.g., XPS 15, Pavilion" />
+                            </div>
+                            <div class="form-group">
+                                <label asp-for="SerialNumber" class="form-label">Serial Number</label>
+                                <input asp-for="SerialNumber" class="form-input" placeholder="Device serial number" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="DeviceAccessories" class="form-label">Accessories</label>
+                            <input asp-for="DeviceAccessories" class="form-input" placeholder="e.g., Charger, Mouse, Laptop bag" />
+                            <span class="text-sm text-muted">List any accessories the customer is leaving with the device</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 3: Issue & Assignment -->
+            <div class="modal-wizard-panel" data-panel="3">
+                <div class="wizard-panel-card">
+                    <div class="wizard-panel-header">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <div>
+                            <h3>Issue Details</h3>
+                            <p>Describe the problem and assign technician</p>
+                        </div>
+                    </div>
+                    <div class="wizard-panel-body">
+                        <div class="form-group">
+                            <label asp-for="ProblemDescription" class="form-label">Problem Description <span class="text-danger">*</span></label>
+                            <textarea asp-for="ProblemDescription" class="form-input" rows="4" placeholder="Describe the issue or problem reported by the customer..."></textarea>
+                            <span asp-validation-for="ProblemDescription" class="text-danger text-sm"></span>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label asp-for="Priority" class="form-label">Priority</label>
+                                <select asp-for="Priority" class="form-select">
+                                    <option value="Low">Low</option>
+                                    <option value="Normal" selected>Normal</option>
+                                    <option value="High">High</option>
+                                    <option value="Urgent">Urgent</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label asp-for="AssignedTechnicianId" class="form-label">Assign Technician</label>
+                                <select asp-for="AssignedTechnicianId" class="form-select">
+                                    <option value="">Unassigned</option>
+                                    @foreach (var tech in Model.AvailableTechnicians)
+                                    {
+                                        <option value="@tech.Id">@tech.FullName (@tech.ActiveJobOrders active jobs)</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="EstimatedCompletionDate" class="form-label">Estimated Completion</label>
+                            <input asp-for="EstimatedCompletionDate" type="date" class="form-input" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Footer with Wizard Navigation -->
+    <div class="modal-form-footer wizard-footer">
+        <button type="button" class="btn btn-ghost wizard-prev-btn" style="display: none;">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            Previous
+        </button>
+        <span class="wizard-step-indicator">Step <strong id="currentStepNum">1</strong> of 3</span>
+        <div class="wizard-action-buttons">
+            <button type="button" class="btn btn-ghost" onclick="closeAjaxModal()">Cancel</button>
+            <button type="button" class="btn btn-primary wizard-next-btn">
+                Next
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </button>
+            <button type="submit" class="btn btn-primary wizard-submit-btn" style="display: none;">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                Create Job Order
+            </button>
+        </div>
+    </div>
+</form>
+
+<script>
+(function() {
+    var wizard = document.querySelector('.modal-wizard');
+    if (!wizard) return;
+    
+    var steps = wizard.querySelectorAll('.modal-wizard-step');
+    var panels = wizard.querySelectorAll('.modal-wizard-panel');
+    var connectors = wizard.querySelectorAll('.modal-wizard-connector');
+    var prevBtn = document.querySelector('.wizard-prev-btn');
+    var nextBtn = document.querySelector('.wizard-next-btn');
+    var submitBtn = document.querySelector('.wizard-submit-btn');
+    var stepNumDisplay = document.getElementById('currentStepNum');
+    var currentStep = 1;
+    var totalSteps = 3;
+
+    function updateWizard() {
+        steps.forEach(function(step, index) {
+            step.classList.remove('active', 'completed');
+            if (index + 1 < currentStep) step.classList.add('completed');
+            if (index + 1 === currentStep) step.classList.add('active');
+        });
+        
+        connectors.forEach(function(conn, index) {
+            conn.classList.toggle('completed', index + 1 < currentStep);
+        });
+        
+        panels.forEach(function(panel) {
+            panel.classList.toggle('active', parseInt(panel.dataset.panel) === currentStep);
+        });
+        
+        prevBtn.style.display = currentStep > 1 ? 'inline-flex' : 'none';
+        nextBtn.style.display = currentStep < totalSteps ? 'inline-flex' : 'none';
+        submitBtn.style.display = currentStep === totalSteps ? 'inline-flex' : 'none';
+        
+        if (stepNumDisplay) stepNumDisplay.textContent = currentStep;
+        
+        var modalBody = document.querySelector('.ajax-modal-content');
+        if (modalBody) modalBody.scrollTop = 0;
+    }
+
+    prevBtn.addEventListener('click', function() {
+        if (currentStep > 1) { currentStep--; updateWizard(); }
+    });
+    nextBtn.addEventListener('click', function() {
+        if (currentStep === 1) {
+            var custId = document.getElementById('CustomerId').value;
+            if (!custId) {
+                var errEl = document.getElementById('customerError');
+                if (errEl) errEl.textContent = 'Please select a customer to continue.';
+                return;
+            }
+        }
+        if (currentStep === 2) {
+            var dt = document.getElementById('DeviceType');
+            if (dt && !dt.value.trim()) {
+                alert('Please enter the device type.');
+                return;
+            }
+        }
+        if (currentStep < totalSteps) { currentStep++; updateWizard(); }
+    });
+
+    updateWizard();
+
+    // ── Customer Search ──────────────────────────────────────────────
+    var searchInput = document.getElementById('customerSearchInput');
+    var searchResults = document.getElementById('customerSearchResults');
+    var searchWrapper = document.getElementById('customerSearchWrapper');
+    var selectedCard = document.getElementById('selectedCustomer');
+    var customerIdInput = document.getElementById('CustomerId');
+    var customerError = document.getElementById('customerError');
+    var searchTimer = null;
+
+    var chevronBtn = document.getElementById('comboChevronBtn');
+    var dropdownOpen = false;
+
+    function openDropdown() {
+        if (dropdownOpen && searchResults.children.length > 0) return;
+        dropdownOpen = true;
+        var q = searchInput.value.trim();
+        searchCustomers(q);
+    }
+
+    function closeDropdown() {
+        dropdownOpen = false;
+        searchResults.style.display = 'none';
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimer);
+            if (customerError) customerError.textContent = '';
+            searchTimer = setTimeout(function() { searchCustomers(searchInput.value.trim()); }, 300);
+        });
+
+        searchInput.addEventListener('focus', function() {
+            openDropdown();
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!searchWrapper.contains(e.target)) { closeDropdown(); }
+        });
+    }
+    if (chevronBtn) {
+        chevronBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (dropdownOpen) { closeDropdown(); } else { searchInput.focus(); openDropdown(); }
+        });
+    }
+
+    function searchCustomers(query) {
+        var url = '/api/customersapi?pageSize=10' + (query ? '&search=' + encodeURIComponent(query) : '');
+        fetch(url, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            searchResults.innerHTML = '';
+            if (res.success && res.data && res.data.items && res.data.items.length > 0) {
+                res.data.items.forEach(function(c) {
+                    var div = document.createElement('div');
+                    div.className = 'customer-result-item';
+                    div.innerHTML = '<div class="customer-result-name">' + escapeHtml(c.fullName) + '</div>' +
+                        '<div class="customer-result-detail">' + escapeHtml(c.phone || '') + (c.email ? ' &middot; ' + escapeHtml(c.email) : '') + '</div>';
+                    div.addEventListener('click', function() { selectCustomer(c.customerId, c.fullName, c.phone, c.email); });
+                    searchResults.appendChild(div);
+                });
+                searchResults.style.display = 'block';
+            } else {
+                searchResults.innerHTML = '<div class="customer-result-empty">No customers found</div>';
+                searchResults.style.display = 'block';
+            }
+        });
+    }
+
+    function selectCustomer(id, name, phone, email) {
+        customerIdInput.value = id;
+        document.getElementById('selectedCustomerName').textContent = name;
+        document.getElementById('selectedCustomerDetail').textContent = (phone || '') + (email ? ' · ' + email : '');
+        selectedCard.style.display = 'flex';
+        searchWrapper.style.display = 'none';
+        searchResults.style.display = 'none';
+        if (customerError) customerError.textContent = '';
+    }
+
+    var clearBtn = document.getElementById('clearCustomerBtn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            customerIdInput.value = '';
+            searchInput.value = '';
+            searchResults.innerHTML = '';
+            selectedCard.style.display = 'none';
+            searchWrapper.style.display = 'block';
+            searchInput.focus();
+        });
+    }
+
+    // ── Inline Add Customer ──────────────────────────────────────────
+    var toggleLink = document.getElementById('toggleAddCustomerLink');
+    var addForm = document.getElementById('inlineAddCustomerForm');
+    var cancelAddBtn = document.getElementById('cancelAddCustomerBtn');
+    var saveNewBtn = document.getElementById('saveNewCustomerBtn');
+    var newCustPhone = document.getElementById('newCustPhone');
+
+    if (toggleLink) {
+        toggleLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            addForm.style.display = addForm.style.display === 'none' ? 'block' : 'none';
+        });
+    }
+    if (cancelAddBtn) {
+        cancelAddBtn.addEventListener('click', function() { addForm.style.display = 'none'; });
+    }
+    if (newCustPhone) {
+        newCustPhone.addEventListener('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '').substring(0, 11);
+        });
+    }
+    if (saveNewBtn) {
+        saveNewBtn.addEventListener('click', function() {
+            var fn = document.getElementById('newCustFirstName').value.trim();
+            var ln = document.getElementById('newCustLastName').value.trim();
+            var errEl = document.getElementById('newCustError');
+            if (!fn || !ln) { errEl.textContent = 'First name and last name are required.'; errEl.style.display = 'block'; return; }
+            var phone = document.getElementById('newCustPhone').value.trim();
+            if (phone && (phone.length !== 11 || !/^09\d{9}$/.test(phone))) { errEl.textContent = 'Phone must be 11 digits starting with 09.'; errEl.style.display = 'block'; return; }
+            errEl.style.display = 'none';
+            saveNewBtn.disabled = true;
+            saveNewBtn.textContent = 'Saving...';
+
+            var body = {
+                firstName: fn,
+                middleName: document.getElementById('newCustMiddleName').value.trim() || null,
+                lastName: ln,
+                email: document.getElementById('newCustEmail').value.trim() || null,
+                phone: phone || null,
+                address: document.getElementById('newCustAddress').value.trim() || null
+            };
+
+            fetch('/api/customersapi', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify(body)
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (res.success && res.data) {
+                    selectCustomer(res.data.customerId, res.data.fullName, res.data.phone, res.data.email);
+                    addForm.style.display = 'none';
+                    ['newCustFirstName','newCustMiddleName','newCustLastName','newCustEmail','newCustPhone','newCustAddress'].forEach(function(id) { document.getElementById(id).value = ''; });
+                } else {
+                    errEl.textContent = res.message || 'Failed to create customer.';
+                    errEl.style.display = 'block';
+                }
+            })
+            .catch(function() { errEl.textContent = 'Network error. Please try again.'; errEl.style.display = 'block'; })
+            .finally(function() { saveNewBtn.disabled = false; saveNewBtn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Save & Select'; });
+        });
+    }
+
+    function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+})();
+</script>
+
+<style>
+    .customer-combo-wrapper { position: relative; }
+    .customer-combo-input { position: relative; display: flex; align-items: center; }
+    .combo-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 1; }
+    .combo-chevron-btn { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 8px 10px; cursor: pointer; color: #6b7280; display: flex; align-items: center; }
+    .combo-chevron-btn:hover { color: #374151; }
+    .customer-combo-results { background: white; border: 1px solid #d1d5db; border-top: none; border-radius: 0 0 8px 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.12); max-height: 220px; overflow-y: auto; display: none; margin-top: -2px; }
+    .customer-result-item { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f3f4f6; transition: background 0.15s; }
+    .customer-result-item:hover { background: #eff6ff; }
+    .customer-result-item:last-child { border-bottom: none; }
+    .customer-result-name { font-size: 15px; font-weight: 600; color: #111827; }
+    .customer-result-detail { font-size: 12px; color: #6b7280; margin-top: 3px; }
+    .customer-result-empty { padding: 16px; font-size: 13px; color: #9ca3af; text-align: center; }
+    .selected-customer-card { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; }
+    .selected-customer-name { font-size: 14px; font-weight: 600; color: #1e40af; display: block; }
+    .selected-customer-detail { font-size: 12px; color: #3b82f6; }
+    .btn-clear-customer { background: none; border: none; font-size: 20px; color: #6b7280; cursor: pointer; padding: 0 4px; line-height: 1; }
+    .btn-clear-customer:hover { color: #ef4444; }
+</style>

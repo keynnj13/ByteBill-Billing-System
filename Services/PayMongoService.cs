@@ -241,7 +241,7 @@ public class PayMongoService : IPayMongoService
         var description = req.Description ?? $"Payment for Invoice {invoice.InvoiceNo}";
 
         // Build line items from invoice lines
-        var lineItems = invoice.InvoiceLines.Select(line => new
+        var rawLineItems = invoice.InvoiceLines.Select(line => new
         {
             currency = _settings.Currency,
             amount = (long)(line.Qty * line.UnitPrice * 100),
@@ -250,17 +250,28 @@ public class PayMongoService : IPayMongoService
             quantity = line.Qty
         }).ToList();
 
-        // If no line items, create a single line for the balance
-        if (!lineItems.Any())
+        // Reconcile line items with adjusted balance (credit/debit adjustments may change the balance)
+        var lineItemsTotal = rawLineItems.Sum(li => li.amount * li.quantity);
+        var lineItems = new List<object>();
+
+        if (!rawLineItems.Any() || lineItemsTotal != amountCentavos)
         {
+            // Balance differs from line-item total (due to adjustments) or no lines exist —
+            // use a single line item reflecting the actual outstanding balance
             lineItems.Add(new
             {
                 currency = _settings.Currency,
                 amount = amountCentavos,
-                description,
+                description = lineItemsTotal != amountCentavos
+                    ? $"Payment for Invoice {invoice.InvoiceNo} (adjusted balance)"
+                    : description,
                 name = $"Invoice {invoice.InvoiceNo}",
                 quantity = 1
             });
+        }
+        else
+        {
+            lineItems.AddRange(rawLineItems);
         }
 
         // Build success/cancel URLs with invoice ID for tracking

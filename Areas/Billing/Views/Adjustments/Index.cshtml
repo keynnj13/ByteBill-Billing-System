@@ -33,19 +33,34 @@
     </div>
 }
 
-<!-- Stat Pills -->
-<div class="bil-adj-stats" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
-    <div class="bil-adj-stat-pill pending">
-        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-        @metrics.Pending Pending
+<!-- Stat Cards -->
+<div class="bil-adj-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 20px;">
+    <div class="bil-adj-stat-card pending">
+        <div class="bil-adj-stat-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <div class="bil-adj-stat-info">
+            <span class="bil-adj-stat-count">@metrics.Pending</span>
+            <span class="bil-adj-stat-label">Pending</span>
+        </div>
     </div>
-    <div class="bil-adj-stat-pill approved">
-        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-        @metrics.Approved Approved
+    <div class="bil-adj-stat-card approved">
+        <div class="bil-adj-stat-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <div class="bil-adj-stat-info">
+            <span class="bil-adj-stat-count">@metrics.Approved</span>
+            <span class="bil-adj-stat-label">Approved</span>
+        </div>
     </div>
-    <div class="bil-adj-stat-pill rejected">
-        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-        @metrics.Rejected Rejected
+    <div class="bil-adj-stat-card rejected">
+        <div class="bil-adj-stat-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <div class="bil-adj-stat-info">
+            <span class="bil-adj-stat-count">@metrics.Rejected</span>
+            <span class="bil-adj-stat-label">Rejected</span>
+        </div>
     </div>
 </div>
 
@@ -196,10 +211,17 @@
 </div>
 
 <style>
-    .bil-adj-stat-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
-    .bil-adj-stat-pill.pending  { background: rgba(245,176,65,0.12); color: #d97706; }
-    .bil-adj-stat-pill.approved { background: rgba(16,185,129,0.12); color: #059669; }
-    .bil-adj-stat-pill.rejected { background: rgba(239,68,68,0.12);  color: #dc2626; }
+    .bil-adj-stat-card { display: flex; align-items: center; gap: 14px; padding: 18px 20px; border-radius: 12px; border: 1px solid var(--gray-border); background: var(--card); }
+    .bil-adj-stat-card .bil-adj-stat-icon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px; }
+    .bil-adj-stat-card.pending  .bil-adj-stat-icon { background: rgba(245,176,65,0.12); color: #d97706; }
+    .bil-adj-stat-card.approved .bil-adj-stat-icon { background: rgba(16,185,129,0.12); color: #059669; }
+    .bil-adj-stat-card.rejected .bil-adj-stat-icon { background: rgba(239,68,68,0.12);  color: #dc2626; }
+    .bil-adj-stat-card .bil-adj-stat-info { display: flex; flex-direction: column; }
+    .bil-adj-stat-card .bil-adj-stat-count { font-size: 22px; font-weight: 700; color: #1f2937; line-height: 1.1; }
+    .bil-adj-stat-card .bil-adj-stat-label { font-size: 13px; color: #6b7280; font-weight: 500; }
+    .bil-adj-stat-card.pending  .bil-adj-stat-count { color: #d97706; }
+    .bil-adj-stat-card.approved .bil-adj-stat-count { color: #059669; }
+    .bil-adj-stat-card.rejected .bil-adj-stat-count { color: #dc2626; }
     .bil-adj-section-title { font-size: 16px; font-weight: 600; color: #1f2937; margin: 0; }
     .bil-adj-inv-link { color: #3b82f6; font-weight: 500; font-size: 13px; }
     .bil-adj-customer { font-weight: 600; color: #1f2937; font-size: 13px; }
@@ -208,8 +230,8 @@
     .bil-adj-reviewer { color: #6b7280; font-size: 13px; }
     .bil-adj-amount-credit { color: #059669; font-weight: 600; font-size: 13px; }
     .bil-adj-amount-debit  { color: #dc2626; font-weight: 600; font-size: 13px; }
-    /* Status Badges with Color */
-    .bil-adj-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; }
+    /* Status Text Highlight */
+    .bil-adj-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; }
     .bil-adj-badge-pending  { background: rgba(245,176,65,0.12); color: #d97706; }
     .bil-adj-badge-approved { background: rgba(16,185,129,0.12); color: #059669; }
     .bil-adj-badge-rejected { background: rgba(239,68,68,0.12);  color: #dc2626; }

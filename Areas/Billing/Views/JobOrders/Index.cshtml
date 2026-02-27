@@ -8,8 +8,12 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Job Orders</h1>
-        <p class="page-subtitle">@Model.TotalCount total job orders — read-only billing view</p>
+        <p class="page-subtitle">@Model.TotalCount total job orders</p>
     </div>
+    <button class="btn btn-primary btn-sm" onclick="openAjaxModal('@Url.Action("CreateModal", "JobOrders", new { area = "Billing" })', 'New Job Order')" style="display: inline-flex; align-items: center; gap: 6px;">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+        New Job Order
+    </button>
 </div>
 
 <!-- Stat Cards -->
@@ -71,12 +75,13 @@
             <div class="table-container">
                 <table class="table" style="table-layout: fixed;">
                     <colgroup>
-                        <col style="width: 13%;" />
-                        <col style="width: 22%;" />
+                        <col style="width: 12%;" />
                         <col style="width: 20%;" />
-                        <col style="width: 13%;" />
-                        <col style="width: 17%;" />
+                        <col style="width: 18%;" />
+                        <col style="width: 11%;" />
                         <col style="width: 15%;" />
+                        <col style="width: 12%;" />
+                        <col style="width: 12%;" />
                     </colgroup>
                     <thead>
                         <tr>
@@ -86,23 +91,30 @@
                             <th class="text-center">Status</th>
                             <th>Technician</th>
                             <th class="text-right">Created</th>
+                            <th class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var jo in Model.JobOrders)
                         {
-                            <tr class="clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "JobOrders", new { area = "Billing", id = jo.Id })', 'Job Order — @jo.JobNumber')">
-                                <td><span class="font-medium text-primary">@jo.JobNumber</span></td>
-                                <td>
+                            <tr>
+                                <td class="clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "JobOrders", new { area = "Billing", id = jo.Id })', 'Job Order — @jo.JobNumber')"><span class="font-medium text-primary">@jo.JobNumber</span></td>
+                                <td class="clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "JobOrders", new { area = "Billing", id = jo.Id })', 'Job Order — @jo.JobNumber')">
                                     <div class="customer-cell">
                                         <div class="avatar-sm">@jo.CustomerInitials</div>
                                         <span class="customer-name">@jo.CustomerName</span>
                                     </div>
                                 </td>
-                                <td><span class="text-truncate-cell">@jo.DeviceInfo</span></td>
-                                <td class="text-center"><span class="status-indicator @jo.StatusClass">@jo.StatusDisplay</span></td>
-                                <td><span class="text-muted">@(jo.TechnicianName ?? "Unassigned")</span></td>
-                                <td class="text-right"><span class="text-muted text-sm">@jo.CreatedAt.ToString("MMM dd, yyyy")</span></td>
+                                <td class="clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "JobOrders", new { area = "Billing", id = jo.Id })', 'Job Order — @jo.JobNumber')"><span class="text-truncate-cell">@jo.DeviceInfo</span></td>
+                                <td class="text-center clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "JobOrders", new { area = "Billing", id = jo.Id })', 'Job Order — @jo.JobNumber')"><span class="status-indicator @jo.StatusClass">@jo.StatusDisplay</span></td>
+                                <td class="clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "JobOrders", new { area = "Billing", id = jo.Id })', 'Job Order — @jo.JobNumber')"><span class="text-muted">@(jo.TechnicianName ?? "Unassigned")</span></td>
+                                <td class="text-right clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "JobOrders", new { area = "Billing", id = jo.Id })', 'Job Order — @jo.JobNumber')"><span class="text-muted text-sm">@jo.CreatedAt.ToString("MMM dd, yyyy")</span></td>
+                                <td class="text-center">
+                                    <button class="btn btn-outline btn-xs" onclick="event.stopPropagation(); openAjaxModal('@Url.Action("EditModal", "JobOrders", new { area = "Billing", id = jo.Id })', 'Edit Job Order')" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 12px;">
+                                        <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                        Edit
+                                    </button>
+                                </td>
                             </tr>
                         }
                     </tbody>

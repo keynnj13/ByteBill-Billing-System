@@ -1,9 +1,11 @@
+using ByteBill_BS.Data;
 using ByteBill_BS.DTOs.Common;
 using ByteBill_BS.DTOs.PayMongo;
 using ByteBill_BS.Extensions;
 using ByteBill_BS.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ByteBill_BS.Controllers.Api;
 
@@ -135,11 +137,13 @@ public class PayMongoApiController : ControllerBase
 public class PaymentCallbackController : Controller
 {
     private readonly IPayMongoService _payMongo;
+    private readonly ApplicationDbContext _db;
     private readonly ILogger<PaymentCallbackController> _logger;
 
-    public PaymentCallbackController(IPayMongoService payMongo, ILogger<PaymentCallbackController> logger)
+    public PaymentCallbackController(IPayMongoService payMongo, ApplicationDbContext db, ILogger<PaymentCallbackController> logger)
     {
         _payMongo = payMongo;
+        _db = db;
         _logger = logger;
     }
 
@@ -160,16 +164,22 @@ public class PaymentCallbackController : Controller
                         : "Payment is being processed. It will appear shortly.";
 
                     var role = User.FindFirst("Role")?.Value ?? "";
-                    if (role is "Admin" or "SuperAdmin")
+                    var area = role is "Admin" or "SuperAdmin" ? "Admin" : "Billing";
+
+                    if (recorded)
                     {
-                        // Admin area uses modals, no standalone Details view — redirect to Invoices index
-                        return RedirectToAction("Index", "Invoices", new { area = "Admin" });
+                        // Find the payment record to redirect to its receipt
+                        var paymentId = await _db.PayMongoTxns
+                            .Where(t => t.InvoiceId == invoice.Value && t.PayMongoStatus == "paid" && t.PaymentId.HasValue)
+                            .OrderByDescending(t => t.UpdatedAt)
+                            .Select(t => t.PaymentId)
+                            .FirstOrDefaultAsync();
+
+                        if (paymentId.HasValue)
+                            return RedirectToAction("Receipt", "Payments", new { area, id = paymentId.Value });
                     }
-                    else
-                    {
-                        // Billing area uses modals — redirect to Invoices index
-                        return RedirectToAction("Index", "Invoices", new { area = "Billing" });
-                    }
+
+                    return RedirectToAction("Index", "Invoices", new { area });
                 }
             }
             catch (Exception ex)
