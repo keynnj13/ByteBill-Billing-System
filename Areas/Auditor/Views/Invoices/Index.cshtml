@@ -74,13 +74,12 @@
                             <th class="text-right">Balance</th>
                             <th class="text-center">Status</th>
                             <th class="text-center">Due Date</th>
-                            <th class="text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var inv in Model.Invoices)
                         {
-                            <tr data-number="@inv.InvoiceNumber.ToLower()" data-customer="@inv.CustomerName.ToLower()" data-status="@inv.StatusDisplay" data-job="@(inv.JobNumber?.ToLower() ?? "")">
+                            <tr class="clickable-row" data-number="@inv.InvoiceNumber.ToLower()" data-customer="@inv.CustomerName.ToLower()" data-status="@inv.StatusDisplay" data-job="@(inv.JobNumber?.ToLower() ?? "")" onclick="window.location.href='@Url.Action("Details", "Invoices", new { area = "Auditor", id = inv.Id })'">
                                 <td>
                                     <div class="inv-cell">
                                         <span class="inv-number">@inv.InvoiceNumber</span>
@@ -113,11 +112,6 @@
                                     {
                                         <span class="text-muted">—</span>
                                     }
-                                </td>
-                                <td class="text-right">
-                                    <a href="@Url.Action("Details", "Invoices", new { area = "Auditor", id = inv.Id })" class="btn-action" title="View Details">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                    </a>
                                 </td>
                             </tr>
                         }
@@ -168,6 +162,8 @@
     .font-medium { font-weight: 500; }
     .btn-action { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border-primary, #e5e7eb); background: transparent; color: var(--text-secondary, #6b7280); cursor: pointer; transition: all 0.15s; text-decoration: none; }
     .btn-action:hover { background: var(--bg-secondary, #f3f4f6); color: var(--text-primary, #1f2937); }
+    .clickable-row { cursor: pointer; transition: background-color 0.15s ease; }
+    .clickable-row:hover { background-color: #f0f7ff; }
     @@media (max-width: 1024px) { .inv-stats { grid-template-columns: 1fr; } }
 </style>
 

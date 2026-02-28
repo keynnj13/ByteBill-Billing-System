@@ -16,7 +16,7 @@
 <div class="pay-stats">
     <div class="pay-stat-card">
         <div class="pay-stat-icon pay-stat-green">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><text x="12" y="18" text-anchor="middle" font-size="18" font-weight="700" font-family="sans-serif">₱</text></svg>
         </div>
         <div>
             <span class="pay-stat-label">Total Received</span>
@@ -75,13 +75,12 @@
                             <th class="text-center">Status</th>
                             <th>Received By</th>
                             <th>Date</th>
-                            <th class="text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var pay in Model.Payments)
                         {
-                            <tr data-number="@pay.PaymentNumber.ToLower()" data-customer="@pay.CustomerName.ToLower()" data-method="@pay.MethodDisplay" data-invoice="@(pay.InvoiceNumber?.ToLower() ?? "")">
+                            <tr class="clickable-row" data-number="@pay.PaymentNumber.ToLower()" data-customer="@pay.CustomerName.ToLower()" data-method="@pay.MethodDisplay" data-invoice="@(pay.InvoiceNumber?.ToLower() ?? "")" onclick="window.location.href='@Url.Action("Details", "Payments", new { area = "Auditor", id = pay.Id })'">
                                 <td>
                                     <span class="font-medium" style="font-size: 13px;">@pay.PaymentNumber</span>
                                 </td>
@@ -110,11 +109,6 @@
                                 </td>
                                 <td style="font-size: 13px; color: var(--text-secondary, #6b7280);">@(pay.ReceivedByName ?? "—")</td>
                                 <td style="font-size: 12px; color: var(--text-muted, #9ca3af);">@pay.PaidAt.ToString("MMM d, yyyy h:mm tt")</td>
-                                <td class="text-right">
-                                    <a href="@Url.Action("Details", "Payments", new { area = "Auditor", id = pay.Id })" class="btn-action" title="View Details">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                    </a>
-                                </td>
                             </tr>
                         }
                     </tbody>
@@ -159,6 +153,8 @@
     .font-medium { font-weight: 500; }
     .btn-action { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border-primary, #e5e7eb); background: transparent; color: var(--text-secondary, #6b7280); cursor: pointer; transition: all 0.15s; text-decoration: none; }
     .btn-action:hover { background: var(--bg-secondary, #f3f4f6); color: var(--text-primary, #1f2937); }
+    .clickable-row { cursor: pointer; transition: background-color 0.15s ease; }
+    .clickable-row:hover { background-color: #f0f7ff; }
     @@media (max-width: 1024px) { .pay-stats { grid-template-columns: 1fr; } }
 </style>
 
