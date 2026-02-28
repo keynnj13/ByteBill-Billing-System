@@ -11,8 +11,16 @@ public class Invoice
     public string InvoiceNo { get; set; } = string.Empty;
     public DateTime InvoiceDate { get; set; } = DateTime.UtcNow;
     public decimal Subtotal { get; set; }
+    public decimal DiscountAmount { get; set; }
     public decimal TotalAdjustments { get; set; }
     public decimal TotalAmount { get; set; }
+
+    // ── BIR Tax Breakdown (VAT-inclusive) ─────────────────────────────
+    public decimal VatableSales { get; set; }
+    public decimal VatExemptSales { get; set; }
+    public decimal ZeroRatedSales { get; set; }
+    public decimal VatAmount { get; set; }
+
     public decimal AmountPaid { get; set; }
     public decimal Balance { get; set; }
     public InvoiceStatus Status { get; set; } = InvoiceStatus.Unpaid;
@@ -26,6 +34,7 @@ public class Invoice
     public JobOrder? JobOrder { get; set; }
     public Customer? Customer { get; set; }
     public ICollection<InvoiceLine> InvoiceLines { get; set; } = new List<InvoiceLine>();
+    public ICollection<InvoiceDiscount> InvoiceDiscounts { get; set; } = new List<InvoiceDiscount>();
     public ICollection<PaymentAllocation> PaymentAllocations { get; set; } = new List<PaymentAllocation>();
     public ICollection<CreditDebitAdjustment> Adjustments { get; set; } = new List<CreditDebitAdjustment>();
     public ICollection<AccountingEntry> AccountingEntries { get; set; } = new List<AccountingEntry>();

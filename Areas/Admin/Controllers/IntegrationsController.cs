@@ -18,11 +18,16 @@ public class IntegrationsController : Controller
 {
     private readonly ApplicationDbContext _db;
     private readonly PayMongoSettings _payMongoSettings;
+    private readonly IXeroService _xero;
 
-    public IntegrationsController(ApplicationDbContext db, IOptions<PayMongoSettings> payMongoSettings)
+    public IntegrationsController(
+        ApplicationDbContext db,
+        IOptions<PayMongoSettings> payMongoSettings,
+        IXeroService xero)
     {
         _db = db;
         _payMongoSettings = payMongoSettings.Value;
+        _xero = xero;
     }
 
     private bool IsAuthorized()
@@ -41,7 +46,6 @@ public class IntegrationsController : Controller
         var xeroLogs = await _db.XeroSyncLogs
             .Where(x => x.ShopId == shopId)
             .OrderByDescending(x => x.SyncedAt)
-            .Take(10)
             .Select(x => new XeroSyncLogItem
             {
                 Id = x.XeroSyncLogId,
@@ -78,7 +82,6 @@ public class IntegrationsController : Controller
         var recentPayMongoTxns = await _db.PayMongoTxns
             .Where(t => t.ShopId == shopId)
             .OrderByDescending(t => t.CreatedAt)
-            .Take(10)
             .Select(t => new PayMongoTxnItem
             {
                 Id = t.PayMongoTxnId,
@@ -102,7 +105,7 @@ public class IntegrationsController : Controller
         var vm = new IntegrationIndexViewModel
         {
             // Xero
-            XeroConnected = xeroTotalSyncs > 0,
+            XeroConnected = await _xero.IsConnectedAsync(shopId),
             XeroLastSyncAt = xeroLastSync,
             XeroSyncCount = xeroTotalSyncs,
             XeroFailedCount = xeroFailedCount,
@@ -125,13 +128,102 @@ public class IntegrationsController : Controller
         return View(vm);
     }
 
+    // ── Xero OAuth 2.0 ────────────────────────────────────────────────
+
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult SyncXero()
+    public IActionResult ConnectXero()
     {
         if (!IsAuthorized()) return Forbid();
+        var shopId = User.GetShopId();
+        var authUrl = _xero.GetAuthorizationUrl(shopId);
+        return Redirect(authUrl);
+    }
+
+    /// <summary>Direct GET link to initiate Xero OAuth (for browser navigation).</summary>
+    [HttpGet]
+    public IActionResult ConnectXeroDirect()
+    {
+        if (!IsAuthorized()) return Forbid();
+        var shopId = User.GetShopId();
+        var authUrl = _xero.GetAuthorizationUrl(shopId);
+        return Redirect(authUrl);
+    }
+
+    /// <summary>OAuth 2.0 callback from Xero — exchanges code for tokens.</summary>
+    [HttpGet]
+    [AllowAnonymous] // Xero redirects here with code + state
+    public async Task<IActionResult> XeroCallback(string code, string state)
+    {
+        if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(state))
+        {
+            TempData["XeroError"] = "Invalid Xero callback — missing parameters.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // Decode shop ID from state
+        try
+        {
+            var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(state));
+            if (!decoded.StartsWith("shop:") || !long.TryParse(decoded[5..], out var shopId))
+            {
+                TempData["XeroError"] = "Invalid state parameter.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var success = await _xero.ExchangeCodeForTokensAsync(shopId, code);
+            if (success)
+                TempData["XeroSuccess"] = "Successfully connected to Xero!";
+            else
+                TempData["XeroError"] = "Failed to connect to Xero. Please try again.";
+        }
+        catch
+        {
+            TempData["XeroError"] = "Error processing Xero callback.";
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DisconnectXero()
+    {
+        if (!IsAuthorized()) return Forbid();
+        var shopId = User.GetShopId();
+        await _xero.DisconnectAsync(shopId);
+
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-            return Json(new { success = true, message = "Xero sync initiated. This may take a few minutes." });
+            return Json(new { success = true, message = "Xero disconnected successfully." });
+
+        TempData["XeroSuccess"] = "Xero disconnected.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SyncXero()
+    {
+        if (!IsAuthorized()) return Forbid();
+        var shopId = User.GetShopId();
+        var userId = User.GetUserId();
+
+        var isConnected = await _xero.IsConnectedAsync(shopId);
+        if (!isConnected)
+        {
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return Json(new { success = false, message = "Xero is not connected. Please connect first." });
+            TempData["XeroError"] = "Xero is not connected.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var (synced, failed) = await _xero.SyncAllAsync(shopId, userId);
+        var message = $"Sync complete: {synced} synced, {failed} failed.";
+
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            return Json(new { success = true, message, synced, failed });
+
+        TempData[synced > 0 ? "XeroSuccess" : "XeroError"] = message;
         return RedirectToAction(nameof(Index));
     }
 

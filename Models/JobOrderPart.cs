@@ -7,6 +7,9 @@ public class JobOrderPart
     public long ItemId { get; set; }
     public int QtyUsed { get; set; } = 1;
     public decimal UnitPrice { get; set; }
+    public decimal CatalogPrice { get; set; }
+    public bool IsPriceOverride { get; set; }
+    public string? OverrideReason { get; set; }
     public decimal LineTotal { get; private set; } // Computed by DB: QtyUsed * UnitPrice
 
     // Navigation properties

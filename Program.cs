@@ -82,6 +82,12 @@ builder.Services.AddScoped<IServiceCatalogService, ServiceCatalogService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<IAdjustmentService, AdjustmentService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IBillingCalculationService, BillingCalculationService>();
+builder.Services.AddScoped<ITaxCalculationService, TaxCalculationService>();
+
+// ── Xero Accounting integration ──────────────────────────────────────
+builder.Services.Configure<XeroSettings>(builder.Configuration.GetSection("Xero"));
+builder.Services.AddHttpClient<IXeroService, XeroService>();
 
 // ── PayMongo integration ─────────────────────────────────────────────
 builder.Services.Configure<PayMongoSettings>(builder.Configuration.GetSection("PayMongo"));

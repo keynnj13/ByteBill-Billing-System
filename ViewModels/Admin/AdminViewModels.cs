@@ -382,6 +382,9 @@ public class IntegrationIndexViewModel
     public string? PayMongoWebhookUrl { get; set; }
     public bool PayMongoHasKeys { get; set; }
     public string? PayMongoKeyLastFour { get; set; }
+
+    // Computed
+    public int XeroSuccessCount => XeroSyncCount - XeroFailedCount;
 }
 
 public class XeroSyncLogItem

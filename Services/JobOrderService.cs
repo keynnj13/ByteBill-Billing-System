@@ -28,14 +28,17 @@ public class JobOrderService : IJobOrderService
     private readonly IHttpContextAccessor _httpCtx;
     private readonly IInvoiceService _invoiceService;
     private readonly INotificationService _notif;
+    private readonly IBillingCalculationService _billing;
 
-    public JobOrderService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx, IInvoiceService invoiceService, INotificationService notif)
+    public JobOrderService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx,
+        IInvoiceService invoiceService, INotificationService notif, IBillingCalculationService billing)
     {
         _db = db;
         _audit = audit;
         _httpCtx = httpCtx;
         _invoiceService = invoiceService;
         _notif = notif;
+        _billing = billing;
     }
 
     private string? ClientIp => _httpCtx.HttpContext?.Connection.RemoteIpAddress?.ToString();
@@ -280,7 +283,7 @@ public class JobOrderService : IJobOrderService
                     JobOrderId = jobOrder.JobOrderId,
                     ServiceId = svc.ServiceId,
                     Qty = svc.Qty,
-                    UnitPrice = svc.UnitPrice
+                    UnitPrice = svc.OverridePrice ?? 0
                 });
             }
             await _db.SaveChangesAsync();
@@ -296,7 +299,7 @@ public class JobOrderService : IJobOrderService
                     JobOrderId = jobOrder.JobOrderId,
                     ItemId = part.ItemId,
                     QtyUsed = part.QtyUsed,
-                    UnitPrice = part.UnitPrice
+                    UnitPrice = part.OverridePrice ?? 0
                 });
             }
             await _db.SaveChangesAsync();
@@ -517,12 +520,32 @@ public class JobOrderService : IJobOrderService
         if (alreadyAdded)
             return ApiResponse<JobOrderServiceLineDto>.Fail($"'{service.ServiceName}' has already been added to this job order.");
 
+        // ── Rule-Based Price Resolution ──────────────────────────────
+        var catalogPrice = await _billing.ResolveServicePriceAsync(dto.ServiceId);
+        var unitPrice = catalogPrice;
+        var isPriceOverride = false;
+        string? overrideReason = null;
+
+        if (dto.OverridePrice.HasValue && dto.OverridePrice.Value > 0 && dto.OverridePrice.Value != catalogPrice)
+        {
+            if (string.IsNullOrWhiteSpace(dto.OverrideReason))
+                return ApiResponse<JobOrderServiceLineDto>.Fail(
+                    $"Override reason is required when price differs from catalog (₱{catalogPrice:N2}).");
+
+            unitPrice = dto.OverridePrice.Value;
+            isPriceOverride = true;
+            overrideReason = dto.OverrideReason.Trim();
+        }
+
         var line = new Models.JobOrderService
         {
             JobOrderId = jobOrderId,
             ServiceId = dto.ServiceId,
             Qty = dto.Qty,
-            UnitPrice = dto.UnitPrice
+            UnitPrice = unitPrice,
+            CatalogPrice = catalogPrice,
+            IsPriceOverride = isPriceOverride,
+            OverrideReason = overrideReason
         };
 
         _db.JobOrderServices.Add(line);
@@ -530,7 +553,7 @@ public class JobOrderService : IJobOrderService
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(shopId, userId, "AddServiceLine", "JobOrder", jobOrderId,
-            $"Added service '{service.ServiceName}' (Qty:{dto.Qty}, Price:{dto.UnitPrice:C}).", ClientIp);
+            $"Added service '{service.ServiceName}' (Qty:{dto.Qty}, Price:₱{unitPrice:N2}{(isPriceOverride ? $", Override from ₱{catalogPrice:N2}: {overrideReason}" : "")}).", ClientIp);
 
         return ApiResponse<JobOrderServiceLineDto>.Ok(new JobOrderServiceLineDto
         {
@@ -603,12 +626,32 @@ public class JobOrderService : IJobOrderService
             return ApiResponse<JobOrderPartLineDto>.Fail(
                 $"Insufficient stock for '{item.ItemName}'. Available: {item.QtyOnHand}, Required: {dto.QtyUsed}.");
 
+        // ── Rule-Based Price Resolution (with shop markup) ───────────
+        var catalogPrice = await _billing.ResolvePartPriceAsync(shopId, dto.ItemId);
+        var unitPrice = catalogPrice;
+        var isPriceOverride = false;
+        string? overrideReason = null;
+
+        if (dto.OverridePrice.HasValue && dto.OverridePrice.Value > 0 && dto.OverridePrice.Value != catalogPrice)
+        {
+            if (string.IsNullOrWhiteSpace(dto.OverrideReason))
+                return ApiResponse<JobOrderPartLineDto>.Fail(
+                    $"Override reason is required when price differs from catalog (₱{catalogPrice:N2}).");
+
+            unitPrice = dto.OverridePrice.Value;
+            isPriceOverride = true;
+            overrideReason = dto.OverrideReason.Trim();
+        }
+
         var line = new JobOrderPart
         {
             JobOrderId = jobOrderId,
             ItemId = dto.ItemId,
             QtyUsed = dto.QtyUsed,
-            UnitPrice = dto.UnitPrice
+            UnitPrice = unitPrice,
+            CatalogPrice = catalogPrice,
+            IsPriceOverride = isPriceOverride,
+            OverrideReason = overrideReason
         };
 
         _db.JobOrderParts.Add(line);
@@ -632,7 +675,7 @@ public class JobOrderService : IJobOrderService
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(shopId, userId, "AddPartLine", "JobOrder", jobOrderId,
-            $"Added part '{item.ItemName}' (Qty:{dto.QtyUsed}, Price:{dto.UnitPrice:C}). Stock: {item.QtyOnHand + dto.QtyUsed} → {item.QtyOnHand}.", ClientIp);
+            $"Added part '{item.ItemName}' (Qty:{dto.QtyUsed}, Price:₱{unitPrice:N2}{(isPriceOverride ? $", Override from ₱{catalogPrice:N2}: {overrideReason}" : "")}). Stock: {item.QtyOnHand + dto.QtyUsed} → {item.QtyOnHand}.", ClientIp);
 
         return ApiResponse<JobOrderPartLineDto>.Ok(new JobOrderPartLineDto
         {

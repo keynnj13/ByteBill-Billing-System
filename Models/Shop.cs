@@ -9,6 +9,14 @@ public class Shop
     public string? Phone { get; set; }
     public string? Address { get; set; }
     public string Status { get; set; } = "Active";
+    public decimal DefaultPartMarkupPct { get; set; } = 0;
+
+    // ── BIR Tax Settings ─────────────────────────────────────────────
+    public string? TIN { get; set; }
+    public bool IsVatRegistered { get; set; } = true;
+    /// <summary>12% for VAT-registered, 3% for Non-VAT (Percentage Tax).</summary>
+    public decimal TaxRate { get; set; } = 12m;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
@@ -25,4 +33,5 @@ public class Shop
     public ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
     public ICollection<AccountingEntry> AccountingEntries { get; set; } = new List<AccountingEntry>();
     public ICollection<XeroSyncLog> XeroSyncLogs { get; set; } = new List<XeroSyncLog>();
+    public ICollection<XeroConnection> XeroConnections { get; set; } = new List<XeroConnection>();
 }

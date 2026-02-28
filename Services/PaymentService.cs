@@ -21,12 +21,17 @@ public class PaymentService : IPaymentService
     private readonly ApplicationDbContext _db;
     private readonly IAuditService _audit;
     private readonly IHttpContextAccessor _httpCtx;
+    private readonly IBillingCalculationService _billing;
+    private readonly IXeroService _xero;
 
-    public PaymentService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx)
+    public PaymentService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx,
+        IBillingCalculationService billing, IXeroService xero)
     {
         _db = db;
         _audit = audit;
         _httpCtx = httpCtx;
+        _billing = billing;
+        _xero = xero;
     }
 
     private string? ClientIp => _httpCtx.HttpContext?.Connection.RemoteIpAddress?.ToString();
@@ -209,7 +214,7 @@ public class PaymentService : IPaymentService
         _db.Payments.Add(payment);
         await _db.SaveChangesAsync();
 
-        // ── Create allocations and update invoices ───────────────────
+        // ── Create allocations and update invoices via recalculation engine ─
         foreach (var alloc in req.Allocations)
         {
             _db.PaymentAllocations.Add(new PaymentAllocation
@@ -218,26 +223,24 @@ public class PaymentService : IPaymentService
                 InvoiceId = alloc.InvoiceId,
                 AmountApplied = alloc.AmountApplied
             });
-
-            var invoice = invoices.First(i => i.InvoiceId == alloc.InvoiceId);
-            invoice.AmountPaid += alloc.AmountApplied;
-            invoice.Balance = invoice.TotalAmount - invoice.AmountPaid;
-
-            if (invoice.Balance <= 0)
-            {
-                invoice.Balance = 0;
-                invoice.Status = InvoiceStatus.Paid;
-            }
-            else if (invoice.AmountPaid > 0)
-            {
-                invoice.Status = InvoiceStatus.Partial;
-            }
         }
 
         await _db.SaveChangesAsync();
 
+        // Recalculate each affected invoice using the billing engine
+        foreach (var invoiceId in invoiceIds)
+        {
+            await _billing.RecalculateInvoiceAsync(invoiceId);
+        }
+
+        // Generate double-entry accounting records for the payment
+        await _billing.GeneratePaymentEntriesAsync(shopId, payment.PaymentId);
+
         await _audit.LogAsync(shopId, userId, "Create", "Payment", payment.PaymentId,
             $"Recorded payment of {req.Amount:C} via {method}. Allocated to {req.Allocations.Count} invoice(s).", ClientIp);
+
+        // Auto-sync to Xero
+        try { await _xero.SyncPaymentAsync(payment.PaymentId, userId); } catch { /* logged in XeroService */ }
 
         var detail = await GetDetailAsync(shopId, payment.PaymentId);
         return ApiResponse<PaymentDetailDto>.Ok(detail!);

@@ -295,8 +295,7 @@ public class JobOrdersController : Controller
                 var dto = new DTOs.JobOrders.AddServiceLineDto
                 {
                     ServiceId = serviceCatalogId.Value,
-                    Qty = 1,
-                    UnitPrice = svc.BasePrice
+                    Qty = 1
                 };
                 var result = await _jobOrderService.AddServiceLineAsync(shopId, userId, jobOrderId, dto);
                 if (result.Success) messages.Add("Service added");
@@ -314,8 +313,7 @@ public class JobOrdersController : Controller
                 var dto = new DTOs.JobOrders.AddPartLineDto
                 {
                     ItemId = inventoryItemId.Value,
-                    QtyUsed = quantity,
-                    UnitPrice = item.UnitPrice
+                    QtyUsed = quantity
                 };
                 var result = await _jobOrderService.AddPartLineAsync(shopId, userId, jobOrderId, dto);
                 if (result.Success) messages.Add("Part added");
@@ -353,8 +351,7 @@ public class JobOrdersController : Controller
         var dto = new DTOs.JobOrders.AddServiceLineDto
         {
             ServiceId = serviceCatalogId,
-            Qty = 1,
-            UnitPrice = svc.BasePrice
+            Qty = 1
         };
 
         var result = await _jobOrderService.AddServiceLineAsync(shopId, userId, jobOrderId, dto);
@@ -386,8 +383,7 @@ public class JobOrdersController : Controller
         var dto = new DTOs.JobOrders.AddPartLineDto
         {
             ItemId = inventoryItemId,
-            QtyUsed = quantity,
-            UnitPrice = item.UnitPrice
+            QtyUsed = quantity
         };
 
         var result = await _jobOrderService.AddPartLineAsync(shopId, userId, jobOrderId, dto);

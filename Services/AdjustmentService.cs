@@ -73,11 +73,16 @@ public class AdjustmentService : IAdjustmentService
 {
     private readonly ApplicationDbContext _db;
     private readonly INotificationService _notifications;
+    private readonly IBillingCalculationService _billing;
+    private readonly IXeroService _xero;
 
-    public AdjustmentService(ApplicationDbContext db, INotificationService notifications)
+    public AdjustmentService(ApplicationDbContext db, INotificationService notifications,
+        IBillingCalculationService billing, IXeroService xero)
     {
         _db = db;
         _notifications = notifications;
+        _billing = billing;
+        _xero = xero;
     }
 
     public async Task<List<AdjustmentListItemDto>> GetAllAsync(long shopId, AdjustmentStatus? statusFilter = null)
@@ -233,35 +238,17 @@ public class AdjustmentService : IAdjustmentService
         adj.ReviewedByUserId = reviewerId;
         adj.ReviewedAt = DateTime.UtcNow;
 
-        // Apply to invoice balance
+        await _db.SaveChangesAsync();
+
+        // Use centralized recalculation engine
         if (adj.Invoice != null)
         {
-            if (adj.AdjustmentType == AdjustmentType.Credit || adj.AdjustmentType == AdjustmentType.Refund)
-            {
-                // Credit/Refund reduces balance
-                adj.Invoice.Balance = Math.Max(0, adj.Invoice.Balance - adj.Amount);
-                adj.Invoice.AmountPaid += adj.Amount;
-            }
-            else if (adj.AdjustmentType == AdjustmentType.Debit)
-            {
-                // Debit increases balance
-                adj.Invoice.Balance += adj.Amount;
-                adj.Invoice.AmountPaid = Math.Max(0, adj.Invoice.AmountPaid - adj.Amount);
-            }
+            await _billing.RecalculateInvoiceAsync(adj.InvoiceId);
+            await _billing.GenerateAdjustmentEntriesAsync(adj.ShopId, adj.AdjustmentId);
 
-            // Update status
-            if (adj.Invoice.Balance <= 0)
-            {
-                adj.Invoice.Balance = 0;
-                adj.Invoice.Status = InvoiceStatus.Paid;
-            }
-            else if (adj.Invoice.AmountPaid > 0)
-                adj.Invoice.Status = InvoiceStatus.Partial;
-            else
-                adj.Invoice.Status = InvoiceStatus.Unpaid;
+            // Auto-sync credit note to Xero for credit/refund adjustments
+            try { await _xero.SyncCreditNoteAsync(adj.AdjustmentId, reviewerId); } catch { /* logged in XeroService */ }
         }
-
-        await _db.SaveChangesAsync();
 
         // Notify the requester
         var reviewerName = await _db.Users.Where(u => u.UserId == reviewerId).Select(u => u.FullName).FirstOrDefaultAsync() ?? "Admin";

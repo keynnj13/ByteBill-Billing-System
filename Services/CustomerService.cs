@@ -21,12 +21,14 @@ public class CustomerService : ICustomerService
     private readonly ApplicationDbContext _db;
     private readonly IAuditService _audit;
     private readonly IHttpContextAccessor _httpCtx;
+    private readonly IXeroService _xero;
 
-    public CustomerService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx)
+    public CustomerService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx, IXeroService xero)
     {
         _db = db;
         _audit = audit;
         _httpCtx = httpCtx;
+        _xero = xero;
     }
 
     private string? ClientIp => _httpCtx.HttpContext?.Connection.RemoteIpAddress?.ToString();
@@ -166,6 +168,9 @@ public class CustomerService : ICustomerService
 
         await _audit.LogAsync(shopId, userId, "Create", "Customer", customer.CustomerId,
             $"Created customer '{customer.FullName}'.", ClientIp);
+
+        // Auto-sync contact to Xero
+        try { await _xero.SyncContactAsync(customer.CustomerId, userId); } catch { /* logged in XeroService */ }
 
         return new CustomerListItemDto
         {

@@ -22,12 +22,19 @@ public class InvoiceService : IInvoiceService
     private readonly ApplicationDbContext _db;
     private readonly IAuditService _audit;
     private readonly IHttpContextAccessor _httpCtx;
+    private readonly IBillingCalculationService _billing;
+    private readonly IXeroService _xero;
+    private readonly ITaxCalculationService _tax;
 
-    public InvoiceService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx)
+    public InvoiceService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx,
+        IBillingCalculationService billing, IXeroService xero, ITaxCalculationService tax)
     {
         _db = db;
         _audit = audit;
         _httpCtx = httpCtx;
+        _billing = billing;
+        _xero = xero;
+        _tax = tax;
     }
 
     private string? ClientIp => _httpCtx.HttpContext?.Connection.RemoteIpAddress?.ToString();
@@ -101,10 +108,16 @@ public class InvoiceService : IInvoiceService
                 Status = i.Status.ToString(),
 
                 Subtotal = i.Subtotal,
+                DiscountAmount = i.DiscountAmount,
                 TotalAdjustments = i.TotalAdjustments,
                 TotalAmount = i.TotalAmount,
                 AmountPaid = i.AmountPaid,
                 Balance = i.Balance,
+
+                VatableSales = i.VatableSales,
+                VatExemptSales = i.VatExemptSales,
+                ZeroRatedSales = i.ZeroRatedSales,
+                VatAmount = i.VatAmount,
 
                 CustomerId = i.CustomerId,
                 CustomerName = i.Customer!.FirstName + " " + i.Customer.LastName,
@@ -120,6 +133,22 @@ public class InvoiceService : IInvoiceService
                     Qty = l.Qty,
                     UnitPrice = l.UnitPrice,
                     LineTotal = l.LineTotal
+                }).ToList(),
+
+                Discounts = i.InvoiceDiscounts.Select(d => new InvoiceDiscountDto
+                {
+                    InvoiceDiscountId = d.InvoiceDiscountId,
+                    DiscountType = d.DiscountType.ToString(),
+                    Label = d.Label,
+                    Percentage = d.Percentage,
+                    Amount = d.Amount,
+                    IsVatExempt = d.IsVatExempt,
+                    BeneficiaryIdNo = d.BeneficiaryIdNo,
+                    BeneficiaryName = d.BeneficiaryName,
+                    AppliedByName = d.AppliedByUser != null
+                        ? d.AppliedByUser.FirstName + " " + d.AppliedByUser.LastName
+                        : null,
+                    AppliedAt = d.AppliedAt
                 }).ToList(),
 
                 Adjustments = i.Adjustments.Select(a => new AdjustmentDto
@@ -207,7 +236,10 @@ public class InvoiceService : IInvoiceService
                 LineType = "Service",
                 Description = svc.Service?.ServiceName ?? $"Service #{svc.ServiceId}",
                 Qty = svc.Qty,
-                UnitPrice = svc.UnitPrice
+                UnitPrice = svc.UnitPrice,
+                CatalogPrice = svc.CatalogPrice,
+                IsPriceOverride = svc.IsPriceOverride,
+                OverrideReason = svc.OverrideReason
             });
         }
 
@@ -218,7 +250,10 @@ public class InvoiceService : IInvoiceService
                 LineType = "Part",
                 Description = part.Item?.ItemName ?? $"Part #{part.ItemId}",
                 Qty = part.QtyUsed,
-                UnitPrice = part.UnitPrice
+                UnitPrice = part.UnitPrice,
+                CatalogPrice = part.CatalogPrice,
+                IsPriceOverride = part.IsPriceOverride,
+                OverrideReason = part.OverrideReason
             });
         }
 
@@ -255,6 +290,15 @@ public class InvoiceService : IInvoiceService
         await _audit.LogAsync(shopId, userId, "Create", "Invoice", invoice.InvoiceId,
             $"Created invoice '{invoiceNo}' from job order '{jobOrder.JobOrderNo}'. Total: {subtotal:C}.", ClientIp);
 
+        // Generate double-entry accounting records
+        await _billing.GenerateInvoiceEntriesAsync(shopId, invoice.InvoiceId);
+
+        // Compute BIR tax breakdown (VAT-inclusive)
+        await _tax.ComputeTaxAsync(invoice.InvoiceId);
+
+        // Auto-sync to Xero (fire-and-forget, errors logged internally)
+        try { await _xero.SyncInvoiceAsync(invoice.InvoiceId, userId); } catch { /* logged in XeroService */ }
+
         var detail = await GetDetailAsync(shopId, invoice.InvoiceId);
         return ApiResponse<InvoiceDetailDto>.Ok(detail!);
     }
@@ -287,33 +331,9 @@ public class InvoiceService : IInvoiceService
 
         _db.CreditDebitAdjustments.Add(adjustment);
 
-        // Update invoice totals
-        if (adjType == AdjustmentType.Credit)
-        {
-            invoice.TotalAdjustments -= req.Amount;
-        }
-        else // Debit
-        {
-            invoice.TotalAdjustments += req.Amount;
-        }
-
-        invoice.TotalAmount = invoice.Subtotal + invoice.TotalAdjustments;
-        invoice.Balance = invoice.TotalAmount - invoice.AmountPaid;
-
-        // Update status
-        if (invoice.Balance <= 0)
-        {
-            invoice.Balance = 0;
-            invoice.Status = InvoiceStatus.Paid;
-        }
-        else if (invoice.AmountPaid > 0)
-        {
-            invoice.Status = InvoiceStatus.Partial;
-        }
-        else
-        {
-            invoice.Status = InvoiceStatus.Unpaid;
-        }
+        // Use centralized recalculation engine instead of manual balance math
+        await _db.SaveChangesAsync();
+        await _billing.RecalculateInvoiceAsync(invoiceId);
 
         await _db.SaveChangesAsync();
 

@@ -81,6 +81,26 @@ public class PaymentDetailViewModel
     
     // Allocations
     public List<PaymentAllocationItem> Allocations { get; set; } = new();
+
+    // BIR Tax Breakdown (from related invoice)
+    public decimal InvoiceSubtotal { get; set; }
+    public decimal InvoiceDiscountAmount { get; set; }
+    public decimal VatableSales { get; set; }
+    public decimal VatExemptSales { get; set; }
+    public decimal ZeroRatedSales { get; set; }
+    public decimal VatAmount { get; set; }
+    public decimal InvoiceTotal { get; set; }
+    public string? ShopTIN { get; set; }
+    public bool IsVatRegistered { get; set; }
+    public List<ReceiptDiscountItem> Discounts { get; set; } = new();
+}
+
+public class ReceiptDiscountItem
+{
+    public string Label { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public string? BeneficiaryIdNo { get; set; }
+    public string? BeneficiaryName { get; set; }
 }
 
 public class PaymentAllocationItem

@@ -18,12 +18,16 @@ public class InvoicesController : Controller
     private readonly IInvoiceService _invoiceService;
     private readonly ApplicationDbContext _db;
     private readonly IAuditService _audit;
+    private readonly ITaxCalculationService _tax;
+    private readonly IXeroService _xero;
 
-    public InvoicesController(IInvoiceService invoiceService, ApplicationDbContext db, IAuditService audit)
+    public InvoicesController(IInvoiceService invoiceService, ApplicationDbContext db, IAuditService audit, ITaxCalculationService tax, IXeroService xero)
     {
         _invoiceService = invoiceService;
         _db = db;
         _audit = audit;
+        _tax = tax;
+        _xero = xero;
     }
 
     private bool IsAuthorized() => User.IsInRoles("Admin", "SuperAdmin");
@@ -212,6 +216,13 @@ public class InvoicesController : Controller
             return View(model);
         }
 
+        // Auto-sync to Xero (fire-and-forget, don't block the response)
+        if (result.Data?.InvoiceId > 0)
+        {
+            try { await _xero.SyncInvoiceAsync(result.Data.InvoiceId, userId); }
+            catch { /* logged inside service */ }
+        }
+
         TempData["Success"] = "Invoice created successfully!";
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = true, message = "Invoice created successfully!", id = result.Data?.InvoiceId });
@@ -277,8 +288,15 @@ public class InvoicesController : Controller
             ShopAddress = shop?.Address,
             ShopPhone = shop?.Phone,
             ShopEmail = shop?.Email,
+            ShopTIN = shop?.TIN,
+            IsVatRegistered = shop?.IsVatRegistered ?? true,
             Status = parsedStatus,
             Subtotal = dto.Subtotal,
+            DiscountAmount = dto.DiscountAmount,
+            VatableSales = dto.VatableSales,
+            VatExemptSales = dto.VatExemptSales,
+            ZeroRatedSales = dto.ZeroRatedSales,
+            VatAmount = dto.VatAmount,
             TotalAdjustments = dto.TotalAdjustments,
             Total = dto.TotalAmount,
             AmountPaid = dto.AmountPaid,
@@ -286,6 +304,18 @@ public class InvoicesController : Controller
             CreatedAt = dto.InvoiceDate,
             IssuedAt = dto.InvoiceDate,
             DueDate = dto.DueDate,
+            Discounts = dto.Discounts.Select(d => new InvoiceDiscountViewModel
+            {
+                InvoiceDiscountId = d.InvoiceDiscountId,
+                DiscountType = d.DiscountType,
+                Label = d.Label,
+                Percentage = d.Percentage,
+                Amount = d.Amount,
+                IsVatExempt = d.IsVatExempt,
+                BeneficiaryIdNo = d.BeneficiaryIdNo,
+                BeneficiaryName = d.BeneficiaryName,
+                AppliedAt = d.AppliedAt
+            }).ToList(),
             LineItems = dto.Lines.Select(l => new InvoiceLineItemViewModel
             {
                 Id = l.InvoiceLineId,
@@ -369,6 +399,61 @@ public class InvoicesController : Controller
         return View(viewModel);
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  DISCOUNTS (BIR Tax Compliance)
+    // ═══════════════════════════════════════════════════════════════════
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApplyDiscount(long invoiceId, [FromForm] ApplyDiscountRequest request)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        try
+        {
+            var userId = User.GetUserId();
+            var discount = await _tax.ApplyDiscountAsync(invoiceId, userId, request);
+
+            await _audit.LogAsync(User.GetShopId(), userId, "ApplyDiscount", "Invoice", invoiceId,
+                $"Applied {discount.Label} discount of \u20B1{discount.Amount:N2}",
+                HttpContext.Connection.RemoteIpAddress?.ToString());
+
+            TempData["Success"] = $"{discount.Label} discount applied successfully.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Details), new { id = invoiceId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveDiscount(long invoiceId, long invoiceDiscountId)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var removed = await _tax.RemoveDiscountAsync(invoiceDiscountId, invoiceId);
+
+        if (removed)
+        {
+            await _audit.LogAsync(User.GetShopId(), User.GetUserId(), "RemoveDiscount", "Invoice", invoiceId,
+                $"Removed discount #{invoiceDiscountId}",
+                HttpContext.Connection.RemoteIpAddress?.ToString());
+
+            TempData["Success"] = "Discount removed successfully.";
+        }
+        else
+        {
+            TempData["Error"] = "Discount not found.";
+        }
+
+        return RedirectToAction(nameof(Details), new { id = invoiceId });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  ARCHIVE
+    // ═══════════════════════════════════════════════════════════════════
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ArchiveInvoice(long id)

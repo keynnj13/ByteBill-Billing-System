@@ -52,12 +52,22 @@
                         </div>
                     </div>
                 </div>
-                <form asp-action="SyncXero" method="post" style="margin: 0;">
+                <form asp-action="@(Model.XeroConnected ? "SyncXero" : "ConnectXero")" method="post" style="margin: 0;">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-primary btn-sm" onclick="this.disabled=true; this.innerText='Syncing...'; this.form.submit();">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
-                        Sync Now
-                    </button>
+                    @if (Model.XeroConnected)
+                    {
+                        <button type="submit" class="btn btn-primary btn-sm" onclick="this.disabled=true; this.innerText='Syncing...'; this.form.submit();">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                            Sync Now
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="submit" class="btn btn-primary btn-sm" onclick="this.disabled=true; this.innerText='Connecting...'; this.form.submit();">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                            Connect Xero
+                        </button>
+                    }
                 </form>
             </div>
         </div>
@@ -96,37 +106,78 @@
 
     <!-- Xero Sync Log Table -->
     <div class="card">
-        <div class="card-header"><h3 class="ig-section-title">Recent Sync Activity</h3></div>
-        <div class="card-body p-0">
-            <div class="table-container">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Timestamp</th>
-                            <th>Type</th>
-                            <th>Reference</th>
-                            <th>Status</th>
-                            <th>Xero ID</th>
-                            <th>Synced By</th>
-                            <th>Message</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var sync in Model.RecentXeroSyncs)
-                        {
-                            <tr>
-                                <td class="ig-ts">@sync.SyncedAt.ToString("MMM dd, h:mm tt")</td>
-                                <td><span class="status-indicator status-muted">@sync.SyncType</span></td>
-                                <td class="fw-medium">@(sync.EntityReference ?? "—")</td>
-                                <td><span class="status-indicator @sync.StatusClass">@sync.Status</span></td>
-                                <td class="ig-mono">@(sync.XeroRecordId ?? "—")</td>
-                                <td class="text-muted" style="font-size: 13px;">@sync.SyncedByName</td>
-                                <td class="ig-msg" title="@sync.Message">@(sync.Message ?? "—")</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+        <div class="card-header">
+            <div class="filter-form">
+                <h3 class="ig-section-title" style="white-space:nowrap;margin-right:8px;">Sync Activity</h3>
+                <div class="search-input-wrapper">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" placeholder="Search by reference, Xero ID, user..." class="form-input search-input" id="xeroSearch" />
+                </div>
+                <select class="form-select" id="xeroTypeFilter" style="min-width:130px;">
+                    <option value="">All Types</option>
+                    <option value="Invoice">Invoice</option>
+                    <option value="Payment">Payment</option>
+                    <option value="Contact">Contact</option>
+                    <option value="CreditNote">Credit Note</option>
+                </select>
+                <select class="form-select" id="xeroStatusFilter" style="min-width:130px;">
+                    <option value="">All Statuses</option>
+                    <option value="Success">Success</option>
+                    <option value="Failed">Failed</option>
+                    <option value="Pending">Pending</option>
+                </select>
             </div>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.RecentXeroSyncs.Any())
+            {
+                <div class="table-container" id="xeroTableContainer">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Type</th>
+                                <th>Reference</th>
+                                <th>Status</th>
+                                <th>Xero ID</th>
+                                <th>Synced By</th>
+                                <th>Message</th>
+                            </tr>
+                        </thead>
+                        <tbody id="xeroTableBody">
+                            @foreach (var sync in Model.RecentXeroSyncs)
+                            {
+                                <tr data-type="@sync.SyncType" data-status="@sync.Status"
+                                    data-ref="@(sync.EntityReference?.ToLower() ?? "")"
+                                    data-xeroid="@(sync.XeroRecordId?.ToLower() ?? "")"
+                                    data-user="@sync.SyncedByName.ToLower()"
+                                    data-msg="@(sync.Message?.ToLower() ?? "")">
+                                    <td class="ig-ts">@sync.SyncedAt.ToString("MMM dd, h:mm tt")</td>
+                                    <td><span class="status-indicator status-muted">@sync.SyncType</span></td>
+                                    <td class="fw-medium">@(sync.EntityReference ?? "—")</td>
+                                    <td><span class="status-indicator @sync.StatusClass">@sync.Status</span></td>
+                                    <td class="ig-mono">@(sync.XeroRecordId != null ? sync.XeroRecordId[..Math.Min(8, sync.XeroRecordId.Length)] + "…" : "—")</td>
+                                    <td class="text-muted" style="font-size: 13px;">@sync.SyncedByName</td>
+                                    <td class="ig-msg" title="@sync.Message">@(sync.Message ?? "—")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div id="xeroEmptyFilter" style="padding:40px 20px; text-align:center; color:#9ca3af; font-size:14px; display:none;">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" style="margin:0 auto 12px;display:block;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    No sync records match your filters
+                </div>
+                <div class="pagination-bar" id="xeroPagination"></div>
+            }
+            else
+            {
+                <div style="padding:40px 20px; text-align:center; color:#9ca3af;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" style="margin:0 auto 12px;display:block;"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                    <p style="font-size:14px;">No sync activity yet</p>
+                    <p style="font-size:12px;">Click "Sync Now" to push your invoices and payments to Xero.</p>
+                </div>
+            }
         </div>
     </div>
 </div>
@@ -222,7 +273,7 @@
             </div>
             <div class="ig-stat-content">
                 <span class="ig-stat-label">Total Processed</span>
-                <span class="ig-stat-value" style="color: #059669;">&#8369;@Model.PayMongoTotalAmount.ToString("N2")</span>
+                <span class="ig-stat-value" style="color: #059669;">₱@Model.PayMongoTotalAmount.ToString("N2", System.Globalization.CultureInfo.InvariantCulture)</span>
             </div>
         </div>
         <div class="ig-stat-card">
@@ -241,13 +292,31 @@
     <!-- PayMongo Transaction Table -->
     <div class="card">
         <div class="card-header">
-            <h3 class="ig-section-title">Recent Transactions</h3>
-            <span class="text-muted" style="font-size:12px;">Click a row for details</span>
+            <div class="filter-form">
+                <h3 class="ig-section-title" style="white-space:nowrap;margin-right:8px;">Transactions</h3>
+                <div class="search-input-wrapper">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" placeholder="Search by PayMongo ID, customer, invoice..." class="form-input search-input" id="pmSearch" />
+                </div>
+                <select class="form-select" id="pmTypeFilter" style="min-width:130px;">
+                    <option value="">All Types</option>
+                    <option value="Payment">Payment</option>
+                    <option value="Checkout">Checkout</option>
+                    <option value="Refund">Refund</option>
+                </select>
+                <select class="form-select" id="pmStatusFilter" style="min-width:130px;">
+                    <option value="">All Statuses</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Failed">Failed</option>
+                    <option value="Refunded">Refunded</option>
+                </select>
+            </div>
         </div>
         <div class="card-body p-0">
             @if (Model.RecentPayMongoTxns.Any())
             {
-                <div class="table-container">
+                <div class="table-container" id="pmTableContainer">
                     <table class="table">
                         <thead>
                             <tr>
@@ -260,22 +329,32 @@
                                 <th>Status</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="pmTableBody">
                             @foreach (var txn in Model.RecentPayMongoTxns)
                             {
-                                <tr class="clickable-row" onclick="showTxnDetail(@txn.Id)" style="cursor:pointer;">
+                                <tr class="clickable-row" onclick="showTxnDetail(@txn.Id)" style="cursor:pointer;"
+                                    data-pmid="@txn.PayMongoId.ToLower()"
+                                    data-type="@txn.Type"
+                                    data-status="@txn.Status"
+                                    data-customer="@(txn.CustomerName?.ToLower() ?? "")"
+                                    data-invoice="@(txn.InvoiceNo?.ToLower() ?? "")">
                                     <td class="ig-ts">@txn.CreatedAt.ToString("MMM dd, h:mm tt")</td>
                                     <td class="ig-mono">@txn.PayMongoId</td>
                                     <td><span class="status-indicator status-muted">@txn.Type</span></td>
                                     <td class="fw-medium">@(txn.CustomerName ?? "—")</td>
                                     <td class="text-muted">@(txn.InvoiceNo ?? "—")</td>
-                                    <td class="text-right fw-medium">&#8369;@txn.Amount.ToString("N2")</td>
+                                    <td class="text-right fw-medium">₱@txn.Amount.ToString("N2", System.Globalization.CultureInfo.InvariantCulture)</td>
                                     <td><span class="status-indicator @txn.StatusClass">@txn.Status</span></td>
                                 </tr>
                             }
                         </tbody>
                     </table>
                 </div>
+                <div id="pmEmptyFilter" style="padding:40px 20px; text-align:center; color:#9ca3af; font-size:14px; display:none;">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" style="margin:0 auto 12px;display:block;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    No transactions match your filters
+                </div>
+                <div class="pagination-bar" id="pmPagination"></div>
             }
             else
             {
@@ -363,6 +442,131 @@ function showTxnDetail(id) {
 
 function closePmModal() { document.getElementById('pmDetailModal').style.display = 'none'; }
 document.getElementById('pmDetailModal').addEventListener('click', function(e) { if (e.target === this) closePmModal(); });
+
+// ═══════════════════════════════════════════════════════════════
+//  Reusable client-side search / filter / pagination engine
+// ═══════════════════════════════════════════════════════════════
+function createTableEngine(cfg) {
+    var rows = Array.from(document.querySelectorAll(cfg.rowSelector));
+    var container = document.getElementById(cfg.containerId);
+    var emptyEl = document.getElementById(cfg.emptyId);
+    var pagEl = document.getElementById(cfg.paginationId);
+    var PAGE_SIZE = 15;
+    var currentPage = 1;
+    var filtered = [];
+
+    function applyFilters() {
+        var q = (cfg.searchEl ? cfg.searchEl.value : '').toLowerCase().trim();
+        filtered = rows.filter(function(row) {
+            // Check search
+            if (q) {
+                var searchable = cfg.searchFields.map(function(f) { return row.dataset[f] || ''; }).join(' ');
+                if (searchable.indexOf(q) === -1) return false;
+            }
+            // Check filters
+            for (var i = 0; i < cfg.filters.length; i++) {
+                var fv = cfg.filters[i].el.value;
+                if (fv && row.dataset[cfg.filters[i].field] !== fv) return false;
+            }
+            return true;
+        });
+        currentPage = 1;
+        render();
+    }
+
+    function render() {
+        var total = filtered.length;
+        var totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+        if (currentPage > totalPages) currentPage = totalPages;
+        var start = (currentPage - 1) * PAGE_SIZE;
+        var end = start + PAGE_SIZE;
+
+        rows.forEach(function(r) { r.style.display = 'none'; });
+        for (var i = start; i < end && i < filtered.length; i++) {
+            filtered[i].style.display = '';
+        }
+
+        if (container) container.style.display = total === 0 && rows.length > 0 ? 'none' : '';
+        if (emptyEl) emptyEl.style.display = total === 0 && rows.length > 0 ? 'block' : 'none';
+
+        // Render pagination
+        if (pagEl) {
+            if (totalPages <= 1) { pagEl.innerHTML = ''; return; }
+            var html = '<div class="ig-pag">';
+            html += '<span class="ig-pag-info">Showing ' + (total > 0 ? start + 1 : 0) + '–' + Math.min(end, total) + ' of ' + total + '</span>';
+            html += '<div class="ig-pag-btns">';
+            html += '<button class="ig-pag-btn" ' + (currentPage <= 1 ? 'disabled' : '') + ' onclick="window.__igNav_' + cfg.id + '(' + (currentPage - 1) + ')">&laquo;</button>';
+            var range = pagRange(currentPage, totalPages);
+            for (var p = 0; p < range.length; p++) {
+                if (range[p] === '...') {
+                    html += '<span class="ig-pag-dots">…</span>';
+                } else {
+                    html += '<button class="ig-pag-btn' + (range[p] === currentPage ? ' ig-pag-active' : '') + '" onclick="window.__igNav_' + cfg.id + '(' + range[p] + ')">' + range[p] + '</button>';
+                }
+            }
+            html += '<button class="ig-pag-btn" ' + (currentPage >= totalPages ? 'disabled' : '') + ' onclick="window.__igNav_' + cfg.id + '(' + (currentPage + 1) + ')">&raquo;</button>';
+            html += '</div></div>';
+            pagEl.innerHTML = html;
+        }
+    }
+
+    function pagRange(cur, tot) {
+        if (tot <= 7) { var r = []; for (var i = 1; i <= tot; i++) r.push(i); return r; }
+        if (cur <= 3) return [1, 2, 3, 4, '...', tot];
+        if (cur >= tot - 2) return [1, '...', tot - 3, tot - 2, tot - 1, tot];
+        return [1, '...', cur - 1, cur, cur + 1, '...', tot];
+    }
+
+    window['__igNav_' + cfg.id] = function(page) { currentPage = page; render(); };
+
+    // Bind events
+    if (cfg.searchEl) cfg.searchEl.addEventListener('input', applyFilters);
+    cfg.filters.forEach(function(f) { f.el.addEventListener('change', applyFilters); });
+
+    applyFilters();
+}
+
+// ─── Xero Sync Table ───
+(function() {
+    var searchEl = document.getElementById('xeroSearch');
+    var typeEl = document.getElementById('xeroTypeFilter');
+    var statusEl = document.getElementById('xeroStatusFilter');
+    if (!searchEl) return;
+    createTableEngine({
+        id: 'xero',
+        rowSelector: '#xeroTableBody tr',
+        containerId: 'xeroTableContainer',
+        emptyId: 'xeroEmptyFilter',
+        paginationId: 'xeroPagination',
+        searchEl: searchEl,
+        searchFields: ['ref', 'xeroid', 'user', 'msg'],
+        filters: [
+            { el: typeEl, field: 'type' },
+            { el: statusEl, field: 'status' }
+        ]
+    });
+})();
+
+// ─── PayMongo Txn Table ───
+(function() {
+    var searchEl = document.getElementById('pmSearch');
+    var typeEl = document.getElementById('pmTypeFilter');
+    var statusEl = document.getElementById('pmStatusFilter');
+    if (!searchEl) return;
+    createTableEngine({
+        id: 'pm',
+        rowSelector: '#pmTableBody tr',
+        containerId: 'pmTableContainer',
+        emptyId: 'pmEmptyFilter',
+        paginationId: 'pmPagination',
+        searchEl: searchEl,
+        searchFields: ['pmid', 'customer', 'invoice'],
+        filters: [
+            { el: typeEl, field: 'type' },
+            { el: statusEl, field: 'status' }
+        ]
+    });
+})();
 </script>
 
 <style>
@@ -425,6 +629,23 @@ document.getElementById('pmDetailModal').addEventListener('click', function(e) {
 
     .clickable-row:hover { background: #f9fafb; }
 
+    /* Filter form */
+    .filter-form { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .search-input-wrapper { position: relative; flex: 1; min-width: 200px; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
+    .search-input { padding-left: 40px; min-width: 240px; }
+
+    /* Pagination */
+    .pagination-bar { padding: 12px 20px; border-top: 1px solid #e5e7eb; }
+    .ig-pag { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    .ig-pag-info { font-size: 13px; color: #6b7280; }
+    .ig-pag-btns { display: flex; gap: 4px; align-items: center; }
+    .ig-pag-btn { min-width: 32px; height: 32px; padding: 0 8px; font-size: 13px; font-weight: 500; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff; color: #374151; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+    .ig-pag-btn:hover:not(:disabled):not(.ig-pag-active) { background: #f3f4f6; border-color: #d1d5db; }
+    .ig-pag-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .ig-pag-active { background: #1e3a8a; color: #fff; border-color: #1e3a8a; }
+    .ig-pag-dots { font-size: 13px; color: #9ca3af; padding: 0 4px; }
+
     .spin { animation: spin 1s linear infinite; }
     @@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
@@ -436,5 +657,8 @@ document.getElementById('pmDetailModal').addEventListener('click', function(e) {
         .ig-page-header { flex-direction: column; gap: 12px; }
         .ig-integration-header { flex-direction: column; gap: 12px; align-items: flex-start; }
         .ig-config-grid { grid-template-columns: 1fr; }
+        .filter-form { flex-direction: column; width: 100%; }
+        .search-input { min-width: 100%; }
+        .ig-pag { flex-direction: column; text-align: center; }
     }
 </style>

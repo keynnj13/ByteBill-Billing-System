@@ -1,0 +1,111 @@
+-- ═══════════════════════════════════════════════════════════════════════
+-- Migration: Billing Algorithm — New Columns
+-- Run after: ByteBillDB_MonsterASP_Deploy.sql / existing migrations
+-- ═══════════════════════════════════════════════════════════════════════
+
+-- ── SHOP: DefaultPartMarkupPct ──────────────────────────────────────
+IF NOT EXISTS (
+    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_NAME = 'SHOP' AND COLUMN_NAME = 'DefaultPartMarkupPct'
+)
+BEGIN
+    ALTER TABLE [SHOP] ADD [DefaultPartMarkupPct] DECIMAL(18,2) NOT NULL DEFAULT 0;
+    PRINT 'Added DefaultPartMarkupPct to SHOP';
+END;
+GO
+
+-- ── JOB_ORDER_SERVICES: CatalogPrice, IsPriceOverride, OverrideReason ──
+IF NOT EXISTS (
+    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_NAME = 'JOB_ORDER_SERVICES' AND COLUMN_NAME = 'CatalogPrice'
+)
+BEGIN
+    ALTER TABLE [JOB_ORDER_SERVICES] ADD [CatalogPrice] DECIMAL(18,2) NOT NULL DEFAULT 0;
+    PRINT 'Added CatalogPrice to JOB_ORDER_SERVICES';
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_NAME = 'JOB_ORDER_SERVICES' AND COLUMN_NAME = 'IsPriceOverride'
+)
+BEGIN
+    ALTER TABLE [JOB_ORDER_SERVICES] ADD [IsPriceOverride] BIT NOT NULL DEFAULT 0;
+    PRINT 'Added IsPriceOverride to JOB_ORDER_SERVICES';
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_NAME = 'JOB_ORDER_SERVICES' AND COLUMN_NAME = 'OverrideReason'
+)
+BEGIN
+    ALTER TABLE [JOB_ORDER_SERVICES] ADD [OverrideReason] NVARCHAR(255) NULL;
+    PRINT 'Added OverrideReason to JOB_ORDER_SERVICES';
+END;
+GO
+
+-- ── JOB_ORDER_PARTS: CatalogPrice, IsPriceOverride, OverrideReason ──
+IF NOT EXISTS (
+    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_NAME = 'JOB_ORDER_PARTS' AND COLUMN_NAME = 'CatalogPrice'
+)
+BEGIN
+    ALTER TABLE [JOB_ORDER_PARTS] ADD [CatalogPrice] DECIMAL(18,2) NOT NULL DEFAULT 0;
+    PRINT 'Added CatalogPrice to JOB_ORDER_PARTS';
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_NAME = 'JOB_ORDER_PARTS' AND COLUMN_NAME = 'IsPriceOverride'
+)
+BEGIN
+    ALTER TABLE [JOB_ORDER_PARTS] ADD [IsPriceOverride] BIT NOT NULL DEFAULT 0;
+    PRINT 'Added IsPriceOverride to JOB_ORDER_PARTS';
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_NAME = 'JOB_ORDER_PARTS' AND COLUMN_NAME = 'OverrideReason'
+)
+BEGIN
+    ALTER TABLE [JOB_ORDER_PARTS] ADD [OverrideReason] NVARCHAR(255) NULL;
+    PRINT 'Added OverrideReason to JOB_ORDER_PARTS';
+END;
+GO
+
+-- ── INVOICE_LINES: CatalogPrice, IsPriceOverride, OverrideReason ──
+IF NOT EXISTS (
+    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_NAME = 'INVOICE_LINES' AND COLUMN_NAME = 'CatalogPrice'
+)
+BEGIN
+    ALTER TABLE [INVOICE_LINES] ADD [CatalogPrice] DECIMAL(18,2) NOT NULL DEFAULT 0;
+    PRINT 'Added CatalogPrice to INVOICE_LINES';
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_NAME = 'INVOICE_LINES' AND COLUMN_NAME = 'IsPriceOverride'
+)
+BEGIN
+    ALTER TABLE [INVOICE_LINES] ADD [IsPriceOverride] BIT NOT NULL DEFAULT 0;
+    PRINT 'Added IsPriceOverride to INVOICE_LINES';
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_NAME = 'INVOICE_LINES' AND COLUMN_NAME = 'OverrideReason'
+)
+BEGIN
+    ALTER TABLE [INVOICE_LINES] ADD [OverrideReason] NVARCHAR(255) NULL;
+    PRINT 'Added OverrideReason to INVOICE_LINES';
+END;
+GO
+
+PRINT '✅ Billing Algorithm migration complete.';
+GO

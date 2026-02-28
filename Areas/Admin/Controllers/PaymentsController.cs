@@ -20,11 +20,13 @@ public class PaymentsController : Controller
 {
     private readonly IPaymentService _paymentService;
     private readonly ApplicationDbContext _db;
+    private readonly IXeroService _xero;
 
-    public PaymentsController(IPaymentService paymentService, ApplicationDbContext db)
+    public PaymentsController(IPaymentService paymentService, ApplicationDbContext db, IXeroService xero)
     {
         _paymentService = paymentService;
         _db = db;
+        _xero = xero;
     }
 
     private bool IsAuthorized() => User.IsInRoles("Admin", "SuperAdmin");
@@ -230,6 +232,13 @@ public class PaymentsController : Controller
             return View(model);
         }
 
+        // Auto-sync payment to Xero
+        if (result.Data?.PaymentId > 0)
+        {
+            try { await _xero.SyncPaymentAsync(result.Data.PaymentId, userId); }
+            catch { /* logged inside service */ }
+        }
+
         TempData["Success"] = "Payment recorded successfully!";
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = true, message = "Payment recorded successfully!", id = result.Data?.PaymentId });
@@ -275,6 +284,7 @@ public class PaymentsController : Controller
         ViewBag.ShopAddress = shop?.Address ?? "";
         ViewBag.ShopPhone = shop?.Phone ?? "";
         ViewBag.ShopEmail = shop?.Email ?? "";
+        ViewBag.ShopTIN = shop?.TIN ?? "";
 
         return View("~/Views/Shared/_Receipt.cshtml", vm);
     }
@@ -314,6 +324,8 @@ public class PaymentsController : Controller
                         col.Item().AlignCenter().Text(shopAddress).FontSize(8).FontColor(Colors.Grey.Medium);
                     if (!string.IsNullOrEmpty(shopPhone) || !string.IsNullOrEmpty(shopEmail))
                         col.Item().AlignCenter().Text($"{shopPhone}  {shopEmail}".Trim()).FontSize(8).FontColor(Colors.Grey.Medium);
+                    if (!string.IsNullOrEmpty(vm.ShopTIN))
+                        col.Item().AlignCenter().Text($"TIN: {vm.ShopTIN}").FontSize(8).FontColor(Colors.Grey.Medium);
 
                     col.Item().PaddingVertical(8).AlignCenter().Text("PAYMENT RECEIPT").Bold().FontSize(11).FontColor(Colors.Grey.Darken2);
                     col.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
@@ -346,6 +358,35 @@ public class PaymentsController : Controller
                     if (!string.IsNullOrEmpty(vm.Notes))
                         col.Item().PaddingVertical(4).Text($"Notes: {vm.Notes}").FontSize(8).FontColor(Colors.Grey.Medium);
 
+                    // BIR Tax Breakdown
+                    if (vm.InvoiceSubtotal > 0)
+                    {
+                        col.Item().PaddingVertical(4).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
+                        col.Item().PaddingVertical(4).Text("TAX BREAKDOWN (BIR)").Bold().FontSize(9).FontColor(Colors.Grey.Darken1);
+
+                        col.Item().Row(r => { r.RelativeItem().Text("Subtotal").FontSize(9).FontColor(Colors.Grey.Medium); r.RelativeItem().AlignRight().Text($"\u20B1{vm.InvoiceSubtotal:N2}").FontSize(9); });
+
+                        foreach (var disc in vm.Discounts)
+                        {
+                            col.Item().Row(r => { r.RelativeItem().Text(disc.Label).FontSize(9).FontColor(Colors.Red.Darken1); r.RelativeItem().AlignRight().Text($"-\u20B1{disc.Amount:N2}").FontSize(9).FontColor(Colors.Red.Darken1); });
+                            if (!string.IsNullOrEmpty(disc.BeneficiaryName))
+                                col.Item().Text($"  {disc.BeneficiaryName}{(!string.IsNullOrEmpty(disc.BeneficiaryIdNo) ? $" (ID: {disc.BeneficiaryIdNo})" : "")}").FontSize(7).FontColor(Colors.Grey.Medium);
+                        }
+
+                        if (vm.IsVatRegistered)
+                        {
+                            if (vm.VatableSales > 0)
+                                col.Item().Row(r => { r.RelativeItem().Text("Vatable Sales").FontSize(9).FontColor(Colors.Grey.Medium); r.RelativeItem().AlignRight().Text($"\u20B1{vm.VatableSales:N2}").FontSize(9); });
+                            if (vm.VatExemptSales > 0)
+                                col.Item().Row(r => { r.RelativeItem().Text("VAT-Exempt Sales").FontSize(9).FontColor(Colors.Grey.Medium); r.RelativeItem().AlignRight().Text($"\u20B1{vm.VatExemptSales:N2}").FontSize(9); });
+                            if (vm.ZeroRatedSales > 0)
+                                col.Item().Row(r => { r.RelativeItem().Text("Zero-Rated Sales").FontSize(9).FontColor(Colors.Grey.Medium); r.RelativeItem().AlignRight().Text($"\u20B1{vm.ZeroRatedSales:N2}").FontSize(9); });
+                            col.Item().Row(r => { r.RelativeItem().Text("VAT (12%)").FontSize(9).FontColor(Colors.Grey.Medium); r.RelativeItem().AlignRight().Text($"\u20B1{vm.VatAmount:N2}").FontSize(9); });
+                        }
+
+                        col.Item().PaddingTop(4).Row(r => { r.RelativeItem().Text("Total").FontSize(9).Bold(); r.RelativeItem().AlignRight().Text($"\u20B1{vm.InvoiceTotal:N2}").FontSize(9).Bold(); });
+                    }
+
                     col.Item().PaddingVertical(10).AlignCenter().Text("Thank you for your payment!").Bold().FontSize(10);
                     col.Item().AlignCenter().Text("This is a computer-generated receipt.").FontSize(7).FontColor(Colors.Grey.Medium);
                 });
@@ -362,11 +403,41 @@ public class PaymentsController : Controller
         _ = Enum.TryParse<PaymentMethod>(dto.Method, true, out var parsedMethod);
         _ = Enum.TryParse<PaymentStatus>(dto.Status, true, out var parsedStatus);
 
-        // Get customer details
         var customer = await _db.Customers
             .Where(c => c.CustomerId == dto.CustomerId)
             .AsNoTracking()
             .FirstOrDefaultAsync();
+
+        // Get invoice tax breakdown for receipt
+        var firstAlloc = dto.Allocations.FirstOrDefault();
+        decimal invSubtotal = 0, invDiscount = 0, vatableSales = 0, vatExemptSales = 0, zeroRatedSales = 0, vatAmount = 0, invTotal = 0;
+        var discounts = new List<ReceiptDiscountItem>();
+        var shop = await _db.Shops.AsNoTracking().FirstOrDefaultAsync(s => s.ShopId == shopId);
+
+        if (firstAlloc != null)
+        {
+            var invoice = await _db.Invoices
+                .Include(i => i.InvoiceDiscounts)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.InvoiceId == firstAlloc.InvoiceId);
+            if (invoice != null)
+            {
+                invSubtotal = invoice.Subtotal;
+                invDiscount = invoice.DiscountAmount;
+                vatableSales = invoice.VatableSales;
+                vatExemptSales = invoice.VatExemptSales;
+                zeroRatedSales = invoice.ZeroRatedSales;
+                vatAmount = invoice.VatAmount;
+                invTotal = invoice.TotalAmount;
+                discounts = invoice.InvoiceDiscounts.Select(d => new ReceiptDiscountItem
+                {
+                    Label = d.Label,
+                    Amount = d.Amount,
+                    BeneficiaryIdNo = d.BeneficiaryIdNo,
+                    BeneficiaryName = d.BeneficiaryName
+                }).ToList();
+            }
+        }
 
         return new PaymentDetailViewModel
         {
@@ -394,7 +465,17 @@ public class PaymentsController : Controller
                 InvoiceId = a.InvoiceId,
                 InvoiceNumber = a.InvoiceNo,
                 AmountApplied = a.AmountApplied
-            }).ToList()
+            }).ToList(),
+            InvoiceSubtotal = invSubtotal,
+            InvoiceDiscountAmount = invDiscount,
+            VatableSales = vatableSales,
+            VatExemptSales = vatExemptSales,
+            ZeroRatedSales = zeroRatedSales,
+            VatAmount = vatAmount,
+            InvoiceTotal = invTotal,
+            ShopTIN = shop?.TIN,
+            IsVatRegistered = shop?.IsVatRegistered ?? true,
+            Discounts = discounts
         };
     }
 }

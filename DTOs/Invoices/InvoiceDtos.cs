@@ -28,10 +28,20 @@ public class InvoiceDetailDto
 
     // Totals
     public decimal Subtotal { get; set; }
+    public decimal DiscountAmount { get; set; }
     public decimal TotalAdjustments { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal AmountPaid { get; set; }
     public decimal Balance { get; set; }
+
+    // BIR Tax Breakdown
+    public decimal VatableSales { get; set; }
+    public decimal VatExemptSales { get; set; }
+    public decimal ZeroRatedSales { get; set; }
+    public decimal VatAmount { get; set; }
+
+    // Discounts
+    public List<InvoiceDiscountDto> Discounts { get; set; } = new();
 
     // Customer
     public long CustomerId { get; set; }
@@ -77,6 +87,20 @@ public class InvoicePaymentDto
     public decimal AmountApplied { get; set; }
     public DateTime PaymentDate { get; set; }
     public string Method { get; set; } = string.Empty;
+}
+
+public class InvoiceDiscountDto
+{
+    public long InvoiceDiscountId { get; set; }
+    public string DiscountType { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public decimal Percentage { get; set; }
+    public decimal Amount { get; set; }
+    public bool IsVatExempt { get; set; }
+    public string? BeneficiaryIdNo { get; set; }
+    public string? BeneficiaryName { get; set; }
+    public string? AppliedByName { get; set; }
+    public DateTime AppliedAt { get; set; }
 }
 
 // ── Dashboard metrics ───────────────────────────────────────────────────

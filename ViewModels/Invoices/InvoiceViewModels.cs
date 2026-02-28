@@ -82,10 +82,21 @@ public class InvoiceDetailViewModel
     public decimal TaxRate { get; set; }
     public decimal TaxAmount { get; set; }
     public decimal DiscountAmount { get; set; }
+    public decimal VatableSales { get; set; }
+    public decimal VatExemptSales { get; set; }
+    public decimal ZeroRatedSales { get; set; }
+    public decimal VatAmount { get; set; }
     public decimal TotalAdjustments { get; set; }
     public decimal Total { get; set; }
     public decimal AmountPaid { get; set; }
     public decimal Balance { get; set; }
+    
+    // Shop Tax Info
+    public string? ShopTIN { get; set; }
+    public bool IsVatRegistered { get; set; }
+    
+    // Discounts
+    public List<InvoiceDiscountViewModel> Discounts { get; set; } = new();
     
     // Dates
     public DateTime CreatedAt { get; set; }
@@ -198,4 +209,17 @@ public class AvailableJobOrderOption
     public string JobNumber { get; set; } = string.Empty;
     public string CustomerName { get; set; } = string.Empty;
     public string DeviceSummary { get; set; } = string.Empty;
+}
+
+public class InvoiceDiscountViewModel
+{
+    public long InvoiceDiscountId { get; set; }
+    public string DiscountType { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public decimal Percentage { get; set; }
+    public decimal Amount { get; set; }
+    public bool IsVatExempt { get; set; }
+    public string? BeneficiaryIdNo { get; set; }
+    public string? BeneficiaryName { get; set; }
+    public DateTime AppliedAt { get; set; }
 }

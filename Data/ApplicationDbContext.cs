@@ -38,6 +38,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<AccountingEntry> AccountingEntries => Set<AccountingEntry>();
     public DbSet<XeroSyncLog> XeroSyncLogs => Set<XeroSyncLog>();
+    public DbSet<XeroConnection> XeroConnections => Set<XeroConnection>();
+    public DbSet<InvoiceDiscount> InvoiceDiscounts => Set<InvoiceDiscount>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -57,6 +59,10 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Phone).HasMaxLength(30);
             entity.Property(e => e.Address).HasMaxLength(255);
             entity.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue("Active");
+            entity.Property(e => e.DefaultPartMarkupPct).HasPrecision(18, 2).HasDefaultValue(0m);
+            entity.Property(e => e.TIN).HasMaxLength(20);
+            entity.Property(e => e.IsVatRegistered).HasDefaultValue(true);
+            entity.Property(e => e.TaxRate).HasPrecision(18, 2).HasDefaultValue(12m);
             entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime2(0)");
             entity.HasIndex(e => e.ShopCode).IsUnique();
@@ -376,6 +382,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ServiceId).HasColumnName("ServiceID");
             entity.Property(e => e.Qty).HasDefaultValue(1);
             entity.Property(e => e.UnitPrice).HasPrecision(18, 2).HasDefaultValue(0m);
+            entity.Property(e => e.CatalogPrice).HasPrecision(18, 2).HasDefaultValue(0m);
+            entity.Property(e => e.IsPriceOverride).HasDefaultValue(false);
+            entity.Property(e => e.OverrideReason).HasMaxLength(255);
             entity.Property(e => e.LineTotal).HasPrecision(18, 2)
                   .HasComputedColumnSql("[Qty] * [UnitPrice]", stored: true);
             entity.HasIndex(e => e.JobOrderId);
@@ -404,6 +413,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ItemId).HasColumnName("ItemID");
             entity.Property(e => e.QtyUsed).HasDefaultValue(1);
             entity.Property(e => e.UnitPrice).HasPrecision(18, 2).HasDefaultValue(0m);
+            entity.Property(e => e.CatalogPrice).HasPrecision(18, 2).HasDefaultValue(0m);
+            entity.Property(e => e.IsPriceOverride).HasDefaultValue(false);
+            entity.Property(e => e.OverrideReason).HasMaxLength(255);
             entity.Property(e => e.LineTotal).HasPrecision(18, 2)
                   .HasComputedColumnSql("[QtyUsed] * [UnitPrice]", stored: true);
             entity.HasIndex(e => e.JobOrderId);
@@ -465,6 +477,11 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Subtotal).HasPrecision(18, 2).HasDefaultValue(0m);
             entity.Property(e => e.TotalAdjustments).HasPrecision(18, 2).HasDefaultValue(0m);
             entity.Property(e => e.TotalAmount).HasPrecision(18, 2).HasDefaultValue(0m);
+            entity.Property(e => e.DiscountAmount).HasPrecision(18, 2).HasDefaultValue(0m);
+            entity.Property(e => e.VatableSales).HasPrecision(18, 2).HasDefaultValue(0m);
+            entity.Property(e => e.VatExemptSales).HasPrecision(18, 2).HasDefaultValue(0m);
+            entity.Property(e => e.ZeroRatedSales).HasPrecision(18, 2).HasDefaultValue(0m);
+            entity.Property(e => e.VatAmount).HasPrecision(18, 2).HasDefaultValue(0m);
             entity.Property(e => e.AmountPaid).HasPrecision(18, 2).HasDefaultValue(0m);
             entity.Property(e => e.Balance).HasPrecision(18, 2).HasDefaultValue(0m);
             entity.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue(InvoiceStatus.Unpaid)
@@ -508,6 +525,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Description).HasMaxLength(150).IsRequired();
             entity.Property(e => e.Qty).HasDefaultValue(1);
             entity.Property(e => e.UnitPrice).HasPrecision(18, 2).HasDefaultValue(0m);
+            entity.Property(e => e.CatalogPrice).HasPrecision(18, 2).HasDefaultValue(0m);
+            entity.Property(e => e.IsPriceOverride).HasDefaultValue(false);
+            entity.Property(e => e.OverrideReason).HasMaxLength(255);
             entity.Property(e => e.LineTotal).HasPrecision(18, 2)
                   .HasComputedColumnSql("[Qty] * [UnitPrice]", stored: true);
             entity.HasIndex(e => e.InvoiceId);
@@ -844,6 +864,66 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.AccountingEntry)
                   .WithMany(ae => ae.XeroSyncLogs)
                   .HasForeignKey(e => e.AccountingEntryId)
+                  .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // X. XERO_CONNECTION
+        // ═══════════════════════════════════════════════════════════════
+        modelBuilder.Entity<XeroConnection>(entity =>
+        {
+            entity.ToTable("XERO_CONNECTION");
+            entity.HasKey(e => e.XeroConnectionId);
+            entity.Property(e => e.XeroConnectionId).HasColumnName("XeroConnectionID");
+            entity.Property(e => e.ShopId).HasColumnName("ShopID");
+            entity.Property(e => e.XeroTenantId).HasMaxLength(80).IsRequired();
+            entity.Property(e => e.TenantName).HasMaxLength(150);
+            entity.Property(e => e.AccessToken).HasMaxLength(2048).IsRequired();
+            entity.Property(e => e.RefreshToken).HasMaxLength(2048).IsRequired();
+            entity.Property(e => e.TokenExpiresAt).HasColumnType("datetime2(0)");
+            entity.Property(e => e.ConnectedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.HasIndex(e => e.ShopId);
+
+            entity.HasOne(e => e.Shop)
+                  .WithMany(s => s.XeroConnections)
+                  .HasForeignKey(e => e.ShopId)
+                  .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // Y. INVOICE_DISCOUNT  (BIR SC/PWD/Promo discounts)
+        // ═══════════════════════════════════════════════════════════════
+        modelBuilder.Entity<InvoiceDiscount>(entity =>
+        {
+            entity.ToTable("INVOICE_DISCOUNT");
+            entity.HasKey(e => e.InvoiceDiscountId);
+            entity.Property(e => e.InvoiceDiscountId).HasColumnName("InvoiceDiscountID");
+            entity.Property(e => e.InvoiceId).HasColumnName("InvoiceID");
+            entity.Property(e => e.DiscountType)
+                  .HasConversion<string>()
+                  .HasMaxLength(20)
+                  .IsRequired();
+            entity.Property(e => e.Label).HasMaxLength(120).IsRequired();
+            entity.Property(e => e.Percentage).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
+            entity.Property(e => e.Amount).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
+            entity.Property(e => e.IsVatExempt).HasDefaultValue(false);
+            entity.Property(e => e.BeneficiaryIdNo).HasMaxLength(30);
+            entity.Property(e => e.BeneficiaryName).HasMaxLength(120);
+            entity.Property(e => e.AppliedByUserId).HasColumnName("AppliedByUserID");
+            entity.Property(e => e.AppliedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
+
+            entity.HasIndex(e => e.InvoiceId);
+            entity.HasIndex(e => e.AppliedByUserId);
+
+            entity.HasOne(e => e.Invoice)
+                  .WithMany(i => i.InvoiceDiscounts)
+                  .HasForeignKey(e => e.InvoiceId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.AppliedByUser)
+                  .WithMany()
+                  .HasForeignKey(e => e.AppliedByUserId)
                   .OnDelete(DeleteBehavior.NoAction);
         });
     }

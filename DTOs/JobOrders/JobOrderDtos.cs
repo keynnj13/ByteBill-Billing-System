@@ -142,8 +142,11 @@ public class AddServiceLineDto
     public long ServiceId { get; set; }
     [Range(1, int.MaxValue)]
     public int Qty { get; set; } = 1;
-    [Range(0, double.MaxValue)]
-    public decimal UnitPrice { get; set; }
+    /// <summary>Optional. If omitted or zero, auto-resolves from ServiceCatalog.BasePrice.</summary>
+    public decimal? OverridePrice { get; set; }
+    /// <summary>Required when OverridePrice differs from catalog price.</summary>
+    [MaxLength(255)]
+    public string? OverrideReason { get; set; }
 }
 
 public class AddPartLineDto
@@ -152,8 +155,11 @@ public class AddPartLineDto
     public long ItemId { get; set; }
     [Range(1, int.MaxValue)]
     public int QtyUsed { get; set; } = 1;
-    [Range(0, double.MaxValue)]
-    public decimal UnitPrice { get; set; }
+    /// <summary>Optional. If omitted or zero, auto-resolves from InventoryItem.UnitPrice (with markup).</summary>
+    public decimal? OverridePrice { get; set; }
+    /// <summary>Required when OverridePrice differs from catalog price.</summary>
+    [MaxLength(255)]
+    public string? OverrideReason { get; set; }
 }
 
 // ── Assign technician ───────────────────────────────────────────────────

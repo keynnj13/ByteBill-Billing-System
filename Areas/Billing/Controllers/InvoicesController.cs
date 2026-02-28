@@ -17,11 +17,13 @@ public class InvoicesController : Controller
 {
     private readonly IInvoiceService _invoiceService;
     private readonly ApplicationDbContext _db;
+    private readonly ITaxCalculationService _tax;
 
-    public InvoicesController(IInvoiceService invoiceService, ApplicationDbContext db)
+    public InvoicesController(IInvoiceService invoiceService, ApplicationDbContext db, ITaxCalculationService tax)
     {
         _invoiceService = invoiceService;
         _db = db;
+        _tax = tax;
     }
 
     private bool IsAuthorized() => User.IsInRoles("Billing", "Admin", "SuperAdmin");
@@ -108,6 +110,40 @@ public class InvoicesController : Controller
         return PartialView("_DetailsModal", vm);
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  DISCOUNTS (BIR Tax Compliance)
+    // ═══════════════════════════════════════════════════════════════════
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApplyDiscount(long invoiceId, [FromForm] ApplyDiscountRequest request)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        try
+        {
+            var userId = User.GetUserId();
+            await _tax.ApplyDiscountAsync(invoiceId, userId, request);
+            TempData["Success"] = "Discount applied successfully.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Details), new { id = invoiceId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveDiscount(long invoiceId, long invoiceDiscountId)
+    {
+        if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        var removed = await _tax.RemoveDiscountAsync(invoiceDiscountId, invoiceId);
+        TempData[removed ? "Success" : "Error"] = removed ? "Discount removed." : "Discount not found.";
+        return RedirectToAction(nameof(Details), new { id = invoiceId });
+    }
+
     private async Task<InvoiceDetailViewModel?> GetInvoiceDetailAsync(long id)
     {
         var shopId = User.GetShopId();
@@ -142,8 +178,15 @@ public class InvoicesController : Controller
             ShopAddress = shop?.Address,
             ShopPhone = shop?.Phone,
             ShopEmail = shop?.Email,
+            ShopTIN = shop?.TIN,
+            IsVatRegistered = shop?.IsVatRegistered ?? true,
             Status = parsedStatus,
             Subtotal = dto.Subtotal,
+            DiscountAmount = dto.DiscountAmount,
+            VatableSales = dto.VatableSales,
+            VatExemptSales = dto.VatExemptSales,
+            ZeroRatedSales = dto.ZeroRatedSales,
+            VatAmount = dto.VatAmount,
             TotalAdjustments = dto.TotalAdjustments,
             Total = dto.TotalAmount,
             AmountPaid = dto.AmountPaid,
@@ -151,6 +194,18 @@ public class InvoicesController : Controller
             CreatedAt = dto.InvoiceDate,
             IssuedAt = dto.InvoiceDate,
             DueDate = dto.DueDate,
+            Discounts = dto.Discounts.Select(d => new InvoiceDiscountViewModel
+            {
+                InvoiceDiscountId = d.InvoiceDiscountId,
+                DiscountType = d.DiscountType,
+                Label = d.Label,
+                Percentage = d.Percentage,
+                Amount = d.Amount,
+                IsVatExempt = d.IsVatExempt,
+                BeneficiaryIdNo = d.BeneficiaryIdNo,
+                BeneficiaryName = d.BeneficiaryName,
+                AppliedAt = d.AppliedAt
+            }).ToList(),
             LineItems = dto.Lines.Select(l => new InvoiceLineItemViewModel
             {
                 Id = l.InvoiceLineId,

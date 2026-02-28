@@ -6,6 +6,7 @@
     var shopAddress = (string)ViewBag.ShopAddress;
     var shopPhone = (string)ViewBag.ShopPhone;
     var shopEmail = (string)ViewBag.ShopEmail;
+    var shopTIN = (string)(ViewBag.ShopTIN ?? "");
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -96,6 +97,10 @@
                     @if (!string.IsNullOrEmpty(shopEmail)) { <span>@shopEmail</span> }
                 </div>
             }
+            @if (!string.IsNullOrEmpty(shopTIN))
+            {
+                <div class="receipt-shop-detail" style="margin-top: 2px;"><strong>TIN:</strong> @shopTIN</div>
+            }
             <div class="receipt-title">Payment Receipt</div>
         </div>
 
@@ -180,6 +185,77 @@
         {
             <div style="font-size: 11px; color: #6b7280; margin-bottom: 12px;">
                 <strong>Notes:</strong> @Model.Notes
+            </div>
+        }
+
+        <!-- BIR Tax Breakdown -->
+        @if (Model.InvoiceSubtotal > 0)
+        {
+            <div class="receipt-divider"></div>
+            <div class="receipt-alloc-header">Tax Breakdown (BIR)</div>
+
+            <div class="receipt-row">
+                <span class="receipt-row-label">Subtotal</span>
+                <span class="receipt-row-value">₱@Model.InvoiceSubtotal.ToString("N2")</span>
+            </div>
+
+            @if (Model.Discounts.Count > 0)
+            {
+                @foreach (var disc in Model.Discounts)
+                {
+                    <div class="receipt-row" style="color: #dc2626;">
+                        <span class="receipt-row-label">@disc.Label</span>
+                        <span class="receipt-row-value">-₱@disc.Amount.ToString("N2")</span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(disc.BeneficiaryName))
+                    {
+                        <div style="font-size: 10px; color: #9ca3af; padding-left: 8px;">
+                            @disc.BeneficiaryName @(!string.IsNullOrEmpty(disc.BeneficiaryIdNo) ? $"(ID: {disc.BeneficiaryIdNo})" : "")
+                        </div>
+                    }
+                }
+            }
+
+            @if (Model.InvoiceDiscountAmount > 0)
+            {
+                <div class="receipt-row">
+                    <span class="receipt-row-label">Total Discount</span>
+                    <span class="receipt-row-value" style="color: #dc2626;">-₱@Model.InvoiceDiscountAmount.ToString("N2")</span>
+                </div>
+            }
+
+            @if (Model.IsVatRegistered)
+            {
+                @if (Model.VatableSales > 0)
+                {
+                    <div class="receipt-row">
+                        <span class="receipt-row-label">Vatable Sales</span>
+                        <span class="receipt-row-value">₱@Model.VatableSales.ToString("N2")</span>
+                    </div>
+                }
+                @if (Model.VatExemptSales > 0)
+                {
+                    <div class="receipt-row">
+                        <span class="receipt-row-label">VAT-Exempt Sales</span>
+                        <span class="receipt-row-value">₱@Model.VatExemptSales.ToString("N2")</span>
+                    </div>
+                }
+                @if (Model.ZeroRatedSales > 0)
+                {
+                    <div class="receipt-row">
+                        <span class="receipt-row-label">Zero-Rated Sales</span>
+                        <span class="receipt-row-value">₱@Model.ZeroRatedSales.ToString("N2")</span>
+                    </div>
+                }
+                <div class="receipt-row">
+                    <span class="receipt-row-label">VAT (12%)</span>
+                    <span class="receipt-row-value">₱@Model.VatAmount.ToString("N2")</span>
+                </div>
+            }
+
+            <div class="receipt-row" style="font-weight: 700; border-top: 1px solid #e5e7eb; padding-top: 6px; margin-top: 4px;">
+                <span class="receipt-row-label">Total</span>
+                <span class="receipt-row-value">₱@Model.InvoiceTotal.ToString("N2")</span>
             </div>
         }
 
