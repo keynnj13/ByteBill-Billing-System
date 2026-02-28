@@ -1,7 +1,10 @@
+using ByteBill_BS.Data;
+using ByteBill_BS.Extensions;
 using ByteBill_BS.Models.Enums;
 using ByteBill_BS.ViewModels.Invoices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ByteBill_BS.Areas.Auditor.Controllers;
 
@@ -9,6 +12,9 @@ namespace ByteBill_BS.Areas.Auditor.Controllers;
 [Authorize]
 public class InvoicesController : Controller
 {
+    private readonly ApplicationDbContext _db;
+    public InvoicesController(ApplicationDbContext db) => _db = db;
+
     private bool IsAuthorized()
     {
         var roleClaim = User.Claims.FirstOrDefault(c => c.Type == "Role")?.Value;
@@ -16,69 +22,124 @@ public class InvoicesController : Controller
     }
 
     [HttpGet]
-    public IActionResult Index(string? search, InvoiceStatus? status, int page = 1)
+    public async Task<IActionResult> Index(string? search, InvoiceStatus? status, int page = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+        var shopId = User.GetShopId();
+        const int pageSize = 20;
+
+        var query = _db.Invoices
+            .Where(i => i.ShopId == shopId && !i.IsArchived)
+            .Include(i => i.Customer)
+            .Include(i => i.JobOrder)
+            .AsQueryable();
+
+        if (status.HasValue)
+            query = query.Where(i => i.Status == status.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(i => i.InvoiceNo.Contains(search) || i.Customer!.FirstName.Contains(search) || i.Customer.LastName.Contains(search));
+
+        var totalCount = await query.CountAsync();
+        var totalOutstanding = await query.Where(i => i.Status != InvoiceStatus.Void).SumAsync(i => (decimal?)i.Balance) ?? 0;
+        var overdueCount = await query.CountAsync(i => i.DueDate.HasValue && i.DueDate.Value < DateTime.UtcNow && i.Status != InvoiceStatus.Paid && i.Status != InvoiceStatus.Void);
+
+        var invoices = await query
+            .OrderByDescending(i => i.CreatedAt)
+            .Skip((page - 1) * pageSize).Take(pageSize)
+            .Select(i => new InvoiceItemViewModel
+            {
+                Id = i.InvoiceId,
+                InvoiceNumber = i.InvoiceNo,
+                CustomerName = i.Customer!.FirstName + " " + i.Customer.LastName,
+                CustomerInitials = (i.Customer.FirstName.Substring(0, 1) + i.Customer.LastName.Substring(0, 1)).ToUpper(),
+                JobNumber = i.JobOrder != null ? i.JobOrder.JobOrderNo : null,
+                Status = i.Status,
+                Total = i.TotalAmount,
+                AmountPaid = i.AmountPaid,
+                Balance = i.Balance,
+                CreatedAt = i.CreatedAt,
+                DueDate = i.DueDate
+            })
+            .ToListAsync();
 
         var viewModel = new InvoiceListViewModel
         {
             SearchTerm = search,
             StatusFilter = status,
             CurrentPage = page,
-            TotalCount = 142,
-            TotalOutstanding = 8450.00m,
-            Invoices = new List<InvoiceItemViewModel>
-            {
-                new() { Id = 1, InvoiceNumber = "INV-2024-0143", CustomerName = "Sarah Chen", CustomerInitials = "SC", Status = InvoiceStatus.Unpaid, Total = 320.00m, AmountPaid = 0m, Balance = 320.00m, CreatedAt = DateTime.Now.AddMinutes(-30), DueDate = DateTime.Now.AddDays(30) },
-                new() { Id = 2, InvoiceNumber = "INV-2024-0142", CustomerName = "Mike Johnson", CustomerInitials = "MJ", Status = InvoiceStatus.Paid, Total = 450.00m, AmountPaid = 450.00m, Balance = 0m, CreatedAt = DateTime.Now.AddDays(-1), DueDate = DateTime.Now.AddDays(29) },
-                new() { Id = 3, InvoiceNumber = "INV-2024-0141", CustomerName = "Bob Martinez", CustomerInitials = "BM", Status = InvoiceStatus.Unpaid, Total = 680.00m, AmountPaid = 0m, Balance = 680.00m, CreatedAt = DateTime.Now.AddDays(-3), DueDate = DateTime.Now.AddDays(27) },
-                new() { Id = 4, InvoiceNumber = "INV-2024-0140", CustomerName = "Alice Thompson", CustomerInitials = "AT", Status = InvoiceStatus.Partial, Total = 520.00m, AmountPaid = 200.00m, Balance = 320.00m, CreatedAt = DateTime.Now.AddDays(-5), DueDate = DateTime.Now.AddDays(25) },
-                new() { Id = 5, InvoiceNumber = "INV-2024-0138", CustomerName = "David Wilson", CustomerInitials = "DW", Status = InvoiceStatus.Void, Total = 150.00m, AmountPaid = 0m, Balance = 0m, CreatedAt = DateTime.Now.AddDays(-7), DueDate = DateTime.Now.AddDays(23) }
-            }
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            TotalOutstanding = totalOutstanding,
+            OverdueCount = overdueCount,
+            Invoices = invoices
         };
-        
+
         return View(viewModel);
     }
 
     [HttpGet]
-    public IActionResult Details(long id)
+    public async Task<IActionResult> Details(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
-        
+        var shopId = User.GetShopId();
+
+        var inv = await _db.Invoices
+            .Where(i => i.InvoiceId == id && i.ShopId == shopId)
+            .Include(i => i.Customer)
+            .Include(i => i.JobOrder)
+            .Include(i => i.InvoiceLines)
+            .Include(i => i.PaymentAllocations).ThenInclude(pa => pa.Payment).ThenInclude(p => p!.ReceivedByUser)
+            .Include(i => i.Shop)
+            .FirstOrDefaultAsync();
+
+        if (inv == null) return NotFound();
+
         var model = new InvoiceDetailViewModel
         {
-            Id = id,
-            InvoiceNumber = "INV-2024-0142",
-            Status = InvoiceStatus.Paid,
-            CustomerId = 1,
-            CustomerName = "Mike Johnson",
-            CustomerEmail = "mike@email.com",
-            CustomerPhone = "(555) 123-4567",
-            CustomerAddress = "123 Main Street, Anytown, USA 12345",
-            JobOrderId = 156,
-            JobOrderNumber = "JO-2024-0156",
-            CreatedAt = DateTime.Now.AddDays(-1),
-            DueDate = DateTime.Now.AddDays(29),
-            PaidAt = DateTime.Now.AddMinutes(-5),
-            Notes = "Thank you for your business!",
-            LineItems = new List<InvoiceLineItemViewModel>
+            Id = inv.InvoiceId,
+            InvoiceNumber = inv.InvoiceNo,
+            Status = inv.Status,
+            CustomerId = inv.CustomerId,
+            CustomerName = inv.Customer!.FirstName + " " + inv.Customer.LastName,
+            CustomerEmail = inv.Customer.Email,
+            CustomerPhone = inv.Customer.Phone ?? "",
+            CustomerAddress = inv.Customer.Address,
+            JobOrderId = inv.JobOrderId,
+            JobOrderNumber = inv.JobOrder?.JobOrderNo ?? "",
+            JobNumber = inv.JobOrder?.JobOrderNo ?? "",
+            ShopName = inv.Shop?.ShopName ?? "",
+            ShopAddress = inv.Shop?.Address,
+            ShopPhone = inv.Shop?.Phone,
+            ShopEmail = inv.Shop?.Email,
+            CreatedAt = inv.CreatedAt,
+            DueDate = inv.DueDate,
+            Subtotal = inv.Subtotal,
+            TotalAdjustments = inv.TotalAdjustments,
+            Total = inv.TotalAmount,
+            AmountPaid = inv.AmountPaid,
+            Balance = inv.Balance,
+            LineItems = inv.InvoiceLines.Select(l => new InvoiceLineItemViewModel
             {
-                new() { Description = "Display Cable Replacement", Quantity = 1, UnitPrice = 120.00m, Total = 120.00m },
-                new() { Description = "Display Cable (MacBook Pro 2021)", Quantity = 1, UnitPrice = 85.00m, Total = 85.00m },
-                new() { Description = "System Diagnosis", Quantity = 1, UnitPrice = 50.00m, Total = 50.00m }
-            },
-            Subtotal = 255.00m,
-            TaxRate = 8.25m,
-            TaxAmount = 21.04m,
-            Total = 276.04m,
-            AmountPaid = 276.04m,
-            Balance = 0m,
-            Payments = new List<PaymentSummaryViewModel>
+                Id = l.InvoiceLineId,
+                Description = l.Description,
+                Quantity = l.Qty,
+                UnitPrice = l.UnitPrice,
+                Total = l.LineTotal,
+                Type = l.LineType
+            }).ToList(),
+            Payments = inv.PaymentAllocations.Select(pa => new PaymentSummaryViewModel
             {
-                new() { Id = 142, PaymentNumber = "PAY-2024-0142", Amount = 276.04m, Method = PaymentMethod.Card, PaidAt = DateTime.Now.AddMinutes(-5) }
-            }
+                Id = pa.PaymentId,
+                PaymentNumber = pa.Payment?.PaymentNo ?? "",
+                Amount = pa.AmountApplied,
+                Method = pa.Payment?.Method ?? PaymentMethod.Cash,
+                PaidAt = pa.Payment?.PaymentDate ?? DateTime.UtcNow,
+                IsVoid = pa.Payment?.Status == PaymentStatus.Refunded || pa.Payment?.Status == PaymentStatus.Failed,
+                ReceivedBy = pa.Payment?.ReceivedByUser != null ? pa.Payment.ReceivedByUser.FirstName + " " + pa.Payment.ReceivedByUser.LastName : null
+            }).ToList()
         };
-        
+
         return View(model);
     }
 }

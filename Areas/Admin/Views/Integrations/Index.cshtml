@@ -155,19 +155,58 @@
                         </div>
                     </div>
                 </div>
-                <form asp-action="TestPayMongoConnection" method="post" style="margin: 0;">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-secondary btn-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        Test Connection
-                    </button>
-                </form>
+                <button type="button" class="btn btn-secondary btn-sm" id="btnTestPayMongo" onclick="testPayMongoConnection()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    Test Connection
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PayMongo Configuration Panel -->
+    <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header"><h3 class="ig-section-title">Configuration</h3></div>
+        <div class="card-body">
+            <div class="ig-config-grid">
+                <div class="ig-config-item">
+                    <span class="ig-config-label">API Key Status</span>
+                    @if (Model.PayMongoHasKeys)
+                    {
+                        <span class="status-indicator status-success">Configured @(Model.PayMongoKeyLastFour != null ? $"({Model.PayMongoKeyLastFour})" : "")</span>
+                    }
+                    else
+                    {
+                        <span class="status-indicator status-danger">Not Configured</span>
+                    }
+                </div>
+                <div class="ig-config-item">
+                    <span class="ig-config-label">Webhook URL</span>
+                    <div class="ig-config-copy">
+                        <code class="ig-mono" id="webhookUrl">@Model.PayMongoWebhookUrl</code>
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="copyWebhookUrl()" title="Copy to clipboard">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="ig-config-item">
+                    <span class="ig-config-label">Supported Methods</span>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <span class="ig-method-badge">GCash</span>
+                        <span class="ig-method-badge">Card</span>
+                        <span class="ig-method-badge">GrabPay</span>
+                        <span class="ig-method-badge">PayMaya</span>
+                    </div>
+                </div>
+                <div class="ig-config-item">
+                    <span class="ig-config-label">Currency</span>
+                    <span class="fw-medium">PHP (₱)</span>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- PayMongo Stats -->
-    <div class="ig-stats ig-stats-2">
+    <div class="ig-stats ig-stats-3">
         <div class="ig-stat-card">
             <div class="ig-stat-icon ig-stat-navy">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
@@ -186,54 +225,144 @@
                 <span class="ig-stat-value" style="color: #059669;">&#8369;@Model.PayMongoTotalAmount.ToString("N2")</span>
             </div>
         </div>
+        <div class="ig-stat-card">
+            <div class="ig-stat-icon" style="background: rgba(59,130,246,0.08); color: #3b82f6;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            </div>
+            <div class="ig-stat-content">
+                <span class="ig-stat-label">Connection</span>
+                <span class="ig-stat-value" id="pmConnectionStatus" style="color: @(Model.PayMongoHasKeys ? "#059669" : "#dc2626"); font-size:14px;">
+                    @(Model.PayMongoHasKeys ? "Keys Configured" : "Not Configured")
+                </span>
+            </div>
+        </div>
     </div>
 
     <!-- PayMongo Transaction Table -->
     <div class="card">
-        <div class="card-header"><h3 class="ig-section-title">Recent Transactions</h3></div>
+        <div class="card-header">
+            <h3 class="ig-section-title">Recent Transactions</h3>
+            <span class="text-muted" style="font-size:12px;">Click a row for details</span>
+        </div>
         <div class="card-body p-0">
-            <div class="table-container">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>PayMongo ID</th>
-                            <th>Type</th>
-                            <th>Customer</th>
-                            <th>Invoice</th>
-                            <th class="text-right">Amount</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var txn in Model.RecentPayMongoTxns)
-                        {
+            @if (Model.RecentPayMongoTxns.Any())
+            {
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
                             <tr>
-                                <td class="ig-ts">@txn.CreatedAt.ToString("MMM dd, h:mm tt")</td>
-                                <td class="ig-mono">@txn.PayMongoId</td>
-                                <td><span class="status-indicator status-muted">@txn.Type</span></td>
-                                <td class="fw-medium">@(txn.CustomerName ?? "—")</td>
-                                <td class="text-muted">@(txn.InvoiceNo ?? "—")</td>
-                                <td class="text-right fw-medium">&#8369;@txn.Amount.ToString("N2")</td>
-                                <td><span class="status-indicator @txn.StatusClass">@txn.Status</span></td>
+                                <th>Date</th>
+                                <th>PayMongo ID</th>
+                                <th>Type</th>
+                                <th>Customer</th>
+                                <th>Invoice</th>
+                                <th class="text-right">Amount</th>
+                                <th>Status</th>
                             </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            @foreach (var txn in Model.RecentPayMongoTxns)
+                            {
+                                <tr class="clickable-row" onclick="showTxnDetail(@txn.Id)" style="cursor:pointer;">
+                                    <td class="ig-ts">@txn.CreatedAt.ToString("MMM dd, h:mm tt")</td>
+                                    <td class="ig-mono">@txn.PayMongoId</td>
+                                    <td><span class="status-indicator status-muted">@txn.Type</span></td>
+                                    <td class="fw-medium">@(txn.CustomerName ?? "—")</td>
+                                    <td class="text-muted">@(txn.InvoiceNo ?? "—")</td>
+                                    <td class="text-right fw-medium">&#8369;@txn.Amount.ToString("N2")</td>
+                                    <td><span class="status-indicator @txn.StatusClass">@txn.Status</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div style="padding:40px 20px; text-align:center; color:#9ca3af;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" style="margin:0 auto 12px;display:block;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                    <p style="font-size:14px;">No PayMongo transactions yet</p>
+                    <p style="font-size:12px;">Transactions will appear here once customers pay via PayMongo links or checkout sessions.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- PayMongo Transaction Detail Modal -->
+<div class="modal-overlay" id="pmDetailModal" style="display:none;">
+    <div class="modal-container" style="max-width:520px;">
+        <div class="modal-header">
+            <h3 class="modal-title">Transaction Details</h3>
+            <button type="button" class="modal-close" onclick="closePmModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="pmDetailBody">
+            <div style="text-align:center;padding:30px;color:#9ca3af;">Loading...</div>
         </div>
     </div>
 </div>
 
 <script>
 function switchTab(tab) {
-    // Toggle tab buttons
     document.querySelectorAll('.ig-tab').forEach(t => t.classList.remove('ig-tab-active'));
     document.querySelector('[data-tab="' + tab + '"]').classList.add('ig-tab-active');
-    // Toggle panels
     document.querySelectorAll('.ig-tab-panel').forEach(p => p.classList.remove('ig-tab-panel-active'));
     document.getElementById('tab-' + tab).classList.add('ig-tab-panel-active');
 }
+
+function copyWebhookUrl() {
+    var url = document.getElementById('webhookUrl').textContent;
+    navigator.clipboard.writeText(url).then(function() {
+        if (typeof Toast !== 'undefined') Toast.success('Webhook URL copied!');
+    });
+}
+
+function testPayMongoConnection() {
+    var btn = document.getElementById('btnTestPayMongo');
+    btn.disabled = true;
+    btn.innerHTML = '<svg class="spin" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"></path></svg> Testing...';
+    var token = document.querySelector('input[name="__RequestVerificationToken"]')?.value
+             || document.querySelector('meta[name="csrf-token"]')?.content || '';
+    fetch('@Url.Action("TestPayMongoConnection", "Integrations", new { area = "Admin" })', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'RequestVerificationToken': token, 'Content-Type': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Test Connection';
+        if (data.success) { if (typeof Toast !== 'undefined') Toast.success(data.message); }
+        else { if (typeof Toast !== 'undefined') Toast.error(data.message); }
+    })
+    .catch(() => { btn.disabled = false; btn.innerHTML = 'Test Connection'; if (typeof Toast !== 'undefined') Toast.error('Connection test failed.'); });
+}
+
+function showTxnDetail(id) {
+    document.getElementById('pmDetailModal').style.display = 'flex';
+    document.getElementById('pmDetailBody').innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af;">Loading...</div>';
+    fetch('@Url.Action("PayMongoTxnDetail", "Integrations", new { area = "Admin" })?id=' + id)
+    .then(r => r.json())
+    .then(data => {
+        var statusColor = data.payMongoStatus === 'paid' ? '#059669' : data.payMongoStatus === 'failed' ? '#dc2626' : '#d97706';
+        document.getElementById('pmDetailBody').innerHTML = '<div class="ig-detail-grid">'
+            + '<div class="ig-detail-row"><span class="ig-detail-label">PayMongo ID</span><span class="ig-mono">' + data.payMongoPaymentIntentId + '</span></div>'
+            + '<div class="ig-detail-row"><span class="ig-detail-label">Type</span><span>' + data.resourceType + '</span></div>'
+            + '<div class="ig-detail-row"><span class="ig-detail-label">Status</span><span style="color:' + statusColor + ';font-weight:600;">' + data.payMongoStatus + '</span></div>'
+            + '<div class="ig-detail-row"><span class="ig-detail-label">Amount</span><span class="fw-medium">₱' + data.amount.toFixed(2) + '</span></div>'
+            + '<div class="ig-detail-row"><span class="ig-detail-label">Payment Method</span><span>' + (data.payMongoPaymentMethod || '—') + '</span></div>'
+            + '<div class="ig-detail-row"><span class="ig-detail-label">Customer</span><span>' + (data.customerName || '—') + '</span></div>'
+            + '<div class="ig-detail-row"><span class="ig-detail-label">Invoice</span><span>' + (data.invoiceNo || '—') + '</span></div>'
+            + '<div class="ig-detail-row"><span class="ig-detail-label">Payment Record</span><span>' + (data.paymentNo || '—') + '</span></div>'
+            + '<div class="ig-detail-row"><span class="ig-detail-label">Created</span><span>' + new Date(data.createdAt).toLocaleString() + '</span></div>'
+            + (data.updatedAt ? '<div class="ig-detail-row"><span class="ig-detail-label">Updated</span><span>' + new Date(data.updatedAt).toLocaleString() + '</span></div>' : '')
+            + (data.checkoutUrl ? '<div class="ig-detail-row"><span class="ig-detail-label">Checkout URL</span><a href="' + data.checkoutUrl + '" target="_blank" class="ig-mono" style="font-size:11px;word-break:break-all;">Open Link →</a></div>' : '')
+            + '</div>';
+    })
+    .catch(() => { document.getElementById('pmDetailBody').innerHTML = '<div style="text-align:center;padding:20px;color:#dc2626;">Failed to load details.</div>'; });
+}
+
+function closePmModal() { document.getElementById('pmDetailModal').style.display = 'none'; }
+document.getElementById('pmDetailModal').addEventListener('click', function(e) { if (e.target === this) closePmModal(); });
 </script>
 
 <style>
@@ -281,6 +410,24 @@ function switchTab(tab) {
     .ig-mono { font-size: 12px; font-family: 'SFMono-Regular', Consolas, monospace; color: #9ca3af; }
     .ig-msg { font-size: 12px; color: #9ca3af; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+    /* Config panel */
+    .ig-config-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .ig-config-item { display: flex; flex-direction: column; gap: 4px; }
+    .ig-config-label { font-size: 12px; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .ig-config-copy { display: flex; align-items: center; gap: 6px; }
+    .ig-method-badge { background: #f3f4f6; color: #374151; font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+
+    /* Detail modal */
+    .ig-detail-grid { display: flex; flex-direction: column; gap: 0; }
+    .ig-detail-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+    .ig-detail-row:last-child { border-bottom: none; }
+    .ig-detail-label { font-size: 13px; color: #6b7280; }
+
+    .clickable-row:hover { background: #f9fafb; }
+
+    .spin { animation: spin 1s linear infinite; }
+    @@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
     @@media print { .no-print { display: none !important; } }
     @@media (max-width: 768px) {
         .ig-stats-3 { grid-template-columns: 1fr; }
@@ -288,5 +435,6 @@ function switchTab(tab) {
         .ig-tabs { flex-direction: column; }
         .ig-page-header { flex-direction: column; gap: 12px; }
         .ig-integration-header { flex-direction: column; gap: 12px; align-items: flex-start; }
+        .ig-config-grid { grid-template-columns: 1fr; }
     }
 </style>

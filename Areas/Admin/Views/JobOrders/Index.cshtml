@@ -30,16 +30,16 @@
         <form method="get" class="filter-form">
             <div class="search-input-wrapper">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <input type="text" name="search" value="@Model.SearchTerm" placeholder="Search by order number, customer..." class="form-input search-input" />
+                <input type="text" name="search" value="@Model.SearchTerm" placeholder="Search by order number, customer..." class="form-input search-input" id="joSearch" />
             </div>
-            <select name="status" class="form-select" onchange="this.form.submit()">
+            <select name="status" class="form-select" id="joStatus">
                 <option value="">All Statuses</option>
                 @foreach (JobOrderStatus status in Enum.GetValues(typeof(JobOrderStatus)))
                 {
                     <option value="@status" selected="@(Model.StatusFilter == status)">@status</option>
                 }
             </select>
-            <button type="submit" class="btn btn-outline-primary">Filter</button>
+            <noscript><button type="submit" class="btn btn-outline-primary">Filter</button></noscript>
         </form>
     </div>
     <div class="card-body p-0">
@@ -70,7 +70,7 @@
                     <tbody>
                         @foreach (var order in Model.JobOrders)
                         {
-                            <tr class="clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "JobOrders", new { area = "Admin", id = order.Id })', '@order.JobNumber')">
+                            <tr class="clickable-row" data-jobnumber="@order.JobNumber.ToLower()" data-customer="@order.CustomerName.ToLower()" data-device="@((order.DeviceType ?? "").ToLower()) @((order.DeviceBrand ?? "").ToLower()) @((order.DeviceModel ?? "").ToLower())" data-status="@order.StatusDisplay" data-technician="@((order.TechnicianName ?? "").ToLower())" onclick="openAjaxModal('@Url.Action("DetailsModal", "JobOrders", new { area = "Admin", id = order.Id })', '@order.JobNumber')">
                                 <td>
                                     <span class="order-link">@order.JobNumber</span>
                                 </td>
@@ -160,3 +160,42 @@
         .table { table-layout: auto !important; }
     }
 </style>
+
+<script>
+(function() {
+    var searchInput = document.getElementById('joSearch');
+    var statusSelect = document.getElementById('joStatus');
+    var rows = document.querySelectorAll('tr.clickable-row[data-jobnumber]');
+    var tableContainer = rows.length > 0 ? rows[0].closest('.table-container') : null;
+    var emptyState = null;
+
+    function filterRows() {
+        var q = (searchInput ? searchInput.value : '').toLowerCase().trim();
+        var st = statusSelect ? statusSelect.value : '';
+        var visibleCount = 0;
+        rows.forEach(function(row) {
+            var matchSearch = !q
+                || row.dataset.jobnumber.indexOf(q) !== -1
+                || row.dataset.customer.indexOf(q) !== -1
+                || row.dataset.device.indexOf(q) !== -1
+                || row.dataset.technician.indexOf(q) !== -1;
+            var matchStatus = !st || row.dataset.status === st;
+            var visible = matchSearch && matchStatus;
+            row.style.display = visible ? '' : 'none';
+            if (visible) visibleCount++;
+        });
+        if (!emptyState) {
+            emptyState = document.createElement('div');
+            emptyState.style.cssText = 'padding:40px 20px; text-align:center; color:#9ca3af; font-size:14px; display:none;';
+            emptyState.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" style="margin:0 auto 12px;display:block;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>No job orders match your filters';
+            if (tableContainer) tableContainer.parentNode.insertBefore(emptyState, tableContainer.nextSibling);
+        }
+        if (emptyState) emptyState.style.display = visibleCount === 0 && rows.length > 0 ? 'block' : 'none';
+        if (tableContainer) tableContainer.style.display = visibleCount === 0 && rows.length > 0 ? 'none' : '';
+    }
+
+    if (searchInput) searchInput.addEventListener('input', filterRows);
+    if (statusSelect) statusSelect.addEventListener('change', filterRows);
+    filterRows();
+})();
+</script>

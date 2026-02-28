@@ -1,0 +1,87 @@
+@model JobOrderAuditReportViewModel
+@{
+    ViewData["Title"] = "Job Order Operational Audit";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Reports", Url = Url.Action("Index", "Reports") }, new() { Label = "Job Order Audit", IsActive = true } } })" />
+
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
+    <div>
+        <h1 class="page-title">Job Order Operational Audit</h1>
+        <p class="page-subtitle">@Model.DateRange</p>
+    </div>
+    <a href="@Url.Action("ExportJobOrderAuditPdf", new { range = Context.Request.Query["range"], from = Context.Request.Query["from"], to = Context.Request.Query["to"] })" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:6px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export PDF
+    </a>
+</div>
+
+<partial name="_DateRangeFilter" />
+
+<div class="rpt-stats" style="grid-template-columns: repeat(4, 1fr);">
+    <div class="rpt-stat"><span class="rpt-stat-label">Total Jobs</span><span class="rpt-stat-value">@Model.TotalJobOrders</span></div>
+    <div class="rpt-stat"><span class="rpt-stat-label">Completed</span><span class="rpt-stat-value" style="color:#10b981;">@Model.CompletedCount</span></div>
+    <div class="rpt-stat"><span class="rpt-stat-label">Avg Days</span><span class="rpt-stat-value">@Model.AverageCompletionDays</span></div>
+    <div class="rpt-stat"><span class="rpt-stat-label">Service Revenue</span><span class="rpt-stat-value">₱@Model.TotalServiceRevenue.ToString("N2")</span></div>
+</div>
+
+<!-- Status Breakdown -->
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header"><h3 style="font-size:15px; font-weight:600; margin:0;">Status Breakdown</h3></div>
+    <div class="card-body">
+        <div class="status-bars">
+            @{ var total = Model.TotalJobOrders > 0 ? Model.TotalJobOrders : 1; }
+            @foreach (var s in Model.StatusBreakdown)
+            {
+                string barColor = s.Status switch { "Completed" => "#10b981", "InProgress" => "#3b82f6", "Pending" => "#f59e0b", "Cancelled" => "#ef4444", _ => "#9ca3af" };
+                <div class="status-bar-row">
+                    <span style="min-width:120px; font-size:13px; font-weight:500;">@s.Status</span>
+                    <div class="bar-track"><div class="bar-fill" style="width:@(s.Count * 100 / total)%; background:@barColor;"></div></div>
+                    <span class="bar-count">@s.Count (@s.Percentage%)</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Technician Performance -->
+<div class="card">
+    <div class="card-header"><h3 style="font-size:15px; font-weight:600; margin:0;">Technician Performance</h3></div>
+    <div class="card-body p-0">
+        <div class="table-container">
+            <table class="table">
+                <thead><tr><th>Technician</th><th class="text-center">Assigned</th><th class="text-center">Completed</th><th class="text-right">Revenue</th><th class="text-center">Avg Days</th></tr></thead>
+                <tbody>
+                    @foreach (var t in Model.TechnicianPerformance)
+                    {
+                        <tr>
+                            <td style="font-weight:500;">@t.Name</td>
+                            <td class="text-center">@t.JobsAssigned</td>
+                            <td class="text-center" style="color:#10b981; font-weight:500;">@t.JobsCompleted</td>
+                            <td class="text-right">₱@t.Revenue.ToString("N2")</td>
+                            <td class="text-center">@t.AvgDays</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (!Model.TechnicianPerformance.Any())
+        {
+            <div class="text-center py-4" style="color: var(--text-muted); font-size: 14px;">No job orders with assigned technicians found in this period.</div>
+        }
+    </div>
+</div>
+
+<style>
+    .page-title { font-size: 24px; font-weight: 700; color: var(--text-primary, #1f2937); margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: var(--text-secondary, #6b7280); }
+    .rpt-stats { display: grid; gap: 16px; margin-bottom: 24px; }
+    .rpt-stat { text-align: center; padding: 16px; background: var(--bg-primary, white); border-radius: 10px; border: 1px solid var(--border-primary, #e5e7eb); }
+    .rpt-stat-label { display: block; font-size: 12px; color: var(--text-muted, #9ca3af); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .rpt-stat-value { display: block; font-size: 22px; font-weight: 700; color: var(--text-primary, #1f2937); }
+    .status-bars { display: flex; flex-direction: column; gap: 12px; }
+    .status-bar-row { display: flex; align-items: center; gap: 12px; }
+    .bar-track { flex: 1; height: 8px; background: var(--bg-secondary, #f3f4f6); border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+    .bar-count { font-size: 13px; font-weight: 500; color: var(--text-secondary, #6b7280); min-width: 80px; }
+</style>

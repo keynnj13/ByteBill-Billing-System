@@ -66,6 +66,12 @@
 
 <!-- My Requests Table -->
 <div class="card">
+    <div class="card-header" style="padding: 12px 24px;">
+        <div style="position:relative; max-width:320px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9ca3af;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="bilAdjSearch" placeholder="Search adjustments..." class="form-input" style="padding-left:40px;width:100%;" />
+        </div>
+    </div>
     <div class="card-body" style="padding: 0;">
         <div style="padding: 20px 24px 12px;">
             <h3 class="bil-adj-section-title">My Adjustment Requests</h3>
@@ -103,7 +109,7 @@
                                             : req.Status == "Rejected" ? "bil-adj-badge-rejected"
                                             : "bil-adj-badge-pending";
                             var isCredit = req.AdjustmentType is "Credit" or "Refund";
-                            <tr>
+                            <tr data-type="@req.AdjustmentType.ToLower()" data-invoice="@req.InvoiceNumber.ToLower()" data-customer="@req.CustomerName.ToLower()" data-status="@req.Status.ToLower()" data-reason="@req.Reason.ToLower()">
                                 <td><span class="status-indicator @badgeClass">@req.AdjustmentType</span></td>
                                 <td><span class="bil-adj-inv-link">@req.InvoiceNumber</span></td>
                                 <td><span class="bil-adj-customer">@req.CustomerName</span></td>
@@ -300,8 +306,24 @@
         adjTypeSelect.addEventListener('change', computeAmount);
     });
 
-    setInterval(function() {
-        if (document.querySelector('.modal:not(.hidden)') || document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'SELECT') return;
-        location.reload();
-    }, 30000);
+    (function () {
+        var search = document.getElementById('bilAdjSearch');
+        if (!search) return;
+        var tbody = document.querySelector('.table tbody');
+        if (!tbody) return;
+
+        function filterAdj() {
+            var q = search.value.toLowerCase();
+            var rows = tbody.querySelectorAll('tr');
+            var visible = 0;
+            rows.forEach(function (row) {
+                if (!row.dataset.type) return;
+                var match = !q || row.dataset.type.indexOf(q) > -1 || row.dataset.invoice.indexOf(q) > -1 || row.dataset.customer.indexOf(q) > -1 || row.dataset.reason.indexOf(q) > -1;
+                row.style.display = match ? '' : 'none';
+                if (match) visible++;
+            });
+        }
+
+        search.addEventListener('input', filterAdj);
+    })();
 </script>

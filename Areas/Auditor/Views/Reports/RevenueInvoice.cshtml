@@ -1,0 +1,77 @@
+@model RevenueInvoiceReportViewModel
+@{
+    ViewData["Title"] = "Revenue & Invoice Report";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Reports", Url = Url.Action("Index", "Reports") }, new() { Label = "Revenue & Invoice", IsActive = true } } })" />
+
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
+    <div>
+        <h1 class="page-title">Revenue & Invoice Report</h1>
+        <p class="page-subtitle">@Model.DateRange</p>
+    </div>
+    <a href="@Url.Action("ExportRevenueInvoicePdf", new { range = Context.Request.Query["range"], from = Context.Request.Query["from"], to = Context.Request.Query["to"] })" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:6px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export PDF
+    </a>
+</div>
+
+<partial name="_DateRangeFilter" />
+
+<!-- Summary Stats -->
+<div class="rpt-stats">
+    <div class="rpt-stat"><span class="rpt-stat-label">Total Invoiced</span><span class="rpt-stat-value">₱@Model.TotalInvoiced.ToString("N2")</span></div>
+    <div class="rpt-stat"><span class="rpt-stat-label">Collected</span><span class="rpt-stat-value" style="color:#10b981;">₱@Model.TotalCollected.ToString("N2")</span></div>
+    <div class="rpt-stat"><span class="rpt-stat-label">Outstanding</span><span class="rpt-stat-value" style="color:#f59e0b;">₱@Model.TotalOutstanding.ToString("N2")</span></div>
+    <div class="rpt-stat"><span class="rpt-stat-label">Invoices</span><span class="rpt-stat-value">@Model.InvoiceCount</span></div>
+    <div class="rpt-stat"><span class="rpt-stat-label">Avg Invoice</span><span class="rpt-stat-value">₱@Model.AverageInvoice.ToString("N2")</span></div>
+</div>
+
+<!-- Status Breakdown -->
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header"><h3 style="font-size:15px; font-weight:600; margin:0;">Invoice Status Breakdown</h3></div>
+    <div class="card-body">
+        <div class="status-bars">
+            @{ var total = Model.InvoiceCount > 0 ? Model.InvoiceCount : 1; }
+            <div class="status-bar-row"><span class="status-indicator status-success">Paid</span><div class="bar-track"><div class="bar-fill bg-green" style="width:@(Model.PaidCount * 100 / total)%"></div></div><span class="bar-count">@Model.PaidCount</span></div>
+            <div class="status-bar-row"><span class="status-indicator status-pending">Unpaid</span><div class="bar-track"><div class="bar-fill bg-amber" style="width:@(Model.UnpaidCount * 100 / total)%"></div></div><span class="bar-count">@Model.UnpaidCount</span></div>
+            <div class="status-bar-row"><span class="status-indicator status-partial">Partial</span><div class="bar-track"><div class="bar-fill bg-blue" style="width:@(Model.PartialCount * 100 / total)%"></div></div><span class="bar-count">@Model.PartialCount</span></div>
+            <div class="status-bar-row"><span class="status-indicator status-muted">Void</span><div class="bar-track"><div class="bar-fill bg-gray" style="width:@(Model.VoidCount * 100 / total)%"></div></div><span class="bar-count">@Model.VoidCount</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Monthly Breakdown Table -->
+<div class="card">
+    <div class="card-header"><h3 style="font-size:15px; font-weight:600; margin:0;">Monthly Breakdown</h3></div>
+    <div class="card-body p-0">
+        <div class="table-container">
+            <table class="table">
+                <thead><tr><th>Month</th><th class="text-right">Invoiced</th><th class="text-right">Collected</th><th class="text-right">Outstanding</th><th class="text-center">Count</th></tr></thead>
+                <tbody>
+                    @foreach (var m in Model.MonthlyBreakdown)
+                    {
+                        <tr><td style="font-weight:500;">@m.Month</td><td class="text-right">₱@m.Invoiced.ToString("N2")</td><td class="text-right" style="color:#10b981;">₱@m.Collected.ToString("N2")</td><td class="text-right" style="color:#f59e0b;">₱@m.Outstanding.ToString("N2")</td><td class="text-center">@m.Count</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .page-title { font-size: 24px; font-weight: 700; color: var(--text-primary, #1f2937); margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: var(--text-secondary, #6b7280); }
+    .rpt-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px; }
+    .rpt-stat { text-align: center; padding: 16px; background: var(--bg-primary, white); border-radius: 10px; border: 1px solid var(--border-primary, #e5e7eb); }
+    .rpt-stat-label { display: block; font-size: 12px; color: var(--text-muted, #9ca3af); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .rpt-stat-value { display: block; font-size: 22px; font-weight: 700; color: var(--text-primary, #1f2937); }
+    .status-bars { display: flex; flex-direction: column; gap: 12px; }
+    .status-bar-row { display: flex; align-items: center; gap: 12px; }
+    .status-bar-row .status-indicator { min-width: 80px; }
+    .bar-track { flex: 1; height: 8px; background: var(--bg-secondary, #f3f4f6); border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+    .bg-green { background: #10b981; } .bg-amber { background: #f59e0b; } .bg-blue { background: #3b82f6; } .bg-gray { background: #9ca3af; }
+    .bar-count { font-size: 14px; font-weight: 600; color: var(--text-primary, #1f2937); min-width: 30px; }
+    @@media (max-width: 768px) { .rpt-stats { grid-template-columns: repeat(2, 1fr); } }
+</style>

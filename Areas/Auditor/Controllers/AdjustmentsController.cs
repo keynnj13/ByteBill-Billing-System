@@ -1,6 +1,9 @@
+using ByteBill_BS.Data;
+using ByteBill_BS.Extensions;
 using ByteBill_BS.Models.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ByteBill_BS.Areas.Auditor.Controllers;
 
@@ -8,6 +11,9 @@ namespace ByteBill_BS.Areas.Auditor.Controllers;
 [Authorize]
 public class AdjustmentsController : Controller
 {
+    private readonly ApplicationDbContext _db;
+    public AdjustmentsController(ApplicationDbContext db) => _db = db;
+
     private bool IsAuthorized()
     {
         var roleClaim = User.Claims.FirstOrDefault(c => c.Type == "Role")?.Value;
@@ -15,25 +21,50 @@ public class AdjustmentsController : Controller
     }
 
     [HttpGet]
-    public IActionResult Index(string? type, int page = 1)
+    public async Task<IActionResult> Index(string? type, int page = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+        var shopId = User.GetShopId();
 
-        var adjustments = new[]
-        {
-            new { Id = 1, Type = "Discount", InvoiceNumber = "INV-2024-0140", CustomerName = "Alice Thompson", Amount = -50.00m, Reason = "Loyal customer discount", CreatedAt = DateTime.Now.AddDays(-1), CreatedBy = "Emily Brown", ApprovedBy = "John Anderson" },
-            new { Id = 2, Type = "Refund", InvoiceNumber = "INV-2024-0135", CustomerName = "Bob Martinez", Amount = -25.00m, Reason = "Parts return", CreatedAt = DateTime.Now.AddDays(-3), CreatedBy = "Emily Brown", ApprovedBy = "John Anderson" },
-            new { Id = 3, Type = "Credit", InvoiceNumber = "INV-2024-0128", CustomerName = "Carol White", Amount = -15.00m, Reason = "Service credit for inconvenience", CreatedAt = DateTime.Now.AddDays(-5), CreatedBy = "Emily Brown", ApprovedBy = "John Anderson" },
-            new { Id = 4, Type = "Write-off", InvoiceNumber = "INV-2024-0098", CustomerName = "David Wilson", Amount = -150.00m, Reason = "Uncollectible debt", CreatedAt = DateTime.Now.AddDays(-15), CreatedBy = "John Anderson", ApprovedBy = "Super Admin" }
-        };
-        
+        var query = _db.CreditDebitAdjustments
+            .Where(a => a.ShopId == shopId)
+            .Include(a => a.Invoice)
+            .Include(a => a.CreatedByUser)
+            .Include(a => a.ReviewedByUser)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(type) && Enum.TryParse<AdjustmentType>(type, true, out var adjType))
+            query = query.Where(a => a.AdjustmentType == adjType);
+
+        var adjustments = await query
+            .OrderByDescending(a => a.CreatedAt)
+            .Select(a => new
+            {
+                a.AdjustmentId,
+                Type = a.AdjustmentType.ToString(),
+                InvoiceNumber = a.Invoice != null ? a.Invoice.InvoiceNo : "—",
+                CustomerName = a.Invoice != null && a.Invoice.Customer != null ? a.Invoice.Customer.FirstName + " " + a.Invoice.Customer.LastName : "—",
+                a.Amount,
+                a.Reason,
+                a.CreatedAt,
+                Status = a.Status.ToString(),
+                CreatedBy = a.CreatedByUser != null ? a.CreatedByUser.FirstName + " " + a.CreatedByUser.LastName : "—",
+                ApprovedBy = a.ReviewedByUser != null ? a.ReviewedByUser.FirstName + " " + a.ReviewedByUser.LastName : "—"
+            })
+            .ToListAsync();
+
+        // Totals by type (approved only)
+        var approved = await _db.CreditDebitAdjustments
+            .Where(a => a.ShopId == shopId && a.Status == AdjustmentStatus.Approved)
+            .ToListAsync();
+
         ViewBag.Adjustments = adjustments;
         ViewBag.TypeFilter = type;
-        ViewBag.TotalDiscounts = 50.00m;
-        ViewBag.TotalRefunds = 25.00m;
-        ViewBag.TotalCredits = 15.00m;
-        ViewBag.TotalWriteoffs = 150.00m;
-        
+        ViewBag.TotalDiscounts = 0m; // No Discount type in enum
+        ViewBag.TotalRefunds = approved.Where(a => a.AdjustmentType == AdjustmentType.Refund).Sum(a => a.Amount);
+        ViewBag.TotalCredits = approved.Where(a => a.AdjustmentType == AdjustmentType.Credit).Sum(a => a.Amount);
+        ViewBag.TotalDebits = approved.Where(a => a.AdjustmentType == AdjustmentType.Debit).Sum(a => a.Amount);
+
         return View();
     }
 }

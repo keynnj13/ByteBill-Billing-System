@@ -1,5 +1,11 @@
 @{
     ViewData["Title"] = "Adjustments";
+    var adjustments = ViewBag.Adjustments as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+    var typeFilter = ViewBag.TypeFilter as string;
+    decimal totalDiscounts = ViewBag.TotalDiscounts ?? 0m;
+    decimal totalRefunds = ViewBag.TotalRefunds ?? 0m;
+    decimal totalCredits = ViewBag.TotalCredits ?? 0m;
+    decimal totalDebits = ViewBag.TotalDebits ?? 0m;
 }
 
 <partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Adjustments", IsActive = true } } })" />
@@ -7,14 +13,176 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Adjustments</h1>
-        <p class="text-muted">Review and audit adjustments</p>
+        <p class="page-subtitle">Credits, debits, refunds & discounts — Read-only audit view</p>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="adj-stats">
+    <div class="adj-stat-card">
+        <div class="adj-stat-icon adj-stat-green">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="7 13 12 18 17 13"></polyline><polyline points="7 6 12 11 17 6"></polyline></svg>
+        </div>
+        <div>
+            <span class="adj-stat-label">Discounts</span>
+            <span class="adj-stat-value">₱@totalDiscounts.ToString("N2")</span>
+        </div>
+    </div>
+    <div class="adj-stat-card">
+        <div class="adj-stat-icon adj-stat-amber">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+        </div>
+        <div>
+            <span class="adj-stat-label">Refunds</span>
+            <span class="adj-stat-value">₱@totalRefunds.ToString("N2")</span>
+        </div>
+    </div>
+    <div class="adj-stat-card">
+        <div class="adj-stat-icon adj-stat-blue">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+        </div>
+        <div>
+            <span class="adj-stat-label">Credits</span>
+            <span class="adj-stat-value">₱@totalCredits.ToString("N2")</span>
+        </div>
+    </div>
+    <div class="adj-stat-card">
+        <div class="adj-stat-icon adj-stat-red">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline><polyline points="17 18 23 18 23 12"></polyline></svg>
+        </div>
+        <div>
+            <span class="adj-stat-label">Debits</span>
+            <span class="adj-stat-value">₱@totalDebits.ToString("N2")</span>
+        </div>
     </div>
 </div>
 
 <div class="card">
-    <div class="card-body text-center py-5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-        <h3 class="text-muted">Coming Soon</h3>
-        <p class="text-muted">This module is currently under development.</p>
+    <div class="card-header">
+        <div class="filter-form">
+            <div class="search-input-wrapper">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" id="adjSearch" placeholder="Search invoice #, customer, reason..." class="form-input search-input" />
+            </div>
+            <select id="typeFilter" class="form-select">
+                <option value="">All Types</option>
+                <option value="Discount">Discount</option>
+                <option value="Refund">Refund</option>
+                <option value="Credit">Credit</option>
+                <option value="Debit">Debit</option>
+            </select>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        @if (adjustments.Any())
+        {
+            <div class="table-container">
+                <table class="table" id="adjTable">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Invoice</th>
+                            <th>Customer</th>
+                            <th class="text-right">Amount</th>
+                            <th>Reason</th>
+                            <th>Status</th>
+                            <th>Created By</th>
+                            <th>Reviewed By</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var adj in adjustments)
+                        {
+                            string adjType = adj.Type;
+                            string typeClass = adjType switch
+                            {
+                                "Discount" => "status-success",
+                                "Refund" => "status-warning",
+                                "Credit" => "status-info",
+                                "Debit" => "status-danger",
+                                _ => "status-muted"
+                            };
+                            string statusStr = adj.Status?.ToString() ?? "";
+                            string statusClass = statusStr switch
+                            {
+                                "Approved" => "status-success",
+                                "Pending" => "status-warning",
+                                "Rejected" => "status-danger",
+                                _ => "status-muted"
+                            };
+                            <tr data-type="@adjType" data-invoice="@adj.InvoiceNumber?.ToString()?.ToLower()" data-customer="@adj.CustomerName?.ToString()?.ToLower()" data-reason="@adj.Reason?.ToString()?.ToLower()">
+                                <td><span class="status-indicator @typeClass">@adjType</span></td>
+                                <td style="font-size: 13px; font-weight: 500;">@adj.InvoiceNumber</td>
+                                <td style="font-size: 13px;">@adj.CustomerName</td>
+                                <td class="text-right font-medium">₱@(((decimal)adj.Amount).ToString("N2"))</td>
+                                <td style="font-size: 12px; color: var(--text-secondary, #6b7280); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@adj.Reason">@adj.Reason</td>
+                                <td><span class="status-indicator @statusClass">@statusStr</span></td>
+                                <td style="font-size: 13px; color: var(--text-secondary, #6b7280);">@adj.CreatedBy</td>
+                                <td style="font-size: 13px; color: var(--text-secondary, #6b7280);">@adj.ApprovedBy</td>
+                                <td style="font-size: 12px; color: var(--text-muted, #9ca3af);">@(((DateTime)adj.CreatedAt).ToString("MMM d, yyyy"))</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="card-body text-center py-5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-3"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                <h3 class="text-muted">No adjustments found</h3>
+                <p class="text-muted">Adjustments will appear here once they are created in the system.</p>
+            </div>
+        }
     </div>
 </div>
+
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: var(--text-primary, #1f2937); margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: var(--text-secondary, #6b7280); }
+    .adj-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .adj-stat-card { display: flex; align-items: center; gap: 14px; padding: 16px 20px; background: var(--bg-primary, white); border-radius: 10px; border: 1px solid var(--border-primary, #e5e7eb); box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .adj-stat-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .adj-stat-green { background: rgba(16,185,129,0.1); color: #10b981; }
+    .adj-stat-amber { background: rgba(245,158,11,0.1); color: #f59e0b; }
+    .adj-stat-blue { background: rgba(59,130,246,0.1); color: #3b82f6; }
+    .adj-stat-red { background: rgba(239,68,68,0.1); color: #ef4444; }
+    .adj-stat-label { display: block; font-size: 12px; color: var(--text-muted, #9ca3af); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .adj-stat-value { display: block; font-size: 20px; font-weight: 700; color: var(--text-primary, #1f2937); line-height: 1.2; }
+    .filter-form { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .search-input-wrapper { position: relative; flex: 1; min-width: 200px; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted, #9ca3af); }
+    .search-input { padding-left: 40px; min-width: 240px; }
+    .font-medium { font-weight: 500; }
+    @@media (max-width: 1024px) { .adj-stats { grid-template-columns: repeat(2, 1fr); } }
+    @@media (max-width: 640px) { .adj-stats { grid-template-columns: 1fr; } }
+</style>
+
+<script>
+(function() {
+    const search = document.getElementById('adjSearch');
+    const typeSelect = document.getElementById('typeFilter');
+    const table = document.getElementById('adjTable');
+    if (!search || !table) return;
+    const rows = table.querySelectorAll('tbody tr');
+
+    function filterRows() {
+        const term = search.value.toLowerCase().trim();
+        const type = typeSelect.value;
+        rows.forEach(function(row) {
+            const inv = row.getAttribute('data-invoice') || '';
+            const cust = row.getAttribute('data-customer') || '';
+            const reason = row.getAttribute('data-reason') || '';
+            const t = row.getAttribute('data-type') || '';
+            const matchSearch = !term || inv.includes(term) || cust.includes(term) || reason.includes(term);
+            const matchType = !type || t === type;
+            row.style.display = (matchSearch && matchType) ? '' : 'none';
+        });
+    }
+
+    search.addEventListener('input', filterRows);
+    typeSelect.addEventListener('change', filterRows);
+})();
+</script>

@@ -1,0 +1,92 @@
+@model XeroSyncReportViewModel
+@{
+    ViewData["Title"] = "Xero & External Sync Report";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Reports", Url = Url.Action("Index", "Reports") }, new() { Label = "Xero & External Sync", IsActive = true } } })" />
+
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
+    <div>
+        <h1 class="page-title">Xero &amp; External Sync Report</h1>
+        <p class="page-subtitle">@Model.DateRange</p>
+    </div>
+    <a href="@Url.Action("ExportXeroSyncPdf", new { range = Context.Request.Query["range"], from = Context.Request.Query["from"], to = Context.Request.Query["to"] })" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:6px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export PDF
+    </a>
+</div>
+
+<partial name="_DateRangeFilter" />
+
+<div class="rpt-stats" style="grid-template-columns: repeat(5, 1fr);">
+    <div class="rpt-stat"><span class="rpt-stat-label">Total Syncs</span><span class="rpt-stat-value">@Model.TotalSyncs</span></div>
+    <div class="rpt-stat"><span class="rpt-stat-label">Successful</span><span class="rpt-stat-value" style="color:#10b981;">@Model.SuccessCount</span></div>
+    <div class="rpt-stat"><span class="rpt-stat-label">Failed</span><span class="rpt-stat-value" style="color:#ef4444;">@Model.FailedCount</span></div>
+    <div class="rpt-stat"><span class="rpt-stat-label">Success Rate</span><span class="rpt-stat-value">@Model.SuccessRate%</span></div>
+    <div class="rpt-stat"><span class="rpt-stat-label">Last Sync</span><span class="rpt-stat-value" style="font-size:14px;">@(Model.LastSyncAt?.ToString("MMM dd, HH:mm") ?? "N/A")</span></div>
+</div>
+
+<!-- Sync Logs -->
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header"><h3 style="font-size:15px; font-weight:600; margin:0;">Sync History</h3></div>
+    <div class="card-body p-0">
+        <div class="table-container">
+            <table class="table">
+                <thead><tr><th>Date</th><th>Type</th><th>Status</th><th>Reference</th><th>Message</th></tr></thead>
+                <tbody>
+                    @foreach (var log in Model.RecentSyncs)
+                    {
+                        string statusColor = log.Status switch { "Success" => "color:#10b981;", "Failed" => "color:#ef4444;", _ => "color:#f59e0b;" };
+                        <tr>
+                            <td>@log.SyncedAt.ToString("MMM dd, HH:mm")</td>
+                            <td style="font-weight:500;">@log.SyncType</td>
+                            <td><span style="@statusColor font-weight:500;">@log.Status</span></td>
+                            <td>@(log.EntityRef ?? "—")</td>
+                            <td style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">@(log.Message ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+                </tbody>
+            </table>
+        </div>
+        @if (!Model.RecentSyncs.Any())
+        {
+            <div class="text-center py-4" style="color: var(--text-muted, #9ca3af); font-size: 14px;">No sync activity found in this period.</div>
+        }
+    </div>
+</div>
+
+<!-- PayMongo Summary -->
+<div class="card">
+    <div class="card-header"><h3 style="font-size:15px; font-weight:600; margin:0;">PayMongo Transaction Summary</h3></div>
+    <div class="card-body p-0">
+        <div class="table-container">
+            <table class="table">
+                <thead><tr><th>Status</th><th class="text-center">Count</th><th class="text-right">Total Amount</th></tr></thead>
+                <tbody>
+                    @foreach (var p in Model.PayMongoSummary)
+                    {
+                        <tr>
+                            <td style="font-weight:500;">@p.Status</td>
+                            <td class="text-center">@p.Count</td>
+                            <td class="text-right">₱@p.Amount.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (!Model.PayMongoSummary.Any())
+        {
+            <div class="text-center py-4" style="color: var(--text-muted, #9ca3af); font-size: 14px;">No PayMongo transactions found in this period.</div>
+        }
+    </div>
+</div>
+
+<style>
+    .page-title { font-size: 24px; font-weight: 700; color: var(--text-primary, #1f2937); margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: var(--text-secondary, #6b7280); }
+    .rpt-stats { display: grid; gap: 16px; margin-bottom: 24px; }
+    .rpt-stat { text-align: center; padding: 16px; background: var(--bg-primary, white); border-radius: 10px; border: 1px solid var(--border-primary, #e5e7eb); }
+    .rpt-stat-label { display: block; font-size: 12px; color: var(--text-muted, #9ca3af); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .rpt-stat-value { display: block; font-size: 22px; font-weight: 700; color: var(--text-primary, #1f2937); }
+</style>

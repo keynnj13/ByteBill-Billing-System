@@ -377,6 +377,11 @@ public class IntegrationIndexViewModel
     public int PayMongoTransactions { get; set; }
     public decimal PayMongoTotalAmount { get; set; }
     public List<PayMongoTxnItem> RecentPayMongoTxns { get; set; } = new();
+
+    // PayMongo Management UI
+    public string? PayMongoWebhookUrl { get; set; }
+    public bool PayMongoHasKeys { get; set; }
+    public string? PayMongoKeyLastFour { get; set; }
 }
 
 public class XeroSyncLogItem

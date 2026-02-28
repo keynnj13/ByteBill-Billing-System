@@ -1,3 +1,4 @@
+@model PaymentListViewModel
 @{
     ViewData["Title"] = "Payments";
 }
@@ -7,14 +8,183 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Payments</h1>
-        <p class="text-muted">Review and audit payments</p>
+        <p class="page-subtitle">@Model.TotalCount total payments — Read-only audit view</p>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="pay-stats">
+    <div class="pay-stat-card">
+        <div class="pay-stat-icon pay-stat-green">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        </div>
+        <div>
+            <span class="pay-stat-label">Total Received</span>
+            <span class="pay-stat-value">₱@Model.TotalReceived.ToString("N2")</span>
+        </div>
+    </div>
+    <div class="pay-stat-card">
+        <div class="pay-stat-icon pay-stat-blue">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+        </div>
+        <div>
+            <span class="pay-stat-label">Today</span>
+            <span class="pay-stat-value">₱@Model.TodayReceived.ToString("N2")</span>
+        </div>
+    </div>
+    <div class="pay-stat-card">
+        <div class="pay-stat-icon pay-stat-purple">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        </div>
+        <div>
+            <span class="pay-stat-label">Transactions</span>
+            <span class="pay-stat-value">@Model.TotalCount</span>
+        </div>
     </div>
 </div>
 
 <div class="card">
-    <div class="card-body text-center py-5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-        <h3 class="text-muted">Coming Soon</h3>
-        <p class="text-muted">This module is currently under development.</p>
+    <div class="card-header">
+        <div class="filter-form">
+            <div class="search-input-wrapper">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" id="paymentSearch" placeholder="Search payment #, customer..." class="form-input search-input" />
+            </div>
+            <select id="methodFilter" class="form-select">
+                <option value="">All Methods</option>
+                <option value="Cash">Cash</option>
+                <option value="Card">Card</option>
+                <option value="GCash">GCash</option>
+                <option value="BankTransfer">Bank Transfer</option>
+                <option value="PayMongo">PayMongo</option>
+            </select>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Payments.Any())
+        {
+            <div class="table-container">
+                <table class="table" id="paymentTable">
+                    <thead>
+                        <tr>
+                            <th>Payment #</th>
+                            <th>Customer</th>
+                            <th>Invoice</th>
+                            <th class="text-right">Amount</th>
+                            <th class="text-center">Method</th>
+                            <th class="text-center">Status</th>
+                            <th>Received By</th>
+                            <th>Date</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var pay in Model.Payments)
+                        {
+                            <tr data-number="@pay.PaymentNumber.ToLower()" data-customer="@pay.CustomerName.ToLower()" data-method="@pay.MethodDisplay" data-invoice="@(pay.InvoiceNumber?.ToLower() ?? "")">
+                                <td>
+                                    <span class="font-medium" style="font-size: 13px;">@pay.PaymentNumber</span>
+                                </td>
+                                <td>
+                                    <div class="customer-cell">
+                                        <div class="avatar-sm">@pay.CustomerInitials</div>
+                                        <span class="customer-name">@pay.CustomerName</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span style="font-size: 12px; color: var(--text-secondary, #6b7280);">@(pay.InvoiceNumber ?? "—")</span>
+                                </td>
+                                <td class="text-right font-medium">₱@pay.Amount.ToString("N2")</td>
+                                <td class="text-center">
+                                    <span class="status-indicator @pay.MethodClass">@pay.MethodDisplay</span>
+                                </td>
+                                <td class="text-center">
+                                    @if (pay.IsVoid)
+                                    {
+                                        <span class="status-indicator status-danger">Voided</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="status-indicator status-success">Confirmed</span>
+                                    }
+                                </td>
+                                <td style="font-size: 13px; color: var(--text-secondary, #6b7280);">@(pay.ReceivedByName ?? "—")</td>
+                                <td style="font-size: 12px; color: var(--text-muted, #9ca3af);">@pay.PaidAt.ToString("MMM d, yyyy h:mm tt")</td>
+                                <td class="text-right">
+                                    <a href="@Url.Action("Details", "Payments", new { area = "Auditor", id = pay.Id })" class="btn-action" title="View Details">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel { CurrentPage = Model.CurrentPage, TotalPages = Model.TotalPages, TotalItems = Model.TotalCount, PageSize = Model.PageSize, BaseUrl = Url.Action("Index") })" />
+            }
+        }
+        else
+        {
+            <div class="card-body text-center py-5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-3"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                <h3 class="text-muted">No payments found</h3>
+                <p class="text-muted">Payments will appear here once they are recorded in the system.</p>
+            </div>
+        }
     </div>
 </div>
+
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: var(--text-primary, #1f2937); margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: var(--text-secondary, #6b7280); }
+    .pay-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .pay-stat-card { display: flex; align-items: center; gap: 14px; padding: 16px 20px; background: var(--bg-primary, white); border-radius: 10px; border: 1px solid var(--border-primary, #e5e7eb); box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .pay-stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .pay-stat-green { background: rgba(16,185,129,0.1); color: #10b981; }
+    .pay-stat-blue { background: rgba(59,130,246,0.1); color: #3b82f6; }
+    .pay-stat-purple { background: rgba(139,92,246,0.1); color: #8b5cf6; }
+    .pay-stat-label { display: block; font-size: 12px; color: var(--text-muted, #9ca3af); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .pay-stat-value { display: block; font-size: 22px; font-weight: 700; color: var(--text-primary, #1f2937); line-height: 1.2; }
+    .filter-form { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .search-input-wrapper { position: relative; flex: 1; min-width: 200px; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted, #9ca3af); }
+    .search-input { padding-left: 40px; min-width: 240px; }
+    .customer-cell { display: flex; align-items: center; gap: 10px; }
+    .avatar-sm { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+    .customer-name { font-weight: 500; color: var(--text-primary, #1f2937); font-size: 13px; }
+    .font-medium { font-weight: 500; }
+    .btn-action { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border-primary, #e5e7eb); background: transparent; color: var(--text-secondary, #6b7280); cursor: pointer; transition: all 0.15s; text-decoration: none; }
+    .btn-action:hover { background: var(--bg-secondary, #f3f4f6); color: var(--text-primary, #1f2937); }
+    @@media (max-width: 1024px) { .pay-stats { grid-template-columns: 1fr; } }
+</style>
+
+<script>
+(function() {
+    const search = document.getElementById('paymentSearch');
+    const methodSelect = document.getElementById('methodFilter');
+    const table = document.getElementById('paymentTable');
+    if (!search || !table) return;
+    const rows = table.querySelectorAll('tbody tr');
+
+    function filterRows() {
+        const term = search.value.toLowerCase().trim();
+        const method = methodSelect.value;
+        rows.forEach(function(row) {
+            const num = row.getAttribute('data-number') || '';
+            const cust = row.getAttribute('data-customer') || '';
+            const inv = row.getAttribute('data-invoice') || '';
+            const m = row.getAttribute('data-method') || '';
+            const matchSearch = !term || num.includes(term) || cust.includes(term) || inv.includes(term);
+            const matchMethod = !method || m === method;
+            row.style.display = (matchSearch && matchMethod) ? '' : 'none';
+        });
+    }
+
+    search.addEventListener('input', filterRows);
+    methodSelect.addEventListener('change', filterRows);
+})();
+</script>

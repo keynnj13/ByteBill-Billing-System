@@ -58,7 +58,7 @@
                     <tbody>
                         @foreach (var customer in Model.Customers)
                         {
-                            <tr class="clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "Customers", new { area = "Admin", id = customer.Id })', '@customer.Name')">
+                            <tr class="clickable-row" data-name="@customer.Name.ToLower()" data-email="@((customer.Email ?? "").ToLower())" data-phone="@((customer.Phone ?? "").ToLower())" data-status="@(customer.IsActive ? "active" : "inactive")" onclick="openAjaxModal('@Url.Action("DetailsModal", "Customers", new { area = "Admin", id = customer.Id })', '@customer.Name')">
                                 <td>
                                     <div class="customer-cell">
                                         <div class="avatar avatar-sm">@customer.Initials</div>
@@ -140,22 +140,33 @@
 (function() {
     var searchInput = document.getElementById('customerSearchInput');
     if (!searchInput) return;
-    var debounceTimer;
-    searchInput.addEventListener('input', function() {
-        clearTimeout(debounceTimer);
-        var val = this.value.trim();
-        debounceTimer = setTimeout(function() {
-            var url = '@Url.Action("Index", "Customers", new { area = "Admin" })';
-            if (val.length > 0) {
-                url += '?search=' + encodeURIComponent(val);
-            }
-            window.location.href = url;
-        }, 400);
-    });
-    // Focus search and put cursor at end
-    if (searchInput.value) {
-        searchInput.focus();
-        searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
+    var rows = document.querySelectorAll('tr.clickable-row[data-name]');
+    var tableContainer = rows.length > 0 ? rows[0].closest('.table-container') : null;
+    var emptyState = null;
+
+    function filterRows() {
+        var q = searchInput.value.toLowerCase().trim();
+        var visibleCount = 0;
+        rows.forEach(function(row) {
+            var match = !q
+                || (row.dataset.name && row.dataset.name.indexOf(q) !== -1)
+                || (row.dataset.email && row.dataset.email.indexOf(q) !== -1)
+                || (row.dataset.phone && row.dataset.phone.indexOf(q) !== -1);
+            row.style.display = match ? '' : 'none';
+            if (match) visibleCount++;
+        });
+        if (!emptyState) {
+            emptyState = document.createElement('div');
+            emptyState.style.cssText = 'padding:40px 20px; text-align:center; color:#9ca3af; font-size:14px; display:none;';
+            emptyState.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" style="margin:0 auto 12px;display:block;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>No customers match your search';
+            if (tableContainer) tableContainer.parentNode.insertBefore(emptyState, tableContainer.nextSibling);
+        }
+        if (emptyState) emptyState.style.display = visibleCount === 0 && rows.length > 0 ? 'block' : 'none';
+        if (tableContainer) tableContainer.style.display = visibleCount === 0 && rows.length > 0 ? 'none' : '';
     }
+
+    searchInput.addEventListener('input', filterRows);
+    filterRows();
+    if (searchInput.value) { searchInput.focus(); searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length); }
 })();
 </script>

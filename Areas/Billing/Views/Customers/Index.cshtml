@@ -58,7 +58,7 @@
                     <tbody>
                         @foreach (var customer in Model.Customers)
                         {
-                            <tr class="clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "Customers", new { area = "Billing", id = customer.Id })', '@customer.Name')">
+                            <tr class="clickable-row" data-name="@customer.Name.ToLower()" data-email="@((customer.Email ?? "").ToLower())" data-phone="@((customer.Phone ?? "").ToLower())" onclick="openAjaxModal('@Url.Action("DetailsModal", "Customers", new { area = "Billing", id = customer.Id })', '@customer.Name')">
                                 <td>
                                     <div class="customer-cell">
                                         <div class="avatar avatar-sm">@customer.Initials</div>
@@ -130,23 +130,29 @@
 
 <script>
 (function() {
-    var searchInput = document.getElementById('customerSearchInput');
-    if (!searchInput) return;
-    var debounceTimer;
-    searchInput.addEventListener('input', function() {
-        clearTimeout(debounceTimer);
-        var val = this.value.trim();
-        debounceTimer = setTimeout(function() {
-            var url = '@Url.Action("Index", "Customers", new { area = "Billing" })';
-            if (val.length > 0) {
-                url += '?search=' + encodeURIComponent(val);
-            }
-            window.location.href = url;
-        }, 400);
-    });
-    if (searchInput.value) {
-        searchInput.focus();
-        searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
+    var search = document.getElementById('customerSearchInput');
+    var tbody = document.querySelector('.table tbody');
+    if (!search || !tbody) return;
+
+    function filterRows() {
+        var q = search.value.toLowerCase();
+        var rows = tbody.querySelectorAll('tr');
+        var visible = 0;
+        rows.forEach(function (row) {
+            if (!row.dataset.name) return;
+            var match = !q || row.dataset.name.indexOf(q) > -1 || row.dataset.email.indexOf(q) > -1 || row.dataset.phone.indexOf(q) > -1;
+            row.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+        var empty = document.getElementById('custEmpty');
+        if (!empty) { empty = document.createElement('div'); empty.id = 'custEmpty'; empty.className = 'empty-state'; empty.innerHTML = '<p>No customers match your search.</p>'; tbody.parentNode.parentNode.appendChild(empty); }
+        empty.style.display = visible === 0 ? '' : 'none';
+    }
+
+    search.addEventListener('input', filterRows);
+    if (search.value) {
+        search.focus();
+        search.setSelectionRange(search.value.length, search.value.length);
     }
 })();
 </script>

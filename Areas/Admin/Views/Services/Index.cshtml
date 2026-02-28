@@ -61,16 +61,16 @@
         <form method="get" class="filter-form">
             <div class="search-input-wrapper">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <input type="text" name="search" value="@Model.SearchTerm" placeholder="Search services by name or description..." class="form-input search-input" />
+                <input type="text" name="search" value="@Model.SearchTerm" placeholder="Search services by name or description..." class="form-input search-input" id="svcSearch" />
             </div>
-            <select name="category" class="form-select" onchange="this.form.submit()">
+            <select name="category" class="form-select" id="svcCategory">
                 <option value="">All Categories</option>
                 @foreach (var cat in Model.Categories)
                 {
                     <option value="@cat" selected="@(Model.CategoryFilter == cat)">@cat</option>
                 }
             </select>
-            <button type="submit" class="btn btn-outline-primary">Filter</button>
+            <noscript><button type="submit" class="btn btn-outline-primary">Filter</button></noscript>
         </form>
     </div>
     <div class="card-body p-0">
@@ -99,7 +99,7 @@
                     <tbody>
                         @foreach (var service in Model.Services)
                         {
-                            <tr class="clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "Services", new { area = "Admin", id = service.Id })', '@service.Name')">
+                            <tr class="clickable-row" data-name="@service.Name.ToLower()" data-category="@service.Category" data-desc="@((service.Description ?? "").ToLower())" data-status="@(service.IsActive ? "Active" : "Inactive")" onclick="openAjaxModal('@Url.Action("DetailsModal", "Services", new { area = "Admin", id = service.Id })', '@service.Name')">
                                 <td>
                                     <div class="svc-cell">
                                         <span class="svc-name">@service.Name</span>
@@ -187,3 +187,32 @@
         .table { table-layout: auto !important; }
     }
 </style>
+
+<script>
+(function () {
+    var search = document.getElementById('svcSearch');
+    var cat = document.getElementById('svcCategory');
+    var tbody = document.querySelector('.table tbody');
+    if (!search || !tbody) return;
+
+    function filterRows() {
+        var q = search.value.toLowerCase();
+        var c = cat ? cat.value : '';
+        var rows = tbody.querySelectorAll('tr');
+        var visible = 0;
+        rows.forEach(function (row) {
+            if (!row.dataset.name) return;
+            var matchSearch = !q || row.dataset.name.indexOf(q) > -1 || row.dataset.desc.indexOf(q) > -1;
+            var matchCat = !c || row.dataset.category === c;
+            row.style.display = matchSearch && matchCat ? '' : 'none';
+            if (matchSearch && matchCat) visible++;
+        });
+        var empty = document.getElementById('svcEmpty');
+        if (!empty) { empty = document.createElement('div'); empty.id = 'svcEmpty'; empty.className = 'empty-state'; empty.innerHTML = '<p>No services match your filter.</p>'; tbody.parentNode.parentNode.appendChild(empty); }
+        empty.style.display = visible === 0 ? '' : 'none';
+    }
+
+    search.addEventListener('input', filterRows);
+    cat.addEventListener('change', filterRows);
+})();
+</script>

@@ -1,0 +1,217 @@
+@model InvoiceDetailViewModel
+@{
+    ViewData["Title"] = $"Invoice {Model.InvoiceNumber}";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Invoices", Url = Url.Action("Index", "Invoices") }, new() { Label = Model.InvoiceNumber, IsActive = true } } })" />
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">@Model.InvoiceNumber</h1>
+        <p class="page-subtitle">
+            <span class="status-indicator @Model.StatusClass">@Model.StatusDisplay</span>
+            <span class="text-muted" style="margin-left: 8px;">Issued @Model.CreatedAt.ToString("MMM dd, yyyy")</span>
+        </p>
+    </div>
+</div>
+
+<div class="detail-grid">
+    <div class="detail-main">
+        <!-- Shop & Customer -->
+        <div class="card">
+            <div class="card-body">
+                <div class="invoice-header-grid">
+                    <div>
+                        <h3 class="section-title">From</h3>
+                        <p class="detail-value font-medium">@Model.ShopName</p>
+                        <p class="text-muted text-sm">@(Model.ShopAddress ?? "")</p>
+                        <p class="text-muted text-sm">@(Model.ShopPhone ?? "") @(Model.ShopEmail ?? "")</p>
+                    </div>
+                    <div>
+                        <h3 class="section-title">Bill To</h3>
+                        <p class="detail-value font-medium">@Model.CustomerName</p>
+                        <p class="text-muted text-sm">@(Model.CustomerAddress ?? "")</p>
+                        <p class="text-muted text-sm">@Model.CustomerPhone @(Model.CustomerEmail ?? "")</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Line Items -->
+        <div class="card">
+            <div class="card-body">
+                <h3 class="section-title">Line Items</h3>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th class="text-center">Type</th>
+                                <th class="text-center">Qty</th>
+                                <th class="text-right">Unit Price</th>
+                                <th class="text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var line in Model.LineItems)
+                            {
+                                <tr>
+                                    <td class="font-medium">@line.Description</td>
+                                    <td class="text-center"><span class="category-badge">@line.Type</span></td>
+                                    <td class="text-center">@line.Quantity</td>
+                                    <td class="text-right">₱@line.UnitPrice.ToString("N2")</td>
+                                    <td class="text-right font-medium">₱@line.Total.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Totals -->
+                <div class="totals-section">
+                    <div class="totals-row">
+                        <span>Subtotal</span>
+                        <span>₱@Model.Subtotal.ToString("N2")</span>
+                    </div>
+                    @if (Model.TotalAdjustments != 0)
+                    {
+                        <div class="totals-row">
+                            <span>Adjustments</span>
+                            <span class="@(Model.TotalAdjustments < 0 ? "text-danger" : "")">₱@Model.TotalAdjustments.ToString("N2")</span>
+                        </div>
+                    }
+                    <div class="totals-row totals-grand">
+                        <span>Total</span>
+                        <span>₱@Model.Total.ToString("N2")</span>
+                    </div>
+                    <div class="totals-row">
+                        <span>Amount Paid</span>
+                        <span class="text-success">₱@Model.AmountPaid.ToString("N2")</span>
+                    </div>
+                    <div class="totals-row totals-grand">
+                        <span>Balance Due</span>
+                        <span class="@(Model.Balance > 0 ? "text-danger" : "text-success")">₱@Model.Balance.ToString("N2")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payments -->
+        @if (Model.Payments.Any())
+        {
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="section-title">Payment History</h3>
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Payment #</th>
+                                    <th>Date</th>
+                                    <th>Method</th>
+                                    <th>Received By</th>
+                                    <th class="text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var pay in Model.Payments)
+                                {
+                                    <tr>
+                                        <td class="font-medium">@pay.PaymentNumber</td>
+                                        <td>@pay.PaidAt.ToString("MMM dd, yyyy")</td>
+                                        <td><span class="status-indicator @(pay.Method switch { PaymentMethod.Cash => "status-success", PaymentMethod.GCash => "status-primary", PaymentMethod.Card => "status-info", _ => "status-muted" })">@pay.Method</span></td>
+                                        <td>@(pay.ReceivedBy ?? "—")</td>
+                                        <td class="text-right font-medium">₱@pay.Amount.ToString("N2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Sidebar -->
+    <div class="detail-sidebar">
+        <div class="card">
+            <div class="card-body">
+                <h3 class="section-title">Invoice Details</h3>
+                <div class="sidebar-field">
+                    <span class="detail-label">Invoice Number</span>
+                    <span class="detail-value">@Model.InvoiceNumber</span>
+                </div>
+                <div class="sidebar-field">
+                    <span class="detail-label">Job Order</span>
+                    <span class="detail-value">@Model.JobNumber</span>
+                </div>
+                <div class="sidebar-field">
+                    <span class="detail-label">Status</span>
+                    <span class="status-indicator @Model.StatusClass">@Model.StatusDisplay</span>
+                </div>
+                <div class="sidebar-field">
+                    <span class="detail-label">Issue Date</span>
+                    <span class="detail-value">@Model.CreatedAt.ToString("MMM dd, yyyy")</span>
+                </div>
+                @if (Model.DueDate.HasValue)
+                {
+                    <div class="sidebar-field">
+                        <span class="detail-label">Due Date</span>
+                        <span class="detail-value @(Model.DueDate.Value < DateTime.Today && Model.Balance > 0 ? "text-danger" : "")">@Model.DueDate.Value.ToString("MMM dd, yyyy")</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <h3 class="section-title">Amount Summary</h3>
+                <div class="amount-card amount-total">
+                    <span class="amount-label">Total</span>
+                    <span class="amount-value">₱@Model.Total.ToString("N2")</span>
+                </div>
+                <div class="amount-card amount-paid">
+                    <span class="amount-label">Paid</span>
+                    <span class="amount-value">₱@Model.AmountPaid.ToString("N2")</span>
+                </div>
+                <div class="amount-card amount-balance">
+                    <span class="amount-label">Balance</span>
+                    <span class="amount-value">₱@Model.Balance.ToString("N2")</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: var(--text-primary, #1f2937); margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; display: flex; align-items: center; }
+    .detail-grid { display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
+    .detail-main { display: flex; flex-direction: column; gap: 20px; }
+    .detail-sidebar { display: flex; flex-direction: column; gap: 20px; }
+    .section-title { font-size: 15px; font-weight: 600; color: var(--text-primary, #1f2937); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border-primary, #f3f4f6); }
+    .invoice-header-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .detail-label { display: block; font-size: 12px; color: var(--text-muted, #9ca3af); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+    .detail-value { display: block; font-size: 14px; color: var(--text-primary, #1f2937); font-weight: 500; }
+    .font-medium { font-weight: 500; }
+    .text-danger { color: #ef4444; }
+    .text-success { color: #10b981; }
+    .text-sm { font-size: 13px; }
+    .category-badge { font-size: 11px; padding: 2px 8px; border-radius: 99px; background: var(--bg-secondary, #f3f4f6); color: var(--text-primary, #374151); font-weight: 500; }
+
+    .totals-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-primary, #e5e7eb); max-width: 320px; margin-left: auto; }
+    .totals-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; color: var(--text-primary, #374151); }
+    .totals-grand { font-weight: 700; font-size: 15px; padding-top: 8px; border-top: 2px solid var(--border-primary, #e5e7eb); margin-top: 4px; }
+
+    .sidebar-field { margin-bottom: 14px; }
+    .amount-card { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; }
+    .amount-total { background: var(--bg-secondary, #f3f4f6); }
+    .amount-paid { background: #ecfdf5; }
+    .amount-balance { background: #fef2f2; }
+    .amount-label { font-size: 13px; color: var(--text-secondary, #6b7280); font-weight: 500; }
+    .amount-value { font-size: 16px; font-weight: 700; color: var(--text-primary, #1f2937); }
+
+    @@media (max-width: 1024px) { .detail-grid { grid-template-columns: 1fr; } }
+    @@media (max-width: 768px) { .page-header { flex-direction: column; gap: 12px; } .invoice-header-grid { grid-template-columns: 1fr; } }
+</style>

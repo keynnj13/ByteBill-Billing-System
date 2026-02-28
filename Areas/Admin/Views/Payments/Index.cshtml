@@ -61,15 +61,15 @@
         <form method="get" class="filter-form">
             <div class="search-input-wrapper">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <input type="text" name="search" value="@Model.SearchTerm" placeholder="Search by payment #, customer, invoice..." class="form-input search-input" />
+                <input type="text" name="search" value="@Model.SearchTerm" placeholder="Search by payment #, customer, invoice..." class="form-input search-input" id="paySearch" />
             </div>
-            <select name="method" class="form-select" onchange="this.form.submit()">
+            <select name="method" class="form-select" id="payMethod">
                 <option value="">All Methods</option>
                 <option value="Cash" selected="@(Model.MethodFilter == PaymentMethod.Cash)">Cash</option>
                 <option value="GCash" selected="@(Model.MethodFilter == PaymentMethod.GCash)">GCash</option>
                 <option value="Card" selected="@(Model.MethodFilter == PaymentMethod.Card)">Card</option>
             </select>
-            <button type="submit" class="btn btn-outline-primary">Filter</button>
+            <noscript><button type="submit" class="btn btn-outline-primary">Filter</button></noscript>
         </form>
     </div>
     <div class="card-body p-0">
@@ -92,7 +92,7 @@
                     <tbody>
                         @foreach (var pay in Model.Payments)
                         {
-                            <tr class="clickable-row" onclick="openAjaxModal('@Url.Action("DetailsModal", "Payments", new { area = "Admin", id = pay.Id })', 'Payment @pay.PaymentNumber')">
+                            <tr class="clickable-row" data-number="@pay.PaymentNumber.ToLower()" data-customer="@pay.CustomerName.ToLower()" data-invoice="@((pay.InvoiceNumber ?? "").ToLower())" data-method="@pay.Method" onclick="openAjaxModal('@Url.Action("DetailsModal", "Payments", new { area = "Admin", id = pay.Id })', 'Payment @pay.PaymentNumber')">
                                 <td>
                                     <div class="pay-cell">
                                         <span class="pay-number">@pay.PaymentNumber</span>
@@ -184,8 +184,38 @@
 </style>
 
 <script>
-    setInterval(function() {
-        if (document.querySelector('.modal:not(.hidden)') || document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'SELECT') return;
-        location.reload();
-    }, 30000);
+(function() {
+    var searchInput = document.getElementById('paySearch');
+    var methodSelect = document.getElementById('payMethod');
+    var rows = document.querySelectorAll('tr.clickable-row[data-number]');
+    var tableContainer = rows.length > 0 ? rows[0].closest('.table-container') : null;
+    var emptyState = null;
+
+    function filterRows() {
+        var q = (searchInput ? searchInput.value : '').toLowerCase().trim();
+        var m = methodSelect ? methodSelect.value : '';
+        var visibleCount = 0;
+        rows.forEach(function(row) {
+            var matchSearch = !q
+                || row.dataset.number.indexOf(q) !== -1
+                || row.dataset.customer.indexOf(q) !== -1
+                || row.dataset.invoice.indexOf(q) !== -1;
+            var matchMethod = !m || row.dataset.method === m;
+            row.style.display = matchSearch && matchMethod ? '' : 'none';
+            if (matchSearch && matchMethod) visibleCount++;
+        });
+        if (!emptyState) {
+            emptyState = document.createElement('div');
+            emptyState.style.cssText = 'padding:40px 20px; text-align:center; color:#9ca3af; font-size:14px; display:none;';
+            emptyState.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" style="margin:0 auto 12px;display:block;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>No payments match your filters';
+            if (tableContainer) tableContainer.parentNode.insertBefore(emptyState, tableContainer.nextSibling);
+        }
+        if (emptyState) emptyState.style.display = visibleCount === 0 && rows.length > 0 ? 'block' : 'none';
+        if (tableContainer) tableContainer.style.display = visibleCount === 0 && rows.length > 0 ? 'none' : '';
+    }
+
+    if (searchInput) searchInput.addEventListener('input', filterRows);
+    if (methodSelect) methodSelect.addEventListener('change', filterRows);
+    filterRows();
+})();
 </script>

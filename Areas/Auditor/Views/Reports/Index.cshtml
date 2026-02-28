@@ -1,3 +1,4 @@
+@model AuditorReportHubViewModel
 @{
     ViewData["Title"] = "Reports";
 }
@@ -6,15 +7,60 @@
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">Reports</h1>
-        <p class="text-muted">View audit reports</p>
+        <h1 class="page-title">Audit Reports</h1>
+        <p class="page-subtitle">Select a report category to generate</p>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body text-center py-5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-        <h3 class="text-muted">Coming Soon</h3>
-        <p class="text-muted">This module is currently under development.</p>
-    </div>
+<div class="rpt-grid">
+    @foreach (var cat in Model.Categories)
+    {
+        <a href="@cat.Url" class="rpt-card">
+            <div class="rpt-icon" style="background: @(cat.Color)15; color: @cat.Color;">
+                @switch (cat.Icon)
+                {
+                    case "dollar-sign":
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        break;
+                    case "credit-card":
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                        break;
+                    case "tool":
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                        break;
+                    case "shield":
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        break;
+                    case "refresh-cw":
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        break;
+                    case "users":
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        break;
+                }
+            </div>
+            <div class="rpt-info">
+                <h3 class="rpt-name">@cat.Name</h3>
+                <p class="rpt-desc">@cat.Description</p>
+            </div>
+            <div class="rpt-arrow">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+        </a>
+    }
 </div>
+
+<style>
+    .page-header { margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: var(--text-primary, #1f2937); margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: var(--text-secondary, #6b7280); }
+    .rpt-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .rpt-card { display: flex; align-items: center; gap: 16px; padding: 24px; background: var(--bg-primary, white); border-radius: 12px; border: 1px solid var(--border-primary, #e5e7eb); box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.2s; text-decoration: none; color: inherit; }
+    .rpt-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-2px); border-color: var(--accent, #10b981); }
+    .rpt-icon { width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .rpt-info { flex: 1; min-width: 0; }
+    .rpt-name { font-size: 16px; font-weight: 600; color: var(--text-primary, #1f2937); margin-bottom: 4px; }
+    .rpt-desc { font-size: 13px; color: var(--text-secondary, #6b7280); margin: 0; }
+    .rpt-arrow { color: var(--text-muted, #9ca3af); flex-shrink: 0; }
+    @@media (max-width: 768px) { .rpt-grid { grid-template-columns: 1fr; } }
+</style>

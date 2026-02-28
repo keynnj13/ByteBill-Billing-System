@@ -1,3 +1,4 @@
+@model InvoiceListViewModel
 @{
     ViewData["Title"] = "Invoices";
 }
@@ -7,14 +8,192 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Invoices</h1>
-        <p class="text-muted">Review and audit invoices</p>
+        <p class="page-subtitle">@Model.TotalCount total invoices — Read-only audit view</p>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="inv-stats">
+    <div class="inv-stat-card">
+        <div class="inv-stat-icon inv-stat-blue">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+        </div>
+        <div>
+            <span class="inv-stat-label">Total Invoices</span>
+            <span class="inv-stat-value">@Model.TotalCount</span>
+        </div>
+    </div>
+    <div class="inv-stat-card">
+        <div class="inv-stat-icon inv-stat-amber">
+            <span style="font-size: 18px; font-weight: 700;">₱</span>
+        </div>
+        <div>
+            <span class="inv-stat-label">Outstanding</span>
+            <span class="inv-stat-value">₱@Model.TotalOutstanding.ToString("N2")</span>
+        </div>
+    </div>
+    <div class="inv-stat-card">
+        <div class="inv-stat-icon inv-stat-red">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        </div>
+        <div>
+            <span class="inv-stat-label">Overdue</span>
+            <span class="inv-stat-value">@Model.OverdueCount</span>
+        </div>
     </div>
 </div>
 
 <div class="card">
-    <div class="card-body text-center py-5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-        <h3 class="text-muted">Coming Soon</h3>
-        <p class="text-muted">This module is currently under development.</p>
+    <div class="card-header">
+        <div class="filter-form">
+            <div class="search-input-wrapper">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" id="invoiceSearch" placeholder="Search invoice #, customer..." class="form-input search-input" />
+            </div>
+            <select id="statusFilter" class="form-select">
+                <option value="">All Statuses</option>
+                <option value="Unpaid">Unpaid</option>
+                <option value="Partial">Partial</option>
+                <option value="Paid">Paid</option>
+                <option value="Void">Void</option>
+            </select>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Invoices.Any())
+        {
+            <div class="table-container">
+                <table class="table" id="invoiceTable">
+                    <thead>
+                        <tr>
+                            <th>Invoice</th>
+                            <th>Customer</th>
+                            <th class="text-center">Job #</th>
+                            <th class="text-right">Total</th>
+                            <th class="text-right">Paid</th>
+                            <th class="text-right">Balance</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Due Date</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var inv in Model.Invoices)
+                        {
+                            <tr data-number="@inv.InvoiceNumber.ToLower()" data-customer="@inv.CustomerName.ToLower()" data-status="@inv.StatusDisplay" data-job="@(inv.JobNumber?.ToLower() ?? "")">
+                                <td>
+                                    <div class="inv-cell">
+                                        <span class="inv-number">@inv.InvoiceNumber</span>
+                                        <span class="inv-date">@inv.CreatedAt.ToString("MMM d, yyyy")</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="customer-cell">
+                                        <div class="avatar-sm">@inv.CustomerInitials</div>
+                                        <span class="customer-name">@inv.CustomerName</span>
+                                    </div>
+                                </td>
+                                <td class="text-center"><span class="job-link">@(inv.JobNumber ?? "—")</span></td>
+                                <td class="text-right font-medium">₱@inv.Total.ToString("N2")</td>
+                                <td class="text-right">₱@inv.AmountPaid.ToString("N2")</td>
+                                <td class="text-right">
+                                    <span class="@(inv.Balance > 0 ? "text-danger font-medium" : "")">₱@inv.Balance.ToString("N2")</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="status-indicator @inv.StatusClass">@inv.StatusDisplay</span>
+                                </td>
+                                <td class="text-center">
+                                    @if (inv.DueDate.HasValue)
+                                    {
+                                        <span class="@(inv.IsOverdue ? "text-danger font-medium" : "")">
+                                            @inv.DueDate.Value.ToString("MMM d, yyyy")
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td class="text-right">
+                                    <a href="@Url.Action("Details", "Invoices", new { area = "Auditor", id = inv.Id })" class="btn-action" title="View Details">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel { CurrentPage = Model.CurrentPage, TotalPages = Model.TotalPages, TotalItems = Model.TotalCount, PageSize = Model.PageSize, BaseUrl = Url.Action("Index") })" />
+            }
+        }
+        else
+        {
+            <div class="card-body text-center py-5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                <h3 class="text-muted">No invoices found</h3>
+                <p class="text-muted">Invoices will appear here once they are created in the system.</p>
+            </div>
+        }
     </div>
 </div>
+
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: var(--text-primary, #1f2937); margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: var(--text-secondary, #6b7280); }
+    .inv-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .inv-stat-card { display: flex; align-items: center; gap: 14px; padding: 16px 20px; background: var(--bg-primary, white); border-radius: 10px; border: 1px solid var(--border-primary, #e5e7eb); box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .inv-stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .inv-stat-blue { background: rgba(59,130,246,0.1); color: #3b82f6; }
+    .inv-stat-amber { background: rgba(245,158,11,0.1); color: #f59e0b; }
+    .inv-stat-red { background: rgba(239,68,68,0.1); color: #ef4444; }
+    .inv-stat-label { display: block; font-size: 12px; color: var(--text-muted, #9ca3af); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .inv-stat-value { display: block; font-size: 22px; font-weight: 700; color: var(--text-primary, #1f2937); line-height: 1.2; }
+    .filter-form { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .search-input-wrapper { position: relative; flex: 1; min-width: 200px; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted, #9ca3af); }
+    .search-input { padding-left: 40px; min-width: 240px; }
+    .inv-cell { display: flex; flex-direction: column; gap: 2px; }
+    .inv-number { font-weight: 500; color: var(--text-primary, #1f2937); font-size: 13px; }
+    .inv-date { font-size: 12px; color: var(--text-muted, #9ca3af); }
+    .customer-cell { display: flex; align-items: center; gap: 10px; }
+    .avatar-sm { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+    .customer-name { font-weight: 500; color: var(--text-primary, #1f2937); font-size: 13px; }
+    .job-link { font-size: 12px; color: var(--text-secondary, #6b7280); font-weight: 500; }
+    .text-danger { color: #dc2626; }
+    .font-medium { font-weight: 500; }
+    .btn-action { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border-primary, #e5e7eb); background: transparent; color: var(--text-secondary, #6b7280); cursor: pointer; transition: all 0.15s; text-decoration: none; }
+    .btn-action:hover { background: var(--bg-secondary, #f3f4f6); color: var(--text-primary, #1f2937); }
+    @@media (max-width: 1024px) { .inv-stats { grid-template-columns: 1fr; } }
+</style>
+
+<script>
+(function() {
+    const search = document.getElementById('invoiceSearch');
+    const statusSelect = document.getElementById('statusFilter');
+    const table = document.getElementById('invoiceTable');
+    if (!search || !table) return;
+    const rows = table.querySelectorAll('tbody tr');
+
+    function filterRows() {
+        const term = search.value.toLowerCase().trim();
+        const status = statusSelect.value;
+        rows.forEach(function(row) {
+            const num = row.getAttribute('data-number') || '';
+            const cust = row.getAttribute('data-customer') || '';
+            const job = row.getAttribute('data-job') || '';
+            const st = row.getAttribute('data-status') || '';
+            const matchSearch = !term || num.includes(term) || cust.includes(term) || job.includes(term);
+            const matchStatus = !status || st === status;
+            row.style.display = (matchSearch && matchStatus) ? '' : 'none';
+        });
+    }
+
+    search.addEventListener('input', filterRows);
+    statusSelect.addEventListener('change', filterRows);
+})();
+</script>
