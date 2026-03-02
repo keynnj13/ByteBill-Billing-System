@@ -93,6 +93,7 @@ public class PaymentDetailViewModel
     public string? ShopTIN { get; set; }
     public bool IsVatRegistered { get; set; }
     public List<ReceiptDiscountItem> Discounts { get; set; } = new();
+    public List<ReceiptLineItem> LineItems { get; set; } = new();
 }
 
 public class ReceiptDiscountItem
@@ -101,6 +102,14 @@ public class ReceiptDiscountItem
     public decimal Amount { get; set; }
     public string? BeneficiaryIdNo { get; set; }
     public string? BeneficiaryName { get; set; }
+}
+
+public class ReceiptLineItem
+{
+    public string Description { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    public decimal Total { get; set; }
 }
 
 public class PaymentAllocationItem

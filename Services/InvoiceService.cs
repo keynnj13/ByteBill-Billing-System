@@ -25,9 +25,11 @@ public class InvoiceService : IInvoiceService
     private readonly IBillingCalculationService _billing;
     private readonly IXeroService _xero;
     private readonly ITaxCalculationService _tax;
+    private readonly INotificationService _notif;
 
     public InvoiceService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx,
-        IBillingCalculationService billing, IXeroService xero, ITaxCalculationService tax)
+        IBillingCalculationService billing, IXeroService xero, ITaxCalculationService tax,
+        INotificationService notif)
     {
         _db = db;
         _audit = audit;
@@ -35,6 +37,7 @@ public class InvoiceService : IInvoiceService
         _billing = billing;
         _xero = xero;
         _tax = tax;
+        _notif = notif;
     }
 
     private string? ClientIp => _httpCtx.HttpContext?.Connection.RemoteIpAddress?.ToString();
@@ -295,6 +298,21 @@ public class InvoiceService : IInvoiceService
 
         // Compute BIR tax breakdown (VAT-inclusive)
         await _tax.ComputeTaxAsync(invoice.InvoiceId);
+
+        // Notify shop admins about new invoice
+        var adminUsers = await _db.Users
+            .Where(u => u.ShopId == shopId && u.IsActive
+                && u.UserRoles.Any(ur => ur.Role!.RoleName == "Admin" || ur.Role!.RoleName == "SuperAdmin"))
+            .Select(u => u.UserId)
+            .ToListAsync();
+        foreach (var adminId in adminUsers)
+        {
+            await _notif.CreateAsync(adminId, shopId,
+                "Invoice Created",
+                $"Invoice {invoiceNo} for {subtotal:C} has been created from job order {jobOrder.JobOrderNo}.",
+                "info",
+                $"/Admin/Invoices/DetailsModal/{invoice.InvoiceId}");
+        }
 
         // Auto-sync to Xero (fire-and-forget, errors logged internally)
         try { await _xero.SyncInvoiceAsync(invoice.InvoiceId, userId); } catch { /* logged in XeroService */ }

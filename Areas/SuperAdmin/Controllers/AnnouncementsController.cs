@@ -8,11 +8,11 @@ namespace ByteBill_BS.Areas.SuperAdmin.Controllers;
 
 [Area("SuperAdmin")]
 [Authorize]
-public class ShopsController : Controller
+public class AnnouncementsController : Controller
 {
     private readonly ISuperAdminService _service;
 
-    public ShopsController(ISuperAdminService service)
+    public AnnouncementsController(ISuperAdminService service)
     {
         _service = service;
     }
@@ -24,14 +24,13 @@ public class ShopsController : Controller
     }
 
     private long GetUserId() => long.TryParse(User.Claims.FirstOrDefault(c => c.Type == "UserId")?.Value, out var id) ? id : 0;
-    private string? GetIpAddress() => HttpContext.Connection.RemoteIpAddress?.ToString();
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? search, string? status, string? plan, int page = 1)
+    public async Task<IActionResult> Index(string? search, string? type, string? status, int page = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
-        var viewModel = await _service.GetShopsAsync(search, status, plan, page);
+        var viewModel = await _service.GetAnnouncementsAsync(search, type, status, page);
         return View(viewModel);
     }
 
@@ -39,29 +38,28 @@ public class ShopsController : Controller
     public IActionResult CreateModal()
     {
         if (!IsAuthorized()) return Forbid();
-        return PartialView("_CreateModal", new ShopCreateViewModel());
+        return PartialView("_FormModal", new AnnouncementFormViewModel());
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(ShopCreateViewModel model)
+    public async Task<IActionResult> Create(AnnouncementFormViewModel model)
     {
         if (!IsAuthorized()) return Forbid();
 
         if (!ModelState.IsValid)
         {
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-                return PartialView("_CreateModal", model);
+                return PartialView("_FormModal", model);
             return RedirectToAction(nameof(Index));
         }
 
-        var result = await _service.CreateShopAsync(model, GetUserId(), GetIpAddress());
+        var result = await _service.CreateAnnouncementAsync(model, GetUserId());
 
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = result.Success, message = result.Message });
 
         if (result.Success) TempData["Success"] = result.Message;
-        else TempData["Error"] = result.Message;
         return RedirectToAction(nameof(Index));
     }
 
@@ -69,49 +67,39 @@ public class ShopsController : Controller
     public async Task<IActionResult> EditModal(long id)
     {
         if (!IsAuthorized()) return Forbid();
-        var model = await _service.GetShopForEditAsync(id);
+        var model = await _service.GetAnnouncementForEditAsync(id);
         if (model == null) return NotFound();
-        return PartialView("_EditModal", model);
+        return PartialView("_FormModal", model);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(ShopFormViewModel model)
+    public async Task<IActionResult> Edit(AnnouncementFormViewModel model)
     {
         if (!IsAuthorized()) return Forbid();
 
         if (!ModelState.IsValid)
         {
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-                return PartialView("_EditModal", model);
+                return PartialView("_FormModal", model);
             return RedirectToAction(nameof(Index));
         }
 
-        var result = await _service.UpdateShopAsync(model, GetUserId(), GetIpAddress());
+        var result = await _service.UpdateAnnouncementAsync(model, GetUserId());
 
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = result.Success, message = result.Message });
 
         if (result.Success) TempData["Success"] = result.Message;
-        else TempData["Error"] = result.Message;
         return RedirectToAction(nameof(Index));
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> DetailsModal(long id)
-    {
-        if (!IsAuthorized()) return Forbid();
-        var model = await _service.GetShopDetailsAsync(id);
-        if (model == null) return NotFound();
-        return PartialView("_DetailsModal", model);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ToggleStatus(long id)
+    public async Task<IActionResult> Publish(long id)
     {
         if (!IsAuthorized()) return Forbid();
-        var result = await _service.ToggleShopStatusAsync(id, GetUserId(), GetIpAddress());
+        var result = await _service.PublishAnnouncementAsync(id, GetUserId());
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = result.Success, message = result.Message });
         return RedirectToAction(nameof(Index));
@@ -122,11 +110,9 @@ public class ShopsController : Controller
     public async Task<IActionResult> Delete(long id)
     {
         if (!IsAuthorized()) return Forbid();
-        var result = await _service.DeleteShopAsync(id, GetUserId(), GetIpAddress());
+        var result = await _service.DeleteAnnouncementAsync(id, GetUserId());
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = result.Success, message = result.Message });
-        if (result.Success) TempData["Success"] = result.Message;
-        else TempData["Error"] = result.Message;
         return RedirectToAction(nameof(Index));
     }
 }

@@ -1,4 +1,5 @@
 using ByteBill_BS.Models.Enums;
+using ByteBill_BS.ViewModels.Dashboard;
 using System.ComponentModel.DataAnnotations;
 
 namespace ByteBill_BS.ViewModels.SuperAdmin;
@@ -34,6 +35,9 @@ public class ShopItemViewModel
     public int UserCount { get; set; }
     public int JobOrderCount { get; set; }
     public string Status { get; set; } = "Active";
+    public string PlanName { get; set; } = "No Plan";
+    public string BillingCycle { get; set; } = "—";
+    public bool IsDefault { get; set; }
     public string StatusClass => Status switch
     {
         "Active"    => "status-success",
@@ -42,6 +46,66 @@ public class ShopItemViewModel
         _           => "status-muted"
     };
     public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>
+/// Combined shop + admin user creation form.
+/// </summary>
+public class ShopCreateViewModel
+{
+    // Shop fields
+    [Required(ErrorMessage = "Shop name is required")]
+    [StringLength(100)]
+    [Display(Name = "Shop Name")]
+    public string Name { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Email is required")]
+    [EmailAddress]
+    [StringLength(100)]
+    [Display(Name = "Shop Email")]
+    public string Email { get; set; } = string.Empty;
+
+    [StringLength(30)]
+    [Display(Name = "Phone")]
+    public string? Phone { get; set; }
+
+    [StringLength(300)]
+    [Display(Name = "Address")]
+    public string? Address { get; set; }
+
+    // Admin user fields
+    [Required(ErrorMessage = "Admin first name is required")]
+    [StringLength(50)]
+    [Display(Name = "First Name")]
+    public string AdminFirstName { get; set; } = string.Empty;
+
+    [StringLength(50)]
+    [Display(Name = "Middle Name")]
+    public string? AdminMiddleName { get; set; }
+
+    [Required(ErrorMessage = "Admin last name is required")]
+    [StringLength(50)]
+    [Display(Name = "Last Name")]
+    public string AdminLastName { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Admin email is required")]
+    [EmailAddress]
+    [StringLength(100)]
+    [Display(Name = "Admin Email")]
+    public string AdminEmail { get; set; } = string.Empty;
+
+    [StringLength(30)]
+    [Display(Name = "Admin Phone")]
+    public string? AdminPhone { get; set; }
+
+    [Required(ErrorMessage = "Password is required")]
+    [StringLength(100, MinimumLength = 6)]
+    [Display(Name = "Password")]
+    public string AdminPassword { get; set; } = string.Empty;
+
+    [Compare("AdminPassword", ErrorMessage = "Passwords do not match")]
+    [Display(Name = "Confirm Password")]
+    public string AdminConfirmPassword { get; set; } = string.Empty;
 }
 
 public class ShopFormViewModel
@@ -99,25 +163,13 @@ public class ShopDetailViewModel
     };
     public DateTime CreatedAt { get; set; }
     public string? Notes { get; set; }
+    public bool IsDefault { get; set; }
+    public string PlanName { get; set; } = "No Plan";
+    public string BillingCycle { get; set; } = "—";
 
-    // Stats
-    public int UserCount { get; set; }
-    public int JobOrderCount { get; set; }
+    // Stats — no user-specific data (confidential)
     public decimal TotalRevenue { get; set; }
-    public int ActiveJobOrders { get; set; }
-
-    // Recent Users
-    public List<ShopUserItem> RecentUsers { get; set; } = new();
-}
-
-public class ShopUserItem
-{
-    public long Id { get; set; }
-    public string FullName { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string RoleName { get; set; } = string.Empty;
-    public string RoleClass { get; set; } = "status-muted";
-    public bool IsActive { get; set; }
+    public DateTime? LastActiveAt { get; set; }
 }
 
 // ============================================================
@@ -264,84 +316,232 @@ public class UserActivityLogItem
 }
 
 // ============================================================
-//  SYSTEM LOG  VIEW-MODELS
+//  SUBSCRIPTION  VIEW-MODELS
 // ============================================================
 
-public class SystemLogListViewModel
+public class SubscriptionListViewModel
 {
-    public List<SystemLogItemViewModel> Logs { get; set; } = new();
+    public List<SubscriptionItemViewModel> Subscriptions { get; set; } = new();
     public string? SearchTerm { get; set; }
-    public string? TypeFilter { get; set; }
-    public string? ShopFilter { get; set; }
+    public string? StatusFilter { get; set; }
+    public string? PlanFilter { get; set; }
+    public int TotalCount { get; set; }
+    public int CurrentPage { get; set; } = 1;
+    public int PageSize { get; set; } = 10;
+    public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+    public int ActiveCount { get; set; }
+    public int ExpiredCount { get; set; }
+    public decimal TotalMRR { get; set; }
+}
+
+public class SubscriptionItemViewModel
+{
+    public long Id { get; set; }
+    public string ShopName { get; set; } = string.Empty;
+    public string ShopInitials { get; set; } = string.Empty;
+    public string PlanName { get; set; } = string.Empty;
+    public string BillingCycle { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+    public string Status { get; set; } = "Active";
+    public string StatusClass => Status switch
+    {
+        "Active"    => "status-success",
+        "Expired"   => "status-danger",
+        "Cancelled" => "status-muted",
+        "PastDue"   => "status-warning",
+        _           => "status-muted"
+    };
+    public DateTime StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
+    public DateTime? NextBillingDate { get; set; }
+    public bool IsDefault { get; set; }
+}
+
+public class SubscriptionDetailViewModel
+{
+    public long Id { get; set; }
+    public string ShopName { get; set; } = string.Empty;
+    public string ShopInitials { get; set; } = string.Empty;
+    public string PlanName { get; set; } = string.Empty;
+    public string PlanDescription { get; set; } = string.Empty;
+    public string BillingCycle { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+    public string Status { get; set; } = "Active";
+    public string StatusClass => Status switch
+    {
+        "Active"    => "status-success",
+        "Expired"   => "status-danger",
+        "Cancelled" => "status-muted",
+        "PastDue"   => "status-warning",
+        _           => "status-muted"
+    };
+    public DateTime StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
+    public DateTime? NextBillingDate { get; set; }
+    public bool IsDefault { get; set; }
+    public int MaxUsers { get; set; }
+    public int MaxCustomers { get; set; }
+    public int MaxJobOrdersPerMonth { get; set; }
+    public int CurrentUsers { get; set; }
+    public decimal TotalPaid { get; set; }
+    public List<SubscriptionPaymentSummary> PaymentHistory { get; set; } = new();
+}
+
+public class SubscriptionPaymentSummary
+{
+    public decimal Amount { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string ReferenceNumber { get; set; } = string.Empty;
+    public DateTime? PaidAt { get; set; }
+    public string? PaymentMethod { get; set; }
+}
+
+public class AssignSubscriptionViewModel
+{
+    [Required]
+    public long ShopId { get; set; }
+
+    [Required]
+    public long PlanId { get; set; }
+
+    [Required]
+    public string BillingCycle { get; set; } = "Monthly";
+
+    public List<ShopDropdownItem> AvailableShops { get; set; } = new();
+}
+
+// ============================================================
+//  SUBSCRIPTION PAYMENT  VIEW-MODELS
+// ============================================================
+
+public class SubscriptionPaymentListViewModel
+{
+    public List<SubscriptionPaymentItemViewModel> Payments { get; set; } = new();
+    public string? SearchTerm { get; set; }
+    public string? StatusFilter { get; set; }
+    public string? MethodFilter { get; set; }
     public DateTime? DateFrom { get; set; }
     public DateTime? DateTo { get; set; }
     public int TotalCount { get; set; }
     public int CurrentPage { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
+    public int PageSize { get; set; } = 10;
     public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
-
-    // Stats
-    public int TodayCount { get; set; }
-    public int ErrorCount { get; set; }
-    public int WarningCount { get; set; }
-    public int InfoCount { get; set; }
-
-    // Filter options
-    public List<string> AvailableShops { get; set; } = new();
-    public List<string> LogTypes { get; set; } = new() { "Info", "Warning", "Error", "Critical" };
+    public decimal TotalPaid { get; set; }
+    public int PendingCount { get; set; }
+    public int FailedCount { get; set; }
 }
 
-public class SystemLogItemViewModel
+public class SubscriptionPaymentItemViewModel
 {
     public long Id { get; set; }
-    public string Type { get; set; } = string.Empty;
-    public string TypeClass => Type switch
+    public string ShopName { get; set; } = string.Empty;
+    public string PlanName { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public string Status { get; set; } = "Pending";
+    public string StatusClass => Status switch
     {
-        "Info"     => "status-info",
-        "Warning"  => "status-warning",
-        "Error"    => "status-danger",
-        "Critical" => "status-danger",
+        "Paid"     => "status-success",
+        "Pending"  => "status-warning",
+        "Failed"   => "status-danger",
+        "Refunded" => "status-info",
         _          => "status-muted"
     };
-    public string TypeIcon => Type switch
-    {
-        "Info"     => "info",
-        "Warning"  => "alert-triangle",
-        "Error"    => "x-circle",
-        "Critical" => "alert-octagon",
-        _          => "file-text"
-    };
-    public string Message { get; set; } = string.Empty;
-    public string UserName { get; set; } = string.Empty;
-    public string? UserEmail { get; set; }
-    public string? ShopName { get; set; }
-    public string? IpAddress { get; set; }
-    public string? Source { get; set; }
-    public DateTime Timestamp { get; set; }
+    public string PaymentMethod { get; set; } = "—";
+    public string ReferenceNumber { get; set; } = string.Empty;
+    public DateTime PeriodStart { get; set; }
+    public DateTime PeriodEnd { get; set; }
+    public DateTime? PaidAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
 
-public class SystemLogDetailViewModel
+public class SubscriptionPaymentDetailViewModel
 {
     public long Id { get; set; }
-    public string Type { get; set; } = string.Empty;
-    public string TypeClass => Type switch
+    public string ShopName { get; set; } = string.Empty;
+    public string PlanName { get; set; } = string.Empty;
+    public string BillingCycle { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public string Currency { get; set; } = "PHP";
+    public string Status { get; set; } = string.Empty;
+    public string StatusClass => Status switch
     {
-        "Info"     => "status-info",
-        "Warning"  => "status-warning",
-        "Error"    => "status-danger",
-        "Critical" => "status-danger",
+        "Paid"     => "status-success",
+        "Pending"  => "status-warning",
+        "Failed"   => "status-danger",
+        "Refunded" => "status-info",
         _          => "status-muted"
     };
-    public string Message { get; set; } = string.Empty;
-    public string UserName { get; set; } = string.Empty;
-    public string? UserEmail { get; set; }
-    public string? ShopName { get; set; }
-    public string? IpAddress { get; set; }
-    public string? Source { get; set; }
-    public string? StackTrace { get; set; }
-    public string? RequestUrl { get; set; }
-    public string? UserAgent { get; set; }
-    public DateTime Timestamp { get; set; }
+    public string PaymentMethod { get; set; } = "—";
+    public string ReferenceNumber { get; set; } = string.Empty;
+    public string? PayMongoPaymentId { get; set; }
+    public DateTime PeriodStart { get; set; }
+    public DateTime PeriodEnd { get; set; }
+    public DateTime? PaidAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public string? Notes { get; set; }
+}
+
+// ============================================================
+//  ANNOUNCEMENT  VIEW-MODELS
+// ============================================================
+
+public class AnnouncementListViewModel
+{
+    public List<AnnouncementItemViewModel> Announcements { get; set; } = new();
+    public string? SearchTerm { get; set; }
+    public string? TypeFilter { get; set; }
+    public string? StatusFilter { get; set; }
+    public int TotalCount { get; set; }
+    public int CurrentPage { get; set; } = 1;
+    public int PageSize { get; set; } = 10;
+    public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+    public int PublishedCount { get; set; }
+    public int DraftCount { get; set; }
+    public int ScheduledCount { get; set; }
+}
+
+public class AnnouncementItemViewModel
+{
+    public long Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Type { get; set; } = "Info";
+    public string TypeClass => Type switch
+    {
+        "Info"        => "status-info",
+        "Warning"     => "status-warning",
+        "Critical"    => "status-danger",
+        "Maintenance" => "status-purple",
+        _             => "status-muted"
+    };
+    public string Status { get; set; } = "Draft";
+    public string StatusClass => Status switch
+    {
+        "Published" => "status-success",
+        "Draft"     => "status-muted",
+        "Archived"  => "status-warning",
+        _           => "status-muted"
+    };
+    public string Content { get; set; } = string.Empty;
+    public string CreatedBy { get; set; } = string.Empty;
+    public string CreatedByName { get; set; } = string.Empty;
+    public DateTime? PublishedAt { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class AnnouncementFormViewModel
+{
+    public long Id { get; set; }
+
+    [Required(ErrorMessage = "Title is required")]
+    [StringLength(200)]
+    public string Title { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Content is required")]
+    public string Content { get; set; } = string.Empty;
+
+    public string Type { get; set; } = "Info";
+    public DateTime? ExpiresAt { get; set; }
 }
 
 // ============================================================
@@ -358,7 +558,7 @@ public class SystemSettingsViewModel
 
     [StringLength(200)]
     [Display(Name = "Tagline")]
-    public string? Tagline { get; set; } = "Repair Shop Billing System";
+    public string? Tagline { get; set; } = "A Web-Based Billing System";
 
     [Display(Name = "Currency")]
     public string Currency { get; set; } = "PHP";
@@ -368,6 +568,13 @@ public class SystemSettingsViewModel
 
     [Display(Name = "Date Format")]
     public string DateFormat { get; set; } = "MMM dd, yyyy";
+
+    // Tax Settings
+    [Display(Name = "Default VAT Rate (%)")]
+    public decimal DefaultVatRate { get; set; } = 12m;
+
+    [Display(Name = "Default VAT Registered")]
+    public bool DefaultIsVatRegistered { get; set; } = true;
 
     // Security Settings
     [Range(6, 50)]
@@ -419,4 +626,53 @@ public class SystemSettingsViewModel
 
     [Display(Name = "Enable Email Notifications")]
     public bool EnableEmailNotifications { get; set; } = true;
+
+    // PayMongo Settings
+    [Display(Name = "Test Mode")]
+    public bool PayMongoTestMode { get; set; } = true;
+
+    // Subscription Settings
+    [Display(Name = "Trial Period (days)")]
+    public int TrialDays { get; set; } = 14;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Reports
+// ═══════════════════════════════════════════════════════════════
+
+public class ReportsIndexViewModel
+{
+    public string SelectedReport { get; set; } = "revenue";
+    public DateTime DateFrom { get; set; }
+    public DateTime DateTo { get; set; }
+
+    // Revenue Report
+    public decimal TotalRevenue { get; set; }
+    public decimal AveragePerShop { get; set; }
+    public int TotalTransactions { get; set; }
+    public List<ReportTableRow> TableRows { get; set; } = new();
+    public List<ChartDataPoint> ChartData { get; set; } = new();
+
+    // Summary cards vary by report type
+    public List<ReportSummaryCard> SummaryCards { get; set; } = new();
+}
+
+public class ReportSummaryCard
+{
+    public string Label { get; set; } = "";
+    public string Value { get; set; } = "";
+    public string Icon { get; set; } = "bar-chart";
+    public string Color { get; set; } = "#6366f1";
+}
+
+public class ReportTableRow
+{
+    public string[] Cells { get; set; } = Array.Empty<string>();
+}
+
+public class ReportExportRequest
+{
+    public string Report { get; set; } = "revenue";
+    public DateTime? From { get; set; }
+    public DateTime? To { get; set; }
 }

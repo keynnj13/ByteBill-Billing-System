@@ -89,6 +89,7 @@ public class InvoicesController : Controller
             .Include(i => i.Customer)
             .Include(i => i.JobOrder)
             .Include(i => i.InvoiceLines)
+            .Include(i => i.InvoiceDiscounts)
             .Include(i => i.PaymentAllocations).ThenInclude(pa => pa.Payment).ThenInclude(p => p!.ReceivedByUser)
             .Include(i => i.Shop)
             .FirstOrDefaultAsync();
@@ -116,9 +117,28 @@ public class InvoicesController : Controller
             DueDate = inv.DueDate,
             Subtotal = inv.Subtotal,
             TotalAdjustments = inv.TotalAdjustments,
+            DiscountAmount = inv.DiscountAmount,
+            VatableSales = inv.VatableSales,
+            VatExemptSales = inv.VatExemptSales,
+            ZeroRatedSales = inv.ZeroRatedSales,
+            VatAmount = inv.VatAmount,
+            IsVatRegistered = inv.Shop?.IsVatRegistered ?? true,
+            ShopTIN = inv.Shop?.TIN,
             Total = inv.TotalAmount,
             AmountPaid = inv.AmountPaid,
             Balance = inv.Balance,
+            Discounts = inv.InvoiceDiscounts.Select(d => new InvoiceDiscountViewModel
+            {
+                InvoiceDiscountId = d.InvoiceDiscountId,
+                DiscountType = d.DiscountType.ToString(),
+                Label = d.Label,
+                Percentage = d.Percentage,
+                Amount = d.Amount,
+                IsVatExempt = d.IsVatExempt,
+                BeneficiaryIdNo = d.BeneficiaryIdNo,
+                BeneficiaryName = d.BeneficiaryName,
+                AppliedAt = d.AppliedAt
+            }).ToList(),
             LineItems = inv.InvoiceLines.Select(l => new InvoiceLineItemViewModel
             {
                 Id = l.InvoiceLineId,

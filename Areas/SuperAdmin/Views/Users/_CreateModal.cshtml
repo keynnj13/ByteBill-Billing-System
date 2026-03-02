@@ -56,7 +56,7 @@
                     <label asp-for="Role" class="form-label">Role <span class="required">*</span></label>
                     <select asp-for="Role" class="form-input">
                         <option value="">Select a role</option>
-                        @foreach (var r in Enum.GetValues<UserRole>())
+                        @foreach (var r in Enum.GetValues<UserRole>().Where(r => r != UserRole.SuperAdmin))
                         {
                             <option value="@r">@r</option>
                         }

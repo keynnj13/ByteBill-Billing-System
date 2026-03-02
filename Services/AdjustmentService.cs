@@ -75,14 +75,16 @@ public class AdjustmentService : IAdjustmentService
     private readonly INotificationService _notifications;
     private readonly IBillingCalculationService _billing;
     private readonly IXeroService _xero;
+    private readonly IPayMongoService _payMongo;
 
     public AdjustmentService(ApplicationDbContext db, INotificationService notifications,
-        IBillingCalculationService billing, IXeroService xero)
+        IBillingCalculationService billing, IXeroService xero, IPayMongoService payMongo)
     {
         _db = db;
         _notifications = notifications;
         _billing = billing;
         _xero = xero;
+        _payMongo = payMongo;
     }
 
     public async Task<List<AdjustmentListItemDto>> GetAllAsync(long shopId, AdjustmentStatus? statusFilter = null)
@@ -248,6 +250,23 @@ public class AdjustmentService : IAdjustmentService
 
             // Auto-sync credit note to Xero for credit/refund adjustments
             try { await _xero.SyncCreditNoteAsync(adj.AdjustmentId, reviewerId); } catch { /* logged in XeroService */ }
+
+            // ── PayMongo integration on adjustment approval ──────────────
+            try
+            {
+                if (adj.AdjustmentType == AdjustmentType.Refund)
+                {
+                    // Issue refund via PayMongo API for the original online payment
+                    await _payMongo.RefundPaymentAsync(adj.ShopId, adj.InvoiceId, adj.Amount, adj.Reason);
+                }
+
+                if (adj.AdjustmentType == AdjustmentType.Credit || adj.AdjustmentType == AdjustmentType.Refund)
+                {
+                    // Expire any pending checkout sessions so customer can't overpay with old amount
+                    await _payMongo.ExpirePendingSessionsAsync(adj.ShopId, adj.InvoiceId);
+                }
+            }
+            catch { /* logged inside PayMongoService — don't block approval flow */ }
         }
 
         // Notify the requester

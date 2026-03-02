@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using System.Net.Http.Headers;
 using System.Text;
 
 namespace ByteBill_BS.Areas.Admin.Controllers;
@@ -19,15 +18,18 @@ public class IntegrationsController : Controller
     private readonly ApplicationDbContext _db;
     private readonly PayMongoSettings _payMongoSettings;
     private readonly IXeroService _xero;
+    private readonly IPayMongoService _payMongo;
 
     public IntegrationsController(
         ApplicationDbContext db,
         IOptions<PayMongoSettings> payMongoSettings,
-        IXeroService xero)
+        IXeroService xero,
+        IPayMongoService payMongo)
     {
         _db = db;
         _payMongoSettings = payMongoSettings.Value;
         _xero = xero;
+        _payMongo = payMongo;
     }
 
     private bool IsAuthorized()
@@ -233,29 +235,8 @@ public class IntegrationsController : Controller
     {
         if (!IsAuthorized()) return Forbid();
 
-        try
-        {
-            if (string.IsNullOrWhiteSpace(_payMongoSettings.SecretKey))
-                return Json(new { success = false, message = "PayMongo Secret Key is not configured." });
-
-            using var http = new HttpClient();
-            var authBytes = Encoding.UTF8.GetBytes($"{_payMongoSettings.SecretKey}:");
-            http.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
-
-            // Test by listing payment methods — lightweight API call
-            var response = await http.GetAsync($"{_payMongoSettings.BaseUrl}/links?limit=1");
-
-            if (response.IsSuccessStatusCode)
-                return Json(new { success = true, message = "PayMongo connection successful! API keys are valid." });
-
-            var body = await response.Content.ReadAsStringAsync();
-            return Json(new { success = false, message = $"PayMongo returned {(int)response.StatusCode}: {body}" });
-        }
-        catch (Exception ex)
-        {
-            return Json(new { success = false, message = $"Connection failed: {ex.Message}" });
-        }
+        var (success, message) = await _payMongo.TestConnectionAsync();
+        return Json(new { success, message });
     }
 
     /// <summary>Returns PayMongo transaction details as JSON for the detail modal.</summary>

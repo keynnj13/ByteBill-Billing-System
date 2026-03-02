@@ -381,6 +381,24 @@ public class InventoryService : IInventoryService
             }
         }
 
+        // Low stock notification for admins
+        if (entity.IsLowStock)
+        {
+            var adminIds = await _db.Users
+                .Where(u => u.ShopId == shopId && u.IsActive
+                    && u.UserRoles.Any(ur => ur.Role!.RoleName == "Admin" || ur.Role!.RoleName == "SuperAdmin"))
+                .Select(u => u.UserId)
+                .ToListAsync();
+            foreach (var adminId in adminIds)
+            {
+                await _notif.CreateAsync(adminId, shopId,
+                    "Low Stock Alert",
+                    $"{entity.ItemName} is running low ({entity.QtyOnHand} remaining, reorder level: {entity.ReorderLevel}).",
+                    "warning",
+                    $"/Admin/Inventory");
+            }
+        }
+
         return true;
     }
 

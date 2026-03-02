@@ -34,4 +34,9 @@ public class Shop
     public ICollection<AccountingEntry> AccountingEntries { get; set; } = new List<AccountingEntry>();
     public ICollection<XeroSyncLog> XeroSyncLogs { get; set; } = new List<XeroSyncLog>();
     public ICollection<XeroConnection> XeroConnections { get; set; } = new List<XeroConnection>();
+    public ICollection<Subscription> Subscriptions { get; set; } = new List<Subscription>();
+    public ICollection<SubscriptionPayment> SubscriptionPayments { get; set; } = new List<SubscriptionPayment>();
+
+    /// <summary>True for ByteBill Main Shop — cannot be deleted or suspended.</summary>
+    public bool IsDefault { get; set; }
 }

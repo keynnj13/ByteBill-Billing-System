@@ -167,6 +167,27 @@
             <div class="receipt-amount">₱@Model.Amount.ToString("N2")</div>
         </div>
 
+        <!-- Line Items -->
+        @if (Model.LineItems.Count > 0)
+        {
+            <div class="receipt-alloc-header">Items</div>
+            <div style="font-size: 11px; border-bottom: 1px dashed #e5e7eb; padding-bottom: 2px; margin-bottom: 4px; display: flex; justify-content: space-between; color: #9ca3af;">
+                <span>Description</span>
+                <span>Amount</span>
+            </div>
+            @foreach (var item in Model.LineItems)
+            {
+                <div class="receipt-alloc-row">
+                    <span style="color: #374151; font-weight: 500;">
+                        @item.Description
+                        <span style="color: #9ca3af; font-weight: 400;"> x @item.Quantity</span>
+                    </span>
+                    <span class="receipt-alloc-amt">₱@item.Total.ToString("N2")</span>
+                </div>
+            }
+            <div class="receipt-divider"></div>
+        }
+
         <!-- Allocations -->
         @if (Model.Allocations.Count > 0)
         {
@@ -199,31 +220,6 @@
                 <span class="receipt-row-value">₱@Model.InvoiceSubtotal.ToString("N2")</span>
             </div>
 
-            @if (Model.Discounts.Count > 0)
-            {
-                @foreach (var disc in Model.Discounts)
-                {
-                    <div class="receipt-row" style="color: #dc2626;">
-                        <span class="receipt-row-label">@disc.Label</span>
-                        <span class="receipt-row-value">-₱@disc.Amount.ToString("N2")</span>
-                    </div>
-                    @if (!string.IsNullOrEmpty(disc.BeneficiaryName))
-                    {
-                        <div style="font-size: 10px; color: #9ca3af; padding-left: 8px;">
-                            @disc.BeneficiaryName @(!string.IsNullOrEmpty(disc.BeneficiaryIdNo) ? $"(ID: {disc.BeneficiaryIdNo})" : "")
-                        </div>
-                    }
-                }
-            }
-
-            @if (Model.InvoiceDiscountAmount > 0)
-            {
-                <div class="receipt-row">
-                    <span class="receipt-row-label">Total Discount</span>
-                    <span class="receipt-row-value" style="color: #dc2626;">-₱@Model.InvoiceDiscountAmount.ToString("N2")</span>
-                </div>
-            }
-
             @if (Model.IsVatRegistered)
             {
                 @if (Model.VatableSales > 0)
@@ -250,6 +246,31 @@
                 <div class="receipt-row">
                     <span class="receipt-row-label">VAT (12%)</span>
                     <span class="receipt-row-value">₱@Model.VatAmount.ToString("N2")</span>
+                </div>
+            }
+
+            @if (Model.Discounts.Count > 0)
+            {
+                @foreach (var disc in Model.Discounts)
+                {
+                    <div class="receipt-row" style="color: #dc2626;">
+                        <span class="receipt-row-label">@disc.Label</span>
+                        <span class="receipt-row-value">-₱@disc.Amount.ToString("N2")</span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(disc.BeneficiaryName))
+                    {
+                        <div style="font-size: 10px; color: #9ca3af; padding-left: 8px;">
+                            @disc.BeneficiaryName @(!string.IsNullOrEmpty(disc.BeneficiaryIdNo) ? $"(ID: {disc.BeneficiaryIdNo})" : "")
+                        </div>
+                    }
+                }
+            }
+
+            @if (Model.InvoiceDiscountAmount > 0)
+            {
+                <div class="receipt-row">
+                    <span class="receipt-row-label">Total Discount</span>
+                    <span class="receipt-row-value" style="color: #dc2626;">-₱@Model.InvoiceDiscountAmount.ToString("N2")</span>
                 </div>
             }
 

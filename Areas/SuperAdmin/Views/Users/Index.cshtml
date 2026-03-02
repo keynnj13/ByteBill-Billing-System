@@ -56,11 +56,11 @@
     </div>
     <div class="sau-stat-card">
         <div class="sau-stat-icon sau-icon-purple">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m-4 0h4"></path></svg>
         </div>
         <div class="sau-stat-content">
-            <span class="sau-stat-value">@Model.SuperAdminCount</span>
-            <span class="sau-stat-label">SUPER ADMINS</span>
+            <span class="sau-stat-value">@Model.ShopCount</span>
+            <span class="sau-stat-label">SHOPS</span>
         </div>
     </div>
 </div>
@@ -82,7 +82,7 @@
             </select>
             <select name="role" class="form-select" id="sauRole">
                 <option value="">All Roles</option>
-                @foreach (var r in Enum.GetValues<UserRole>())
+                @foreach (var r in Enum.GetValues<UserRole>().Where(r => r != UserRole.SuperAdmin))
                 {
                     <option value="@r" selected="@(Model.RoleFilter == r)">@r</option>
                 }

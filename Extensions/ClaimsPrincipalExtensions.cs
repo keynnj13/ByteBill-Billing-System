@@ -13,6 +13,12 @@ public static class ClaimsPrincipalExtensions
     public static long GetShopId(this ClaimsPrincipal principal)
         => long.TryParse(principal.FindFirstValue("ShopId"), out var id) ? id : 0;
 
+    public static long? GetShopIdOrNull(this ClaimsPrincipal principal)
+    {
+        var val = principal.FindFirstValue("ShopId");
+        return long.TryParse(val, out var id) && id > 0 ? id : null;
+    }
+
     public static string GetRole(this ClaimsPrincipal principal)
         => principal.FindFirstValue("Role") ?? string.Empty;
 

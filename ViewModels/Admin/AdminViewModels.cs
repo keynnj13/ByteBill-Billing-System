@@ -249,6 +249,10 @@ public class RevenueReportViewModel
     public decimal TotalOutstanding { get; set; }
     public decimal AverageInvoice { get; set; }
     public int InvoiceCount { get; set; }
+    public decimal TotalDiscounts { get; set; }
+    public decimal TotalVat { get; set; }
+    public decimal TotalAdjustments { get; set; }
+    public decimal NetRevenue { get; set; }
     public List<RevenueByMonth> MonthlyBreakdown { get; set; } = new();
     public List<RevenueByCategory> CategoryBreakdown { get; set; } = new();
 }

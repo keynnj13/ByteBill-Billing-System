@@ -41,6 +41,14 @@ public class ApplicationDbContext : DbContext
     public DbSet<XeroConnection> XeroConnections => Set<XeroConnection>();
     public DbSet<InvoiceDiscount> InvoiceDiscounts => Set<InvoiceDiscount>();
 
+    // ── SuperAdmin Module ────────────────────────────────────────────────
+    public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
+    public DbSet<Subscription> Subscriptions => Set<Subscription>();
+    public DbSet<SubscriptionPayment> SubscriptionPayments => Set<SubscriptionPayment>();
+    public DbSet<PlatformSetting> PlatformSettings => Set<PlatformSetting>();
+    public DbSet<Announcement> Announcements => Set<Announcement>();
+    public DbSet<SuperAdminAuditLog> SuperAdminAuditLogs => Set<SuperAdminAuditLog>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -63,6 +71,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.TIN).HasMaxLength(20);
             entity.Property(e => e.IsVatRegistered).HasDefaultValue(true);
             entity.Property(e => e.TaxRate).HasPrecision(18, 2).HasDefaultValue(12m);
+            entity.Property(e => e.IsDefault).HasDefaultValue(false);
             entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime2(0)");
             entity.HasIndex(e => e.ShopCode).IsUnique();
@@ -88,6 +97,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.EmailNotifications).HasDefaultValue(true);
             entity.Property(e => e.InAppNotifications).HasDefaultValue(true);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.LastLoginAt).HasColumnType("datetime2(0)");
+            entity.Property(e => e.LastIpAddress).HasMaxLength(50);
             entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime2(0)");
             entity.HasIndex(e => new { e.ShopId, e.UserName }).IsUnique();
@@ -924,6 +935,162 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.AppliedByUser)
                   .WithMany()
                   .HasForeignKey(e => e.AppliedByUserId)
+                  .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // Z1. SUBSCRIPTION_PLANS
+        // ═══════════════════════════════════════════════════════════════
+        modelBuilder.Entity<SubscriptionPlan>(entity =>
+        {
+            entity.ToTable("SUBSCRIPTION_PLANS");
+            entity.HasKey(e => e.PlanId);
+            entity.Property(e => e.PlanId).HasColumnName("PlanID");
+            entity.Property(e => e.PlanName).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.MonthlyPrice).HasPrecision(18, 2);
+            entity.Property(e => e.YearlyPrice).HasPrecision(18, 2);
+            entity.Property(e => e.PermanentPrice).HasPrecision(18, 2);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime2(0)");
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // Z2. SUBSCRIPTIONS
+        // ═══════════════════════════════════════════════════════════════
+        modelBuilder.Entity<Subscription>(entity =>
+        {
+            entity.ToTable("SUBSCRIPTIONS");
+            entity.HasKey(e => e.SubscriptionId);
+            entity.Property(e => e.SubscriptionId).HasColumnName("SubscriptionID");
+            entity.Property(e => e.ShopId).HasColumnName("ShopID");
+            entity.Property(e => e.PlanId).HasColumnName("PlanID");
+            entity.Property(e => e.BillingCycle).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue("Active");
+            entity.Property(e => e.Price).HasPrecision(18, 2);
+            entity.Property(e => e.StartDate).HasColumnType("datetime2(0)");
+            entity.Property(e => e.EndDate).HasColumnType("datetime2(0)");
+            entity.Property(e => e.NextBillingDate).HasColumnType("datetime2(0)");
+            entity.Property(e => e.CancelledAt).HasColumnType("datetime2(0)");
+            entity.Property(e => e.IsDefault).HasDefaultValue(false);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime2(0)");
+            entity.HasIndex(e => e.ShopId);
+            entity.HasIndex(e => e.PlanId);
+            entity.HasIndex(e => e.Status);
+
+            entity.HasOne(e => e.Shop)
+                  .WithMany(s => s.Subscriptions)
+                  .HasForeignKey(e => e.ShopId)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(e => e.Plan)
+                  .WithMany(p => p.Subscriptions)
+                  .HasForeignKey(e => e.PlanId)
+                  .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // Z3. SUBSCRIPTION_PAYMENTS
+        // ═══════════════════════════════════════════════════════════════
+        modelBuilder.Entity<SubscriptionPayment>(entity =>
+        {
+            entity.ToTable("SUBSCRIPTION_PAYMENTS");
+            entity.HasKey(e => e.SubscriptionPaymentId);
+            entity.Property(e => e.SubscriptionPaymentId).HasColumnName("SubscriptionPaymentID");
+            entity.Property(e => e.SubscriptionId).HasColumnName("SubscriptionID");
+            entity.Property(e => e.ShopId).HasColumnName("ShopID");
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
+            entity.Property(e => e.Currency).HasMaxLength(10).HasDefaultValue("PHP");
+            entity.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue("Pending");
+            entity.Property(e => e.PaymentMethod).HasMaxLength(50);
+            entity.Property(e => e.ReferenceNumber).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.PayMongoPaymentId).HasMaxLength(200);
+            entity.Property(e => e.PayMongoCheckoutUrl).HasMaxLength(500);
+            entity.Property(e => e.PeriodStart).HasColumnType("datetime2(0)");
+            entity.Property(e => e.PeriodEnd).HasColumnType("datetime2(0)");
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
+            entity.Property(e => e.PaidAt).HasColumnType("datetime2(0)");
+            entity.HasIndex(e => e.SubscriptionId);
+            entity.HasIndex(e => e.ShopId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.ReferenceNumber);
+
+            entity.HasOne(e => e.Subscription)
+                  .WithMany(s => s.Payments)
+                  .HasForeignKey(e => e.SubscriptionId)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(e => e.Shop)
+                  .WithMany(s => s.SubscriptionPayments)
+                  .HasForeignKey(e => e.ShopId)
+                  .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // Z4. PLATFORM_SETTINGS
+        // ═══════════════════════════════════════════════════════════════
+        modelBuilder.Entity<PlatformSetting>(entity =>
+        {
+            entity.ToTable("PLATFORM_SETTINGS");
+            entity.HasKey(e => e.SettingId);
+            entity.Property(e => e.SettingId).HasColumnName("SettingID");
+            entity.Property(e => e.SettingKey).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.SettingValue).IsRequired();
+            entity.Property(e => e.Category).HasMaxLength(50).HasDefaultValue("General");
+            entity.Property(e => e.Description).HasMaxLength(300);
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
+            entity.Property(e => e.UpdatedBy).HasMaxLength(100);
+            entity.HasIndex(e => e.SettingKey).IsUnique();
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // Z5. ANNOUNCEMENTS
+        // ═══════════════════════════════════════════════════════════════
+        modelBuilder.Entity<Announcement>(entity =>
+        {
+            entity.ToTable("ANNOUNCEMENTS");
+            entity.HasKey(e => e.AnnouncementId);
+            entity.Property(e => e.AnnouncementId).HasColumnName("AnnouncementID");
+            entity.Property(e => e.Title).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Content).IsRequired();
+            entity.Property(e => e.Type).HasMaxLength(20).HasDefaultValue("Info");
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("Draft");
+            entity.Property(e => e.PublishedAt).HasColumnType("datetime2(0)");
+            entity.Property(e => e.ExpiresAt).HasColumnType("datetime2(0)");
+            entity.Property(e => e.CreatedByUserId).HasColumnName("CreatedByUserID");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime2(0)");
+
+            entity.HasOne(e => e.CreatedBy)
+                  .WithMany()
+                  .HasForeignKey(e => e.CreatedByUserId)
+                  .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // Z6. SUPERADMIN_AUDIT_LOG
+        // ═══════════════════════════════════════════════════════════════
+        modelBuilder.Entity<SuperAdminAuditLog>(entity =>
+        {
+            entity.ToTable("SUPERADMIN_AUDIT_LOG");
+            entity.HasKey(e => e.AuditId);
+            entity.Property(e => e.AuditId).HasColumnName("AuditID");
+            entity.Property(e => e.UserId).HasColumnName("UserID");
+            entity.Property(e => e.Action).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.EntityType).HasMaxLength(50);
+            entity.Property(e => e.EntityId).HasColumnName("EntityID");
+            entity.Property(e => e.Details);
+            entity.Property(e => e.IpAddress).HasMaxLength(50);
+            entity.Property(e => e.Timestamp).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.Timestamp).IsDescending(true);
+
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId)
                   .OnDelete(DeleteBehavior.NoAction);
         });
     }

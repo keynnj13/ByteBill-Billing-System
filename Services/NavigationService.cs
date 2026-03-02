@@ -61,7 +61,17 @@ public class NavigationService : INavigationService
                 Items = new[]
                 {
                     new NavigationItem { Title = "Shops", Icon = "store", Url = "/SuperAdmin/Shops" },
-                    new NavigationItem { Title = "Users", Icon = "users", Url = "/SuperAdmin/Users" }
+                    new NavigationItem { Title = "Users", Icon = "users", Url = "/SuperAdmin/Users" },
+                    new NavigationItem { Title = "Subscriptions", Icon = "credit-card", Url = "/SuperAdmin/Subscriptions" }
+                }
+            },
+            new NavigationSection
+            {
+                Title = "Finance",
+                Items = new[]
+                {
+                    new NavigationItem { Title = "Payments", Icon = "dollar-sign", Url = "/SuperAdmin/Payments" },
+                    new NavigationItem { Title = "Reports", Icon = "bar-chart-2", Url = "/SuperAdmin/Reports" }
                 }
             },
             new NavigationSection
@@ -69,7 +79,7 @@ public class NavigationService : INavigationService
                 Title = "System",
                 Items = new[]
                 {
-                    new NavigationItem { Title = "System Logs", Icon = "file-text", Url = "/SuperAdmin/SystemLogs" },
+                    new NavigationItem { Title = "Announcements", Icon = "bell", Url = "/SuperAdmin/Announcements" },
                     new NavigationItem { Title = "Settings", Icon = "settings", Url = "/SuperAdmin/Settings" }
                 }
             }

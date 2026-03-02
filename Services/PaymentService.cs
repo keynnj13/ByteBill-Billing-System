@@ -23,15 +23,17 @@ public class PaymentService : IPaymentService
     private readonly IHttpContextAccessor _httpCtx;
     private readonly IBillingCalculationService _billing;
     private readonly IXeroService _xero;
+    private readonly INotificationService _notif;
 
     public PaymentService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx,
-        IBillingCalculationService billing, IXeroService xero)
+        IBillingCalculationService billing, IXeroService xero, INotificationService notif)
     {
         _db = db;
         _audit = audit;
         _httpCtx = httpCtx;
         _billing = billing;
         _xero = xero;
+        _notif = notif;
     }
 
     private string? ClientIp => _httpCtx.HttpContext?.Connection.RemoteIpAddress?.ToString();
@@ -238,6 +240,21 @@ public class PaymentService : IPaymentService
 
         await _audit.LogAsync(shopId, userId, "Create", "Payment", payment.PaymentId,
             $"Recorded payment of {req.Amount:C} via {method}. Allocated to {req.Allocations.Count} invoice(s).", ClientIp);
+
+        // Notify shop admins about new payment
+        var adminUsers = await _db.Users
+            .Where(u => u.ShopId == shopId && u.IsActive
+                && u.UserRoles.Any(ur => ur.Role!.RoleName == "Admin" || ur.Role!.RoleName == "SuperAdmin"))
+            .Select(u => u.UserId)
+            .ToListAsync();
+        foreach (var adminId in adminUsers)
+        {
+            await _notif.CreateAsync(adminId, shopId,
+                "Payment Received",
+                $"Payment of {req.Amount:C} via {method} has been recorded.",
+                "success",
+                $"/Admin/Payments/DetailsModal/{payment.PaymentId}");
+        }
 
         // Auto-sync to Xero
         try { await _xero.SyncPaymentAsync(payment.PaymentId, userId); } catch { /* logged in XeroService */ }

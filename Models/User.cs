@@ -15,6 +15,8 @@ public class User
     public bool EmailNotifications { get; set; } = true;
     public bool InAppNotifications { get; set; } = true;
     public bool IsActive { get; set; } = true;
+    public DateTime? LastLoginAt { get; set; }
+    public string? LastIpAddress { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 

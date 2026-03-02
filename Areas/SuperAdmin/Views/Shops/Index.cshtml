@@ -92,19 +92,21 @@
             <div class="table-container">
                 <table class="table" style="table-layout: fixed;">
                     <colgroup>
-                        <col style="width: 22%;" />
+                        <col style="width: 20%;" />
+                        <col style="width: 14%;" />
                         <col style="width: 16%;" />
-                        <col style="width: 18%;" />
-                        <col style="width: 8%;" />
-                        <col style="width: 8%;" />
-                        <col style="width: 10%;" />
-                        <col style="width: 18%;" />
+                        <col style="width: 12%;" />
+                        <col style="width: 7%;" />
+                        <col style="width: 7%;" />
+                        <col style="width: 9%;" />
+                        <col style="width: 15%;" />
                     </colgroup>
                     <thead>
                         <tr>
                             <th>Shop</th>
                             <th>Owner</th>
                             <th>Contact</th>
+                            <th>Plan</th>
                             <th class="text-center">Users</th>
                             <th class="text-center">Jobs</th>
                             <th class="text-center">Status</th>
@@ -119,7 +121,13 @@
                                     <div class="shp-cell">
                                         <div class="shp-avatar">@shop.Initials</div>
                                         <div class="shp-cell-info">
-                                            <span class="shp-name">@shop.Name</span>
+                                            <span class="shp-name">
+                                                @shop.Name
+                                                @if (shop.IsDefault)
+                                                {
+                                                    <span class="shp-default-badge" title="Protected default shop">Default</span>
+                                                }
+                                            </span>
                                             <span class="shp-date">Since @shop.CreatedAt.ToString("MMM yyyy")</span>
                                         </div>
                                     </div>
@@ -129,6 +137,12 @@
                                     <div class="shp-contact">
                                         <span class="shp-email">@shop.Email</span>
                                         <span class="shp-phone">@shop.Phone</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="shp-plan-info">
+                                        <span class="shp-plan-name">@shop.PlanName</span>
+                                        <span class="shp-plan-cycle">@shop.BillingCycle</span>
                                     </div>
                                 </td>
                                 <td class="text-center"><span class="shp-count">@shop.UserCount</span></td>
@@ -141,17 +155,20 @@
                                         <button type="button" class="btn-action" title="Edit" onclick="event.stopPropagation(); openAjaxModal('@Url.Action("EditModal", "Shops", new { area = "SuperAdmin", id = shop.Id })', 'Edit Shop')">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                         </button>
-                                        @if (shop.Status == "Active")
+                                        @if (!shop.IsDefault)
                                         {
-                                            <button type="button" class="btn-action shp-btn-warn" title="Suspend" onclick="event.stopPropagation(); if(confirm('Suspend @shop.Name?')) toggleShopStatus(@shop.Id)">
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="10" y1="15" x2="10" y2="9"></line><line x1="14" y1="15" x2="14" y2="9"></line></svg>
-                                            </button>
-                                        }
-                                        else
-                                        {
-                                            <button type="button" class="btn-action shp-btn-ok" title="Activate" onclick="event.stopPropagation(); if(confirm('Activate @shop.Name?')) toggleShopStatus(@shop.Id)">
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                                            </button>
+                                            @if (shop.Status == "Active")
+                                            {
+                                                <button type="button" class="btn-action shp-btn-warn" title="Suspend" onclick="event.stopPropagation(); if(confirm('Suspend @shop.Name?')) toggleShopStatus(@shop.Id)">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="10" y1="15" x2="10" y2="9"></line><line x1="14" y1="15" x2="14" y2="9"></line></svg>
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <button type="button" class="btn-action shp-btn-ok" title="Activate" onclick="event.stopPropagation(); if(confirm('Activate @shop.Name?')) toggleShopStatus(@shop.Id)">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                                </button>
+                                            }
                                         }
                                     </div>
                                 </td>
@@ -249,6 +266,10 @@
     .shp-btn-ok:hover { color: #10b981 !important; }
     .clickable-row { cursor: pointer; transition: background-color 0.15s ease; }
     .clickable-row:hover { background-color: #f0f7ff; }
+    .shp-default-badge { font-size: 9px; background: rgba(139,92,246,0.12); color: #7c3aed; padding: 1px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-left: 6px; vertical-align: middle; }
+    .shp-plan-info { display: flex; flex-direction: column; gap: 1px; }
+    .shp-plan-name { font-size: 13px; font-weight: 500; color: #374151; }
+    .shp-plan-cycle { font-size: 11px; color: #9ca3af; }
     @@media (max-width: 1200px) { .shp-stats { grid-template-columns: repeat(2, 1fr); } }
     @@media (max-width: 640px) {
         .shp-stats { grid-template-columns: 1fr; }

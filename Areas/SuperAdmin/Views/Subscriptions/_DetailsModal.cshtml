@@ -1,0 +1,129 @@
+@model SubscriptionDetailViewModel
+
+<div class="modal-detail-body">
+    <!-- Header -->
+    <div class="detail-header">
+        <div class="shp-cell">
+            <div class="shp-avatar-lg">@Model.ShopInitials</div>
+            <div>
+                <h3 class="detail-name">@Model.ShopName</h3>
+                <span class="status-indicator @Model.StatusClass">@Model.Status</span>
+                @if (Model.IsDefault)
+                {
+                    <span class="shp-default-badge">Default</span>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Plan Info -->
+    <div class="detail-section">
+        <h4 class="detail-section-title">Plan Details</h4>
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="detail-label">Plan</span>
+                <span class="detail-value fw-600">@Model.PlanName</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Billing Cycle</span>
+                <span class="detail-value">@Model.BillingCycle</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Price</span>
+                <span class="detail-value fw-600">@Model.Price.ToString("C")</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Start Date</span>
+                <span class="detail-value">@Model.StartDate.ToString("MMM dd, yyyy")</span>
+            </div>
+            @if (Model.EndDate.HasValue)
+            {
+                <div class="detail-item">
+                    <span class="detail-label">End Date</span>
+                    <span class="detail-value">@Model.EndDate.Value.ToString("MMM dd, yyyy")</span>
+                </div>
+            }
+            @if (Model.NextBillingDate.HasValue)
+            {
+                <div class="detail-item">
+                    <span class="detail-label">Next Billing</span>
+                    <span class="detail-value">@Model.NextBillingDate.Value.ToString("MMM dd, yyyy")</span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Limits -->
+    <div class="detail-section">
+        <h4 class="detail-section-title">Plan Limits</h4>
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="detail-label">Users</span>
+                <span class="detail-value">@Model.CurrentUsers / @(Model.MaxUsers == int.MaxValue ? "Unlimited" : Model.MaxUsers.ToString())</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Max Customers</span>
+                <span class="detail-value">@(Model.MaxCustomers == int.MaxValue ? "Unlimited" : Model.MaxCustomers.ToString())</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Jobs / Month</span>
+                <span class="detail-value">@(Model.MaxJobOrdersPerMonth == int.MaxValue ? "Unlimited" : Model.MaxJobOrdersPerMonth.ToString())</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment History -->
+    @if (Model.PaymentHistory.Any())
+    {
+        <div class="detail-section">
+            <h4 class="detail-section-title">Recent Payments</h4>
+            <div class="detail-payments">
+                @foreach (var pmt in Model.PaymentHistory.Take(5))
+                {
+                    <div class="detail-payment-row">
+                        <div>
+                            <span class="detail-ref">@pmt.ReferenceNumber</span>
+                            <span class="detail-date">@(pmt.PaidAt?.ToString("MMM dd, yyyy") ?? "Pending")</span>
+                        </div>
+                        <div class="detail-payment-right">
+                            <span class="fw-600">@pmt.Amount.ToString("C")</span>
+                            <span class="status-indicator @(pmt.Status == "Paid" ? "status-success" : pmt.Status == "Pending" ? "status-warning" : "status-danger")" style="font-size: 11px;">@pmt.Status</span>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div style="text-align: center; padding: 8px 0;">
+                <span class="detail-total-label">Total Paid:</span>
+                <span class="detail-total-value">@Model.TotalPaid.ToString("C")</span>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="modal-form-footer">
+    <button type="button" class="btn btn-ghost" onclick="closeAjaxModal()">Close</button>
+</div>
+
+<style>
+    .modal-detail-body { padding: 24px; }
+    .detail-header { margin-bottom: 20px; }
+    .shp-cell { display: flex; align-items: center; gap: 14px; }
+    .shp-avatar-lg { width: 48px; height: 48px; border-radius: 10px; background: rgba(59,130,246,0.1); color: #3b82f6; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+    .detail-name { font-size: 18px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
+    .shp-default-badge { font-size: 9px; background: rgba(139,92,246,0.12); color: #7c3aed; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase; margin-left: 6px; }
+    .detail-section { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #f1f5f9; }
+    .detail-section:last-child { border-bottom: none; margin-bottom: 0; }
+    .detail-section-title { font-size: 13px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .detail-item { display: flex; flex-direction: column; gap: 2px; }
+    .detail-label { font-size: 12px; color: #9ca3af; }
+    .detail-value { font-size: 14px; color: #1f2937; font-weight: 500; }
+    .fw-600 { font-weight: 600; }
+    .detail-payments { display: flex; flex-direction: column; gap: 8px; }
+    .detail-payment-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f9fafb; border-radius: 6px; }
+    .detail-ref { font-size: 13px; font-weight: 500; color: #374151; }
+    .detail-date { font-size: 11px; color: #9ca3af; margin-left: 8px; }
+    .detail-payment-right { display: flex; align-items: center; gap: 8px; }
+    .detail-total-label { font-size: 13px; color: #6b7280; }
+    .detail-total-value { font-size: 16px; font-weight: 700; color: #059669; }
+</style>

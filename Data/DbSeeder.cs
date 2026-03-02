@@ -13,6 +13,13 @@ public static class DbSeeder
     public static async Task SeedAsync(ApplicationDbContext db)
     {
         // Ensure the database exists (no-op if already created via SQL script)
+        // Use a generous timeout for cold-start scenarios (LocalDB spin-up)
+        db.Database.SetCommandTimeout(TimeSpan.FromSeconds(300));
+
+        // Warm up the LocalDB connection before any schema work
+        try { await db.Database.CanConnectAsync(); }
+        catch { /* will fail naturally below if truly unreachable */ }
+
         await db.Database.EnsureCreatedAsync();
 
         await SeedShopAsync(db);
@@ -30,6 +37,18 @@ public static class DbSeeder
         await SeedJobOrdersAsync(db);
         await SeedInvoicesAsync(db);
         await SeedPaymentsAsync(db);
+        await SeedAdjustmentTypeConfigsAsync(db);
+
+        // ── Transaction records that must survive DB re-creation ──────
+        await SeedAccountingEntriesAsync(db);
+        await SeedInvoiceDiscountsAsync(db);
+        await SeedAdjustmentsAsync(db);
+        await SeedPayMongoTxnsAsync(db);
+        await SeedNotificationsAsync(db);
+        await SeedAuditLogsAsync(db);
+
+        // ── Repair any inconsistent invoice balances ──────────────────
+        await RepairInvoiceBalancesAsync(db);
     }
 
     // ── Shop ─────────────────────────────────────────────────────────────
@@ -449,6 +468,10 @@ public static class DbSeeder
             // First 3 invoices are Paid, next 2 are Unpaid
             var isPaid = invoiceSeq <= 3;
 
+            // BIR VAT-inclusive computation (12%)
+            var vatableSales  = Math.Round(subtotal / 1.12m, 2);
+            var vatAmount     = subtotal - vatableSales;
+
             var invoice = new Invoice
             {
                 ShopId = shop.ShopId,
@@ -459,6 +482,10 @@ public static class DbSeeder
                 Subtotal = subtotal,
                 TotalAdjustments = 0,
                 TotalAmount = subtotal,
+                VatableSales = vatableSales,
+                VatExemptSales = 0,
+                ZeroRatedSales = 0,
+                VatAmount = vatAmount,
                 AmountPaid = isPaid ? subtotal : 0,
                 Balance = isPaid ? 0 : subtotal,
                 Status = isPaid ? InvoiceStatus.Paid : InvoiceStatus.Unpaid,
@@ -549,5 +576,698 @@ public static class DbSeeder
             });
             await db.SaveChangesAsync();
         }
+    }
+
+    // ── Adjustment Type Configs (default adjustment categories) ─────────
+    private static async Task SeedAdjustmentTypeConfigsAsync(ApplicationDbContext db)
+    {
+        if (await db.AdjustmentTypeConfigs.AnyAsync()) return;
+
+        var shop = await db.Shops.FirstAsync();
+
+        var configs = new List<AdjustmentTypeConfig>
+        {
+            new() { ShopId = shop.ShopId, Name = "Senior Citizen Discount", Category = "Credit", Percentage = 20.00m, IsActive = true, CreatedAt = DateTime.UtcNow },
+            new() { ShopId = shop.ShopId, Name = "PWD Discount",            Category = "Credit", Percentage = 20.00m, IsActive = true, CreatedAt = DateTime.UtcNow },
+            new() { ShopId = shop.ShopId, Name = "Loyalty Discount",        Category = "Credit", Percentage = 10.00m, IsActive = true, CreatedAt = DateTime.UtcNow },
+            new() { ShopId = shop.ShopId, Name = "Anniversary Discount",    Category = "Credit", Percentage = 15.00m, IsActive = true, CreatedAt = DateTime.UtcNow },
+            new() { ShopId = shop.ShopId, Name = "Regular Discount",        Category = "Credit", Percentage =  5.00m, IsActive = true, CreatedAt = DateTime.UtcNow },
+            new() { ShopId = shop.ShopId, Name = "Refund - Unit Damage",    Category = "Refund", Percentage = 100.00m, IsActive = true, CreatedAt = DateTime.UtcNow },
+            new() { ShopId = shop.ShopId, Name = "Refund - Misdiagnosis",   Category = "Refund", Percentage = 100.00m, IsActive = true, CreatedAt = DateTime.UtcNow },
+            new() { ShopId = shop.ShopId, Name = "Refund - Overcharge",     Category = "Refund", Percentage = 100.00m, IsActive = true, CreatedAt = DateTime.UtcNow },
+            new() { ShopId = shop.ShopId, Name = "Additional Charge",       Category = "Debit",  Percentage =   0.00m, IsActive = true, CreatedAt = DateTime.UtcNow }
+        };
+
+        db.AdjustmentTypeConfigs.AddRange(configs);
+        await db.SaveChangesAsync();
+    }
+
+    // ── Accounting Entries (double-entry journal) ───────────────────────
+    private static async Task SeedAccountingEntriesAsync(ApplicationDbContext db)
+    {
+        if (await db.AccountingEntries.AnyAsync()) return;
+
+        var shop = await db.Shops.FirstAsync();
+
+        // Generate DR Accounts Receivable / CR Revenue for every invoice
+        var invoices = await db.Invoices
+            .Where(i => i.ShopId == shop.ShopId)
+            .OrderBy(i => i.InvoiceId)
+            .ToListAsync();
+
+        foreach (var inv in invoices)
+        {
+            db.AccountingEntries.Add(new AccountingEntry
+            {
+                ShopId = shop.ShopId,
+                SourceType = "Invoice",
+                SourceInvoiceId = inv.InvoiceId,
+                EntryDate = inv.InvoiceDate,
+                AccountCode = "1200", // Accounts Receivable
+                Debit = inv.TotalAmount,
+                Credit = 0,
+                Memo = $"Invoice {inv.InvoiceNo} issued"
+            });
+            db.AccountingEntries.Add(new AccountingEntry
+            {
+                ShopId = shop.ShopId,
+                SourceType = "Invoice",
+                SourceInvoiceId = inv.InvoiceId,
+                EntryDate = inv.InvoiceDate,
+                AccountCode = "4000", // Revenue
+                Debit = 0,
+                Credit = inv.TotalAmount,
+                Memo = $"Revenue from invoice {inv.InvoiceNo}"
+            });
+        }
+
+        // Generate DR Cash / CR Accounts Receivable for every confirmed payment
+        var payments = await db.Payments
+            .Where(p => p.ShopId == shop.ShopId && p.Status == PaymentStatus.Confirmed)
+            .OrderBy(p => p.PaymentId)
+            .ToListAsync();
+
+        foreach (var pmt in payments)
+        {
+            db.AccountingEntries.Add(new AccountingEntry
+            {
+                ShopId = shop.ShopId,
+                SourceType = "Payment",
+                SourcePaymentId = pmt.PaymentId,
+                EntryDate = pmt.PaymentDate,
+                AccountCode = "1000", // Cash / Bank
+                Debit = pmt.Amount,
+                Credit = 0,
+                Memo = $"Payment {pmt.PaymentNo} received via {pmt.Method}"
+            });
+            db.AccountingEntries.Add(new AccountingEntry
+            {
+                ShopId = shop.ShopId,
+                SourceType = "Payment",
+                SourcePaymentId = pmt.PaymentId,
+                EntryDate = pmt.PaymentDate,
+                AccountCode = "1200", // Accounts Receivable
+                Debit = 0,
+                Credit = pmt.Amount,
+                Memo = $"Applied payment {pmt.PaymentNo}"
+            });
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    // ── Invoice Discounts (SC/PWD + promo samples) ──────────────────────
+    private static async Task SeedInvoiceDiscountsAsync(ApplicationDbContext db)
+    {
+        if (await db.Set<InvoiceDiscount>().AnyAsync()) return;
+
+        var shop = await db.Shops.FirstAsync();
+        var billingUser = await db.Users.FirstAsync(u => u.ShopId == shop.ShopId && u.UserName == "billing");
+
+        // Apply a Senior Citizen discount to the 4th invoice (first Unpaid)
+        var invoices = await db.Invoices
+            .Include(i => i.InvoiceLines)
+            .Where(i => i.ShopId == shop.ShopId)
+            .OrderBy(i => i.InvoiceId)
+            .ToListAsync();
+
+        if (invoices.Count < 5) return;
+
+        // 4th invoice: SC discount (20%, VAT-exempt)
+        var inv4 = invoices[3];
+        var subtotal4 = inv4.InvoiceLines.Sum(l => l.Qty * l.UnitPrice);
+        var scDiscountAmt = Math.Round(subtotal4 * 0.20m, 2);
+
+        db.Set<InvoiceDiscount>().Add(new InvoiceDiscount
+        {
+            InvoiceId = inv4.InvoiceId,
+            DiscountType = DiscountType.SeniorCitizen,
+            Label = "Senior Citizen (20%)",
+            Percentage = 20m,
+            Amount = scDiscountAmt,
+            IsVatExempt = true,
+            BeneficiaryIdNo = "SC-2024-001234",
+            BeneficiaryName = "Jose Dela Cruz Sr.",
+            AppliedByUserId = billingUser.UserId,
+            AppliedAt = inv4.CreatedAt.AddHours(1)
+        });
+
+        // Update invoice 4 with discount-adjusted totals (VAT-exempt per BIR)
+        inv4.DiscountAmount = scDiscountAmt;
+        var netAmount4 = subtotal4 - scDiscountAmt;
+        inv4.VatableSales = 0;           // SC discount → entire net is VAT-exempt
+        inv4.VatExemptSales = netAmount4;
+        inv4.VatAmount = 0;
+        inv4.TotalAmount = netAmount4;
+        inv4.Balance = Math.Max(0, netAmount4 - inv4.AmountPaid);
+
+        // 5th invoice: Promo discount (5%)
+        var inv5 = invoices[4];
+        var subtotal5 = inv5.InvoiceLines.Sum(l => l.Qty * l.UnitPrice);
+        var promoDiscount = Math.Round(subtotal5 * 0.05m, 2);
+
+        db.Set<InvoiceDiscount>().Add(new InvoiceDiscount
+        {
+            InvoiceId = inv5.InvoiceId,
+            DiscountType = DiscountType.Promo,
+            Label = "Loyalty Discount (5%)",
+            Percentage = 5m,
+            Amount = promoDiscount,
+            IsVatExempt = false,
+            AppliedByUserId = billingUser.UserId,
+            AppliedAt = inv5.CreatedAt.AddHours(1)
+        });
+
+        // Update invoice 5 with discount-adjusted totals (still VAT-inclusive)
+        var netAmount5 = subtotal5 - promoDiscount;
+        inv5.DiscountAmount = promoDiscount;
+        inv5.VatableSales = Math.Round(netAmount5 / 1.12m, 2);
+        inv5.VatAmount = netAmount5 - inv5.VatableSales;
+        inv5.VatExemptSales = 0;
+        inv5.TotalAmount = netAmount5;
+        inv5.Balance = Math.Max(0, netAmount5 - inv5.AmountPaid);
+
+        await db.SaveChangesAsync();
+    }
+
+    // ── Credit/Debit Adjustments ────────────────────────────────────────
+    private static async Task SeedAdjustmentsAsync(ApplicationDbContext db)
+    {
+        if (await db.CreditDebitAdjustments.AnyAsync()) return;
+
+        var shop = await db.Shops.FirstAsync();
+        var billingUser = await db.Users.FirstAsync(u => u.ShopId == shop.ShopId && u.UserName == "billing");
+        var adminUser = await db.Users.FirstAsync(u => u.ShopId == shop.ShopId && u.UserName == "admin");
+
+        var invoices = await db.Invoices
+            .Where(i => i.ShopId == shop.ShopId)
+            .OrderBy(i => i.InvoiceId)
+            .ToListAsync();
+
+        if (invoices.Count < 5) return;
+
+        // Adjustment 1: Approved credit on invoice 1 (overcharge correction)
+        var adj1 = new CreditDebitAdjustment
+        {
+            ShopId = shop.ShopId,
+            InvoiceId = invoices[0].InvoiceId,
+            CreatedByUserId = billingUser.UserId,
+            ReviewedByUserId = adminUser.UserId,
+            AdjustmentType = AdjustmentType.Credit,
+            Amount = 100m,
+            Reason = "Overcharge correction — customer was quoted ₱100 less",
+            Status = AdjustmentStatus.Approved,
+            CreatedAt = invoices[0].CreatedAt.AddDays(1),
+            ReviewedAt = invoices[0].CreatedAt.AddDays(1).AddHours(2)
+        };
+        db.CreditDebitAdjustments.Add(adj1);
+
+        // Adjustment 2: Approved debit on invoice 2 (additional charge for rush service)
+        var adj2 = new CreditDebitAdjustment
+        {
+            ShopId = shop.ShopId,
+            InvoiceId = invoices[1].InvoiceId,
+            CreatedByUserId = billingUser.UserId,
+            ReviewedByUserId = adminUser.UserId,
+            AdjustmentType = AdjustmentType.Debit,
+            Amount = 200m,
+            Reason = "Rush service surcharge — agreed with customer",
+            Status = AdjustmentStatus.Approved,
+            CreatedAt = invoices[1].CreatedAt.AddDays(1),
+            ReviewedAt = invoices[1].CreatedAt.AddDays(1).AddHours(3)
+        };
+        db.CreditDebitAdjustments.Add(adj2);
+
+        // Adjustment 3: Pending refund request on invoice 3
+        db.CreditDebitAdjustments.Add(new CreditDebitAdjustment
+        {
+            ShopId = shop.ShopId,
+            InvoiceId = invoices[2].InvoiceId,
+            CreatedByUserId = billingUser.UserId,
+            AdjustmentType = AdjustmentType.Refund,
+            Amount = 500m,
+            Reason = "Customer requesting partial refund for virus removal — issue re-occurred",
+            Status = AdjustmentStatus.Pending,
+            CreatedAt = DateTime.UtcNow.AddDays(-5)
+        });
+
+        // Adjustment 4: Rejected credit on invoice 4
+        db.CreditDebitAdjustments.Add(new CreditDebitAdjustment
+        {
+            ShopId = shop.ShopId,
+            InvoiceId = invoices[3].InvoiceId,
+            CreatedByUserId = billingUser.UserId,
+            ReviewedByUserId = adminUser.UserId,
+            AdjustmentType = AdjustmentType.Credit,
+            Amount = 300m,
+            Reason = "Customer claims parts were overpriced",
+            Status = AdjustmentStatus.Rejected,
+            CreatedAt = invoices[3].CreatedAt.AddDays(2),
+            ReviewedAt = invoices[3].CreatedAt.AddDays(3)
+        });
+
+        await db.SaveChangesAsync();
+
+        // Update totals for invoices with APPROVED adjustments
+        // Invoice 1: Credit ₱100 → reduces total
+        invoices[0].TotalAdjustments = -100m;
+        invoices[0].TotalAmount = invoices[0].Subtotal - invoices[0].DiscountAmount + invoices[0].TotalAdjustments;
+        invoices[0].Balance = Math.Max(0, invoices[0].TotalAmount - invoices[0].AmountPaid);
+
+        // Invoice 2: Debit ₱200 → increases total
+        invoices[1].TotalAdjustments = 200m;
+        invoices[1].TotalAmount = invoices[1].Subtotal - invoices[1].DiscountAmount + invoices[1].TotalAdjustments;
+        invoices[1].Balance = Math.Max(0, invoices[1].TotalAmount - invoices[1].AmountPaid);
+
+        await db.SaveChangesAsync();
+
+        // Generate accounting entries for approved adjustments
+        var approvedAdjs = await db.CreditDebitAdjustments
+            .Include(a => a.Invoice)
+            .Where(a => a.ShopId == shop.ShopId && a.Status == AdjustmentStatus.Approved)
+            .ToListAsync();
+
+        foreach (var adj in approvedAdjs)
+        {
+            if (adj.Invoice is null) continue;
+            var invoiceNo = adj.Invoice.InvoiceNo;
+
+            if (adj.AdjustmentType == AdjustmentType.Credit || adj.AdjustmentType == AdjustmentType.Refund)
+            {
+                var acctCode = adj.AdjustmentType == AdjustmentType.Refund ? "5100" : "5200";
+                db.AccountingEntries.Add(new AccountingEntry
+                {
+                    ShopId = shop.ShopId,
+                    SourceType = "Adjustment",
+                    SourceInvoiceId = adj.InvoiceId,
+                    EntryDate = adj.ReviewedAt ?? adj.CreatedAt,
+                    AccountCode = acctCode,
+                    Debit = adj.Amount,
+                    Credit = 0,
+                    Memo = $"{adj.AdjustmentType} on {invoiceNo} (adj#{adj.AdjustmentId})"
+                });
+                db.AccountingEntries.Add(new AccountingEntry
+                {
+                    ShopId = shop.ShopId,
+                    SourceType = "Adjustment",
+                    SourceInvoiceId = adj.InvoiceId,
+                    EntryDate = adj.ReviewedAt ?? adj.CreatedAt,
+                    AccountCode = "1200",
+                    Debit = 0,
+                    Credit = adj.Amount,
+                    Memo = $"{adj.AdjustmentType} applied to {invoiceNo} (adj#{adj.AdjustmentId})"
+                });
+            }
+            else // Debit
+            {
+                db.AccountingEntries.Add(new AccountingEntry
+                {
+                    ShopId = shop.ShopId,
+                    SourceType = "Adjustment",
+                    SourceInvoiceId = adj.InvoiceId,
+                    EntryDate = adj.ReviewedAt ?? adj.CreatedAt,
+                    AccountCode = "1200",
+                    Debit = adj.Amount,
+                    Credit = 0,
+                    Memo = $"Debit adjustment on {invoiceNo} (adj#{adj.AdjustmentId})"
+                });
+                db.AccountingEntries.Add(new AccountingEntry
+                {
+                    ShopId = shop.ShopId,
+                    SourceType = "Adjustment",
+                    SourceInvoiceId = adj.InvoiceId,
+                    EntryDate = adj.ReviewedAt ?? adj.CreatedAt,
+                    AccountCode = "5200",
+                    Debit = 0,
+                    Credit = adj.Amount,
+                    Memo = $"Debit adjustment on {invoiceNo} (adj#{adj.AdjustmentId})"
+                });
+            }
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    // ── PayMongo Transactions ───────────────────────────────────────────
+    private static async Task SeedPayMongoTxnsAsync(ApplicationDbContext db)
+    {
+        if (await db.PayMongoTxns.AnyAsync()) return;
+
+        var shop = await db.Shops.FirstAsync();
+        var billingUser = await db.Users.FirstAsync(u => u.ShopId == shop.ShopId && u.UserName == "billing");
+
+        // Get the Card payment (3rd payment) to link as a PayMongo transaction
+        var cardPayment = await db.Payments
+            .Where(p => p.ShopId == shop.ShopId && p.Method == PaymentMethod.Card && p.Status == PaymentStatus.Confirmed)
+            .FirstOrDefaultAsync();
+
+        var unpaidInvoices = await db.Invoices
+            .Where(i => i.ShopId == shop.ShopId && i.Status != InvoiceStatus.Paid && i.Status != InvoiceStatus.Void)
+            .OrderBy(i => i.InvoiceId)
+            .ToListAsync();
+
+        // PayMongo Txn 1: Completed transaction linked to card payment
+        if (cardPayment != null)
+        {
+            var allocation = await db.PaymentAllocations
+                .FirstOrDefaultAsync(pa => pa.PaymentId == cardPayment.PaymentId);
+
+            if (allocation != null)
+            {
+                db.PayMongoTxns.Add(new PayMongoTxn
+                {
+                    PaymentId = cardPayment.PaymentId,
+                    ShopId = shop.ShopId,
+                    InvoiceId = allocation.InvoiceId,
+                    InitiatedByUserId = billingUser.UserId,
+                    Amount = cardPayment.Amount,
+                    PayMongoPaymentIntentId = "pi_seed_completed_001",
+                    PayMongoStatus = "paid",
+                    PayMongoPaymentMethod = "card",
+                    ResourceType = "checkout_session",
+                    CheckoutUrl = "https://checkout.paymongo.com/cs_seed_001",
+                    RawResponse = "{\"data\":{\"id\":\"cs_seed_001\",\"attributes\":{\"status\":\"paid\",\"payment_intent\":{\"id\":\"pi_seed_completed_001\"}}}}",
+                    CreatedAt = cardPayment.PaymentDate.AddHours(-1),
+                    UpdatedAt = cardPayment.PaymentDate
+                });
+            }
+        }
+
+        // PayMongo Txn 2: Expired checkout session (customer didn't complete)
+        if (unpaidInvoices.Count > 0)
+        {
+            db.PayMongoTxns.Add(new PayMongoTxn
+            {
+                PaymentId = null,  // no payment — session expired
+                ShopId = shop.ShopId,
+                InvoiceId = unpaidInvoices[0].InvoiceId,
+                InitiatedByUserId = billingUser.UserId,
+                Amount = unpaidInvoices[0].TotalAmount,
+                PayMongoPaymentIntentId = "pi_seed_expired_002",
+                PayMongoStatus = "expired",
+                PayMongoPaymentMethod = null,
+                ResourceType = "checkout_session",
+                CheckoutUrl = "https://checkout.paymongo.com/cs_seed_002",
+                RawResponse = "{\"data\":{\"id\":\"cs_seed_002\",\"attributes\":{\"status\":\"expired\"}}}",
+                CreatedAt = DateTime.UtcNow.AddDays(-10),
+                UpdatedAt = DateTime.UtcNow.AddDays(-9)
+            });
+        }
+
+        // PayMongo Txn 3: Pending payment link (awaiting customer action)
+        if (unpaidInvoices.Count > 1)
+        {
+            db.PayMongoTxns.Add(new PayMongoTxn
+            {
+                PaymentId = null,
+                ShopId = shop.ShopId,
+                InvoiceId = unpaidInvoices[1].InvoiceId,
+                InitiatedByUserId = billingUser.UserId,
+                Amount = unpaidInvoices[1].TotalAmount,
+                PayMongoPaymentIntentId = "link_seed_pending_003",
+                PayMongoStatus = "unpaid",
+                PayMongoPaymentMethod = null,
+                ResourceType = "link",
+                CheckoutUrl = "https://pm.link/bytebill-seed/test/seed003",
+                RawResponse = "{\"data\":{\"id\":\"link_seed_003\",\"attributes\":{\"status\":\"unpaid\",\"checkout_url\":\"https://pm.link/bytebill-seed/test/seed003\"}}}",
+                CreatedAt = DateTime.UtcNow.AddDays(-2)
+            });
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    // ── Notifications ───────────────────────────────────────────────────
+    private static async Task SeedNotificationsAsync(ApplicationDbContext db)
+    {
+        if (await db.Notifications.AnyAsync()) return;
+
+        var shop = await db.Shops.FirstAsync();
+        var adminUser = await db.Users.FirstAsync(u => u.ShopId == shop.ShopId && u.UserName == "admin");
+        var billingUser = await db.Users.FirstAsync(u => u.ShopId == shop.ShopId && u.UserName == "billing");
+        var techUser = await db.Users.FirstAsync(u => u.ShopId == shop.ShopId && u.UserName == "technician");
+
+        var invoices = await db.Invoices.Where(i => i.ShopId == shop.ShopId).OrderBy(i => i.InvoiceId).ToListAsync();
+        var jobOrders = await db.JobOrders.Where(j => j.ShopId == shop.ShopId).OrderBy(j => j.JobOrderId).ToListAsync();
+
+        var notifications = new List<Notification>();
+
+        // Invoice creation notifications → admin
+        foreach (var inv in invoices.Take(3))
+        {
+            notifications.Add(new Notification
+            {
+                UserId = adminUser.UserId,
+                ShopId = shop.ShopId,
+                Title = "Invoice Created",
+                Message = $"Invoice {inv.InvoiceNo} for {inv.TotalAmount:C} has been created.",
+                Type = "info",
+                Url = $"/Admin/Invoices/DetailsModal/{inv.InvoiceId}",
+                IsRead = true,
+                CreatedAt = inv.CreatedAt
+            });
+        }
+
+        // Payment received notifications → admin
+        var payments = await db.Payments.Where(p => p.ShopId == shop.ShopId).OrderBy(p => p.PaymentId).ToListAsync();
+        foreach (var pmt in payments)
+        {
+            notifications.Add(new Notification
+            {
+                UserId = adminUser.UserId,
+                ShopId = shop.ShopId,
+                Title = "Payment Received",
+                Message = $"Payment {pmt.PaymentNo} of {pmt.Amount:C} received via {pmt.Method}.",
+                Type = "info",
+                Url = $"/Admin/Payments/Receipt/{pmt.PaymentId}",
+                IsRead = true,
+                CreatedAt = pmt.PaymentDate
+            });
+        }
+
+        // Job order status change notifications → technician
+        foreach (var jo in jobOrders.Where(j => j.Status == JobOrderStatus.Completed).Take(3))
+        {
+            notifications.Add(new Notification
+            {
+                UserId = techUser.UserId,
+                ShopId = shop.ShopId,
+                Title = "Job Order Completed",
+                Message = $"Job order {jo.JobOrderNo} has been marked as Completed.",
+                Type = "info",
+                Url = $"/Technician/JobOrders/{jo.JobOrderId}",
+                IsRead = true,
+                CreatedAt = jo.UpdatedAt ?? jo.CreatedAt.AddDays(2)
+            });
+        }
+
+        // Adjustment pending notification → admin (unread)
+        var pendingAdj = await db.CreditDebitAdjustments
+            .FirstOrDefaultAsync(a => a.ShopId == shop.ShopId && a.Status == AdjustmentStatus.Pending);
+        if (pendingAdj != null)
+        {
+            notifications.Add(new Notification
+            {
+                UserId = adminUser.UserId,
+                ShopId = shop.ShopId,
+                Title = "Adjustment Pending Approval",
+                Message = $"A {pendingAdj.AdjustmentType} adjustment of {pendingAdj.Amount:C} is awaiting your review.",
+                Type = "adjustment",
+                Url = $"/Admin/Invoices/DetailsModal/{pendingAdj.InvoiceId}",
+                IsRead = false,
+                CreatedAt = pendingAdj.CreatedAt
+            });
+        }
+
+        // Low stock alert → admin (unread)
+        var lowStockItems = await db.InventoryItems
+            .Where(i => i.ShopId == shop.ShopId && i.QtyOnHand <= i.ReorderLevel && i.IsActive)
+            .Take(3)
+            .ToListAsync();
+        foreach (var item in lowStockItems)
+        {
+            notifications.Add(new Notification
+            {
+                UserId = adminUser.UserId,
+                ShopId = shop.ShopId,
+                Title = "Low Stock Alert",
+                Message = $"{item.ItemName} is low on stock ({item.QtyOnHand} remaining, reorder level: {item.ReorderLevel}).",
+                Type = "warning",
+                Url = "/Admin/Inventory",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow.AddDays(-1)
+            });
+        }
+
+        // New job order notification → billing
+        foreach (var jo in jobOrders.Where(j => j.Status == JobOrderStatus.Pending).Take(2))
+        {
+            notifications.Add(new Notification
+            {
+                UserId = billingUser.UserId,
+                ShopId = shop.ShopId,
+                Title = "New Job Order",
+                Message = $"Job order {jo.JobOrderNo} has been created and is pending assignment.",
+                Type = "info",
+                Url = $"/Billing/JobOrders/{jo.JobOrderId}",
+                IsRead = false,
+                CreatedAt = jo.CreatedAt
+            });
+        }
+
+        db.Notifications.AddRange(notifications);
+        await db.SaveChangesAsync();
+    }
+
+    // ── Audit Logs (transaction history trail) ──────────────────────────
+    private static async Task SeedAuditLogsAsync(ApplicationDbContext db)
+    {
+        if (await db.AuditLogs.AnyAsync()) return;
+
+        var shop = await db.Shops.FirstAsync();
+        var billingUser = await db.Users.FirstAsync(u => u.ShopId == shop.ShopId && u.UserName == "billing");
+        var adminUser = await db.Users.FirstAsync(u => u.ShopId == shop.ShopId && u.UserName == "admin");
+        var techUser = await db.Users.FirstAsync(u => u.ShopId == shop.ShopId && u.UserName == "technician");
+
+        var jobOrders = await db.JobOrders.Where(j => j.ShopId == shop.ShopId).OrderBy(j => j.JobOrderId).ToListAsync();
+        var invoices = await db.Invoices.Where(i => i.ShopId == shop.ShopId).OrderBy(i => i.InvoiceId).ToListAsync();
+        var payments = await db.Payments.Where(p => p.ShopId == shop.ShopId).OrderBy(p => p.PaymentId).ToListAsync();
+
+        var logs = new List<AuditLog>();
+
+        // Job order creation logs
+        foreach (var jo in jobOrders)
+        {
+            logs.Add(new AuditLog
+            {
+                ShopId = shop.ShopId,
+                UserId = billingUser.UserId,
+                Action = "Create",
+                EntityName = "JobOrder",
+                EntityId = jo.JobOrderId,
+                Details = $"Created job order {jo.JobOrderNo} for customer #{jo.CustomerId}. Problem: {jo.ProblemReported}",
+                IpAddress = "127.0.0.1",
+                CreatedAt = jo.CreatedAt
+            });
+        }
+
+        // Job order status change logs (completed ones)
+        foreach (var jo in jobOrders.Where(j => j.Status == JobOrderStatus.Completed))
+        {
+            logs.Add(new AuditLog
+            {
+                ShopId = shop.ShopId,
+                UserId = techUser.UserId,
+                Action = "StatusChange",
+                EntityName = "JobOrder",
+                EntityId = jo.JobOrderId,
+                Details = $"Job order {jo.JobOrderNo} status changed from Pending to Completed.",
+                IpAddress = "127.0.0.1",
+                OldValues = "{\"Status\":\"Pending\"}",
+                NewValues = "{\"Status\":\"Completed\"}",
+                CreatedAt = jo.CreatedAt.AddDays(2)
+            });
+        }
+
+        // Invoice creation logs
+        foreach (var inv in invoices)
+        {
+            logs.Add(new AuditLog
+            {
+                ShopId = shop.ShopId,
+                UserId = billingUser.UserId,
+                Action = "Create",
+                EntityName = "Invoice",
+                EntityId = inv.InvoiceId,
+                Details = $"Created invoice {inv.InvoiceNo}. Total: {inv.TotalAmount:C}.",
+                IpAddress = "127.0.0.1",
+                CreatedAt = inv.CreatedAt
+            });
+        }
+
+        // Payment logs
+        foreach (var pmt in payments)
+        {
+            logs.Add(new AuditLog
+            {
+                ShopId = shop.ShopId,
+                UserId = billingUser.UserId,
+                Action = "Create",
+                EntityName = "Payment",
+                EntityId = pmt.PaymentId,
+                Details = $"Recorded payment {pmt.PaymentNo} of {pmt.Amount:C} via {pmt.Method}.",
+                IpAddress = "127.0.0.1",
+                CreatedAt = pmt.PaymentDate
+            });
+        }
+
+        // Adjustment logs
+        var adjustments = await db.CreditDebitAdjustments
+            .Include(a => a.Invoice)
+            .Where(a => a.ShopId == shop.ShopId)
+            .ToListAsync();
+
+        foreach (var adj in adjustments)
+        {
+            logs.Add(new AuditLog
+            {
+                ShopId = shop.ShopId,
+                UserId = adj.CreatedByUserId,
+                Action = "Adjustment",
+                EntityName = "Invoice",
+                EntityId = adj.InvoiceId,
+                Details = $"{adj.AdjustmentType} adjustment of {adj.Amount:C} on {adj.Invoice?.InvoiceNo ?? ""}. Reason: {adj.Reason}. Status: {adj.Status}.",
+                IpAddress = "127.0.0.1",
+                CreatedAt = adj.CreatedAt
+            });
+        }
+
+        db.AuditLogs.AddRange(logs);
+        await db.SaveChangesAsync();
+    }
+
+    // ── Repair Invoice Balances ──────────────────────────────────────────
+    // Recalculates Balance & Status for every invoice based on confirmed
+    // PaymentAllocations to fix any inconsistencies from prior seeding or
+    // payment processing bugs.
+    private static async Task RepairInvoiceBalancesAsync(ApplicationDbContext db)
+    {
+        var invoices = await db.Invoices.ToListAsync();
+        if (invoices.Count == 0) return;
+
+        var paidLookup = await db.PaymentAllocations
+            .Where(pa => pa.Payment!.Status == PaymentStatus.Confirmed)
+            .GroupBy(pa => pa.InvoiceId)
+            .Select(g => new { InvoiceId = g.Key, TotalPaid = g.Sum(pa => pa.AmountApplied) })
+            .ToDictionaryAsync(x => x.InvoiceId, x => x.TotalPaid);
+
+        bool changed = false;
+
+        foreach (var inv in invoices)
+        {
+            if (inv.Status == InvoiceStatus.Void) continue;
+
+            var amountPaid = paidLookup.GetValueOrDefault(inv.InvoiceId, 0m);
+            var balance = Math.Max(0, inv.TotalAmount - amountPaid);
+
+            InvoiceStatus correctStatus;
+            if (balance <= 0)
+                correctStatus = InvoiceStatus.Paid;
+            else if (amountPaid > 0)
+                correctStatus = InvoiceStatus.Partial;
+            else
+                correctStatus = InvoiceStatus.Unpaid;
+
+            if (inv.AmountPaid != amountPaid || inv.Balance != balance || inv.Status != correctStatus)
+            {
+                inv.AmountPaid = amountPaid;
+                inv.Balance = balance;
+                inv.Status = correctStatus;
+                changed = true;
+            }
+        }
+
+        if (changed)
+            await db.SaveChangesAsync();
     }
 }

@@ -95,14 +95,26 @@
                         <td colspan="3" class="text-right" style="color: #6b7280;">Subtotal</td>
                         <td class="text-right">@Model.Subtotal.ToString("C")</td>
                     </tr>
-                    @if (Model.TaxAmount > 0)
+                    @if (Model.VatAmount > 0)
                     {
                         <tr>
-                            <td colspan="3" class="text-right" style="color: #6b7280;">Tax (@Model.TaxRate%)</td>
-                            <td class="text-right">@Model.TaxAmount.ToString("C")</td>
+                            <td colspan="3" class="text-right" style="color: #6b7280;">VAT (12%)</td>
+                            <td class="text-right">@Model.VatAmount.ToString("C")</td>
                         </tr>
                     }
-                    @if (Model.DiscountAmount > 0)
+                    @if (Model.Discounts.Any())
+                    {
+                        @foreach (var disc in Model.Discounts)
+                        {
+                            <tr>
+                                <td colspan="3" class="text-right" style="color: #dc2626; font-size: 12px;">
+                                    @disc.Label (@disc.Percentage%@(disc.IsVatExempt ? ", VAT-Exempt" : ""))
+                                </td>
+                                <td class="text-right text-danger" style="font-size: 12px;">-@disc.Amount.ToString("C")</td>
+                            </tr>
+                        }
+                    }
+                    else if (Model.DiscountAmount > 0)
                     {
                         <tr>
                             <td colspan="3" class="text-right" style="color: #6b7280;">Discount</td>

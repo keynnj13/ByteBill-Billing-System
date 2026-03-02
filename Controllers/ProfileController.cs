@@ -1,9 +1,13 @@
 using ByteBill_BS.Data;
 using ByteBill_BS.Extensions;
+using ByteBill_BS.Models.Enums;
 using ByteBill_BS.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using System.Text.Json;
 
 namespace ByteBill_BS.Controllers;
@@ -59,7 +63,9 @@ public class ProfileController : Controller
     {
         var userId = User.GetUserId();
         var shopId = User.GetShopId();
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _db.Users
+            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(u => u.UserId == userId);
 
         if (user is null) return RedirectToAction("Login", "Auth");
 
@@ -108,7 +114,57 @@ public class ProfileController : Controller
         await _audit.LogAsync(shopId, userId, "Update", "User", userId,
             "User updated their profile.", ip, oldValues, newValues);
 
+        // Re-sign in so navbar reflects updated name/initials
+        await RefreshAuthCookieAsync(user);
+
         TempData["SuccessMessage"] = "Profile updated successfully.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    // ── Change Password ────────────────────────────────────────────────
+    [HttpPost("/Profile/ChangePassword")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequest model)
+    {
+        var userId = User.GetUserId();
+        var shopId = User.GetShopId();
+        var user = await _db.Users.FindAsync(userId);
+
+        if (user is null) return RedirectToAction("Login", "Auth");
+
+        if (string.IsNullOrWhiteSpace(model.CurrentPassword) || string.IsNullOrWhiteSpace(model.NewPassword))
+        {
+            TempData["ErrorMessage"] = "Both current and new password are required.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (!BCrypt.Net.BCrypt.Verify(model.CurrentPassword, user.PasswordHash))
+        {
+            TempData["ErrorMessage"] = "Current password is incorrect.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (model.NewPassword.Length < 6)
+        {
+            TempData["ErrorMessage"] = "New password must be at least 6 characters.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (model.NewPassword != model.ConfirmNewPassword)
+        {
+            TempData["ErrorMessage"] = "New password and confirmation do not match.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        await _audit.LogAsync(shopId, userId, "Update", "User", userId,
+            "User changed their password.", ip);
+
+        TempData["SuccessMessage"] = "Password changed successfully.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -163,6 +219,33 @@ public class ProfileController : Controller
         TempData["SuccessMessage"] = "Preferences saved successfully.";
         return RedirectToAction(nameof(Preferences));
     }
+
+    // ── Helper: re-issue auth cookie with updated claims ───────────────
+    private async Task RefreshAuthCookieAsync(Models.User user)
+    {
+        var roleName = user.UserRoles.FirstOrDefault()?.Role?.RoleName ?? "Billing";
+        if (!Enum.TryParse<UserRole>(roleName, out var userRole))
+            userRole = UserRole.Billing;
+
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+            new Claim(ClaimTypes.Name, user.FullName),
+            new Claim("UserId", user.UserId.ToString()),
+            new Claim("FullName", user.FullName),
+            new Claim("FirstName", user.FirstName),
+            new Claim("LastName", user.LastName),
+            new Claim("Initials", user.Initials),
+            new Claim("Role", userRole.ToString()),
+            new Claim("ShopId", user.ShopId.ToString())
+        };
+
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+
+        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal,
+            new AuthenticationProperties { IsPersistent = false, ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8) });
+    }
 }
 
 // ── View Models ────────────────────────────────────────────────────────
@@ -202,4 +285,11 @@ public class PreferencesUpdateRequest
     public string ThemePreference { get; set; } = "light";
     public bool EmailNotifications { get; set; }
     public bool InAppNotifications { get; set; }
+}
+
+public class ChangePasswordRequest
+{
+    public string CurrentPassword { get; set; } = string.Empty;
+    public string NewPassword { get; set; } = string.Empty;
+    public string ConfirmNewPassword { get; set; } = string.Empty;
 }

@@ -412,6 +412,32 @@ public class JobOrderService : IJobOrderService
         await _audit.LogAsync(shopId, userId, "StatusChange", "JobOrder", jobOrderId,
             $"Status changed from '{oldStatus}' to '{newStatus}'. {req.Remarks}", ClientIp);
 
+        // Notify assigned technician about status change (if not the one who changed it)
+        if (jobOrder.AssignedTechUserId.HasValue && jobOrder.AssignedTechUserId.Value != userId)
+        {
+            await _notif.CreateAsync(
+                jobOrder.AssignedTechUserId.Value, shopId,
+                "Job Order Updated",
+                $"{jobOrder.JobOrderNo} status changed to {newStatus}.",
+                "info",
+                $"/Technician/JobOrders/Details/{jobOrderId}");
+        }
+
+        // Notify admins about status change
+        var adminIds = await _db.Users
+            .Where(u => u.ShopId == shopId && u.IsActive && u.UserId != userId
+                && u.UserRoles.Any(ur => ur.Role!.RoleName == "Admin" || ur.Role!.RoleName == "SuperAdmin"))
+            .Select(u => u.UserId)
+            .ToListAsync();
+        foreach (var adminId in adminIds)
+        {
+            await _notif.CreateAsync(adminId, shopId,
+                "Job Order Status Changed",
+                $"{jobOrder.JobOrderNo} changed from {oldStatus} to {newStatus}.",
+                "info",
+                $"/Admin/JobOrders/DetailsModal/{jobOrderId}");
+        }
+
         // ── Auto-generate invoice when job is marked Completed ──────────
         if (newStatus == JobOrderStatus.Completed && jobOrder.Invoice is null)
         {

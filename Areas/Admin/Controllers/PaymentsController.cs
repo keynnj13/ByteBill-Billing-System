@@ -347,6 +347,21 @@ public class PaymentsController : Controller
                         t.Span($"\u20B1{vm.Amount:N2}").Bold().FontSize(18).FontColor(Colors.Green.Darken3);
                     });
 
+                    // Line Items
+                    if (vm.LineItems.Count > 0)
+                    {
+                        col.Item().PaddingVertical(4).Text("Items").Bold().FontSize(9).FontColor(Colors.Grey.Darken1);
+                        foreach (var li in vm.LineItems)
+                        {
+                            col.Item().Row(r =>
+                            {
+                                r.RelativeItem().Text($"{li.Description} x{li.Quantity}").FontSize(9);
+                                r.RelativeItem().AlignRight().Text($"\u20B1{li.Total:N2}").FontSize(9).Bold();
+                            });
+                        }
+                        col.Item().PaddingVertical(4).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
+                    }
+
                     if (vm.Allocations.Count > 0)
                     {
                         col.Item().PaddingVertical(4).Text("Applied to Invoices").Bold().FontSize(9).FontColor(Colors.Grey.Darken1);
@@ -366,13 +381,6 @@ public class PaymentsController : Controller
 
                         col.Item().Row(r => { r.RelativeItem().Text("Subtotal").FontSize(9).FontColor(Colors.Grey.Medium); r.RelativeItem().AlignRight().Text($"\u20B1{vm.InvoiceSubtotal:N2}").FontSize(9); });
 
-                        foreach (var disc in vm.Discounts)
-                        {
-                            col.Item().Row(r => { r.RelativeItem().Text(disc.Label).FontSize(9).FontColor(Colors.Red.Darken1); r.RelativeItem().AlignRight().Text($"-\u20B1{disc.Amount:N2}").FontSize(9).FontColor(Colors.Red.Darken1); });
-                            if (!string.IsNullOrEmpty(disc.BeneficiaryName))
-                                col.Item().Text($"  {disc.BeneficiaryName}{(!string.IsNullOrEmpty(disc.BeneficiaryIdNo) ? $" (ID: {disc.BeneficiaryIdNo})" : "")}").FontSize(7).FontColor(Colors.Grey.Medium);
-                        }
-
                         if (vm.IsVatRegistered)
                         {
                             if (vm.VatableSales > 0)
@@ -382,6 +390,13 @@ public class PaymentsController : Controller
                             if (vm.ZeroRatedSales > 0)
                                 col.Item().Row(r => { r.RelativeItem().Text("Zero-Rated Sales").FontSize(9).FontColor(Colors.Grey.Medium); r.RelativeItem().AlignRight().Text($"\u20B1{vm.ZeroRatedSales:N2}").FontSize(9); });
                             col.Item().Row(r => { r.RelativeItem().Text("VAT (12%)").FontSize(9).FontColor(Colors.Grey.Medium); r.RelativeItem().AlignRight().Text($"\u20B1{vm.VatAmount:N2}").FontSize(9); });
+                        }
+
+                        foreach (var disc in vm.Discounts)
+                        {
+                            col.Item().Row(r => { r.RelativeItem().Text(disc.Label).FontSize(9).FontColor(Colors.Red.Darken1); r.RelativeItem().AlignRight().Text($"-\u20B1{disc.Amount:N2}").FontSize(9).FontColor(Colors.Red.Darken1); });
+                            if (!string.IsNullOrEmpty(disc.BeneficiaryName))
+                                col.Item().Text($"  {disc.BeneficiaryName}{(!string.IsNullOrEmpty(disc.BeneficiaryIdNo) ? $" (ID: {disc.BeneficiaryIdNo})" : "")}").FontSize(7).FontColor(Colors.Grey.Medium);
                         }
 
                         col.Item().PaddingTop(4).Row(r => { r.RelativeItem().Text("Total").FontSize(9).Bold(); r.RelativeItem().AlignRight().Text($"\u20B1{vm.InvoiceTotal:N2}").FontSize(9).Bold(); });
@@ -412,12 +427,14 @@ public class PaymentsController : Controller
         var firstAlloc = dto.Allocations.FirstOrDefault();
         decimal invSubtotal = 0, invDiscount = 0, vatableSales = 0, vatExemptSales = 0, zeroRatedSales = 0, vatAmount = 0, invTotal = 0;
         var discounts = new List<ReceiptDiscountItem>();
+        var lineItems = new List<ReceiptLineItem>();
         var shop = await _db.Shops.AsNoTracking().FirstOrDefaultAsync(s => s.ShopId == shopId);
 
         if (firstAlloc != null)
         {
             var invoice = await _db.Invoices
                 .Include(i => i.InvoiceDiscounts)
+                .Include(i => i.InvoiceLines)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(i => i.InvoiceId == firstAlloc.InvoiceId);
             if (invoice != null)
@@ -435,6 +452,13 @@ public class PaymentsController : Controller
                     Amount = d.Amount,
                     BeneficiaryIdNo = d.BeneficiaryIdNo,
                     BeneficiaryName = d.BeneficiaryName
+                }).ToList();
+                lineItems = invoice.InvoiceLines.Select(l => new ReceiptLineItem
+                {
+                    Description = l.Description,
+                    Quantity = l.Qty,
+                    UnitPrice = l.UnitPrice,
+                    Total = l.LineTotal
                 }).ToList();
             }
         }
@@ -475,7 +499,8 @@ public class PaymentsController : Controller
             InvoiceTotal = invTotal,
             ShopTIN = shop?.TIN,
             IsVatRegistered = shop?.IsVatRegistered ?? true,
-            Discounts = discounts
+            Discounts = discounts,
+            LineItems = lineItems
         };
     }
 }

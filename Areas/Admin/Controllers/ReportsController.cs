@@ -35,10 +35,13 @@ public class ReportsController : Controller
         var lastMonthStart = thisMonth.AddMonths(-1);
         var lastMonthEnd = thisMonth.AddDays(-1);
 
-        // Revenue this month
-        var thisMonthRevenue = await _db.Invoices
+        // Gross revenue this month (Subtotal = pre-discount/pre-adjustment amount)
+        var thisMonthInvoices = await _db.Invoices
             .Where(i => i.ShopId == shopId && !i.IsArchived && i.InvoiceDate >= thisMonth)
-            .SumAsync(i => (decimal?)i.TotalAmount) ?? 0;
+            .ToListAsync();
+        var thisMonthGross = thisMonthInvoices.Sum(i => i.Subtotal);
+        var thisMonthRevenue = thisMonthInvoices.Sum(i => i.TotalAmount);
+
         var lastMonthRevenue = await _db.Invoices
             .Where(i => i.ShopId == shopId && !i.IsArchived && i.InvoiceDate >= lastMonthStart && i.InvoiceDate <= lastMonthEnd)
             .SumAsync(i => (decimal?)i.TotalAmount) ?? 0;
@@ -91,7 +94,7 @@ public class ReportsController : Controller
             },
             Payments = new()
             {
-                Title = "Payments Collected",
+                Title = "Payments This Month",
                 Value = "₱" + payTotal.ToString("N0"),
                 SubText = payCount + " transactions",
                 Trend = (payTrend >= 0 ? "+" : "") + payTrend.ToString("N1") + "%",
@@ -121,8 +124,9 @@ public class ReportsController : Controller
             .Where(i => i.ShopId == shopId && !i.IsArchived && i.Status != InvoiceStatus.Void)
             .SumAsync(i => (decimal?)i.Balance) ?? 0;
 
+        // Adjustments this month
         var adjustments = await _db.CreditDebitAdjustments
-            .Where(a => a.ShopId == shopId && a.Status == AdjustmentStatus.Approved)
+            .Where(a => a.ShopId == shopId && a.Status == AdjustmentStatus.Approved && a.CreatedAt >= thisMonth)
             .ToListAsync();
 
         var totalCredits = adjustments
@@ -133,15 +137,31 @@ public class ReportsController : Controller
             .Sum(a => a.Amount);
         var netAdjustments = totalDebits - totalCredits;
 
+        // Discounts this month (from invoices this month)
+        var totalDiscounts = thisMonthInvoices.Sum(i => i.DiscountAmount);
+
+        // VAT collected this month
+        var totalVat = thisMonthInvoices.Sum(i => i.VatAmount);
+
+        // Refunds this month
+        var totalRefunds = adjustments
+            .Where(a => a.AdjustmentType == AdjustmentType.Refund)
+            .Sum(a => a.Amount);
+
         ViewBag.FinancialSummary = new
         {
+            GrossRevenue = thisMonthGross,
             TotalRevenue = thisMonthRevenue,
             TotalCollected = payTotal,
             TotalOutstanding = totalOutstanding,
             TotalCredits = totalCredits,
             TotalDebits = totalDebits,
             NetAdjustments = netAdjustments,
-            NetRevenue = thisMonthRevenue + netAdjustments
+            TotalDiscounts = totalDiscounts,
+            TotalVat = totalVat,
+            TotalRefunds = totalRefunds,
+            // Net Revenue = Gross - Discounts + Net Adjustments (no double-counting)
+            NetRevenue = thisMonthGross - totalDiscounts + netAdjustments
         };
 
         return View(vm);
@@ -165,8 +185,21 @@ public class ReportsController : Controller
         var totalRevenue = invoices.Sum(i => i.TotalAmount);
         var totalCollected = invoices.Sum(i => i.AmountPaid);
         var totalOutstanding = invoices.Sum(i => i.Balance);
+        var totalDiscounts = invoices.Sum(i => i.DiscountAmount);
+        var totalVat = invoices.Sum(i => i.VatAmount);
         var invoiceCount = invoices.Count;
         var avgInvoice = invoiceCount > 0 ? totalRevenue / invoiceCount : 0;
+
+        // Adjustments in the date range
+        var rangeAdjustments = await _db.CreditDebitAdjustments
+            .Where(a => a.ShopId == shopId && a.Status == AdjustmentStatus.Approved
+                && a.CreatedAt >= dateFrom && a.CreatedAt < dateTo)
+            .ToListAsync();
+        var totalAdjustments = rangeAdjustments
+            .Where(a => a.AdjustmentType == AdjustmentType.Debit).Sum(a => a.Amount)
+            - rangeAdjustments
+            .Where(a => a.AdjustmentType == AdjustmentType.Credit || a.AdjustmentType == AdjustmentType.Refund).Sum(a => a.Amount);
+        var netRevenue = totalRevenue - totalDiscounts + totalAdjustments;
 
         // Monthly breakdown
         var monthly = invoices
@@ -207,6 +240,10 @@ public class ReportsController : Controller
             TotalOutstanding = totalOutstanding,
             AverageInvoice = avgInvoice,
             InvoiceCount = invoiceCount,
+            TotalDiscounts = totalDiscounts,
+            TotalVat = totalVat,
+            TotalAdjustments = totalAdjustments,
+            NetRevenue = netRevenue,
             MonthlyBreakdown = monthly,
             CategoryBreakdown = categoryBreakdown
         };

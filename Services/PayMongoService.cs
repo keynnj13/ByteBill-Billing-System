@@ -48,6 +48,15 @@ public interface IPayMongoService
     /// Used as a fallback when webhooks can't reach the server (e.g. localhost development).
     /// </summary>
     Task<bool> VerifyAndRecordPaymentAsync(long invoiceId);
+
+    /// <summary>Tests PayMongo API connectivity using the configured secret key.</summary>
+    Task<(bool Success, string Message)> TestConnectionAsync();
+
+    /// <summary>Issue a refund via PayMongo API for a confirmed payment linked to an invoice.</summary>
+    Task<(bool Success, string Message)> RefundPaymentAsync(long shopId, long invoiceId, decimal amount, string reason);
+
+    /// <summary>Expire/cancel all pending PayMongo checkout sessions and links for an invoice.</summary>
+    Task<int> ExpirePendingSessionsAsync(long shopId, long invoiceId);
 }
 
 // ── Implementation ───────────────────────────────────────────────────────
@@ -59,6 +68,8 @@ public class PayMongoService : IPayMongoService
     private readonly PayMongoSettings _settings;
     private readonly ILogger<PayMongoService> _logger;
     private readonly IHttpContextAccessor _httpCtx;
+    private readonly INotificationService _notif;
+    private readonly IBillingCalculationService _billing;
 
     public PayMongoService(
         ApplicationDbContext db,
@@ -66,7 +77,9 @@ public class PayMongoService : IPayMongoService
         HttpClient http,
         IOptions<PayMongoSettings> settings,
         ILogger<PayMongoService> logger,
-        IHttpContextAccessor httpCtx)
+        IHttpContextAccessor httpCtx,
+        INotificationService notif,
+        IBillingCalculationService billing)
     {
         _db = db;
         _audit = audit;
@@ -74,6 +87,8 @@ public class PayMongoService : IPayMongoService
         _settings = settings.Value;
         _logger = logger;
         _httpCtx = httpCtx;
+        _notif = notif;
+        _billing = billing;
 
         // Configure HTTP client for PayMongo Basic Auth (secret key as username, blank password)
         var authBytes = Encoding.UTF8.GetBytes($"{_settings.SecretKey}:");
@@ -240,38 +255,75 @@ public class PayMongoService : IPayMongoService
         var amountCentavos = (long)(invoice.Balance * 100);
         var description = req.Description ?? $"Payment for Invoice {invoice.InvoiceNo}";
 
-        // Build line items from invoice lines
-        var rawLineItems = invoice.InvoiceLines.Select(line => new
-        {
-            currency = _settings.Currency,
-            amount = (long)(line.Qty * line.UnitPrice * 100),
-            description = line.Description,
-            name = line.Description,
-            quantity = line.Qty
-        }).ToList();
-
-        // Reconcile line items with adjusted balance (credit/debit adjustments may change the balance)
-        var lineItemsTotal = rawLineItems.Sum(li => li.amount * li.quantity);
+        // Build line items from invoice lines with VAT breakdown
         var lineItems = new List<object>();
 
-        if (!rawLineItems.Any() || lineItemsTotal != amountCentavos)
+        // Always show individual line items
+        foreach (var line in invoice.InvoiceLines)
         {
-            // Balance differs from line-item total (due to adjustments) or no lines exist —
-            // use a single line item reflecting the actual outstanding balance
+            var lineTotal = line.Qty * line.UnitPrice;
+
             lineItems.Add(new
             {
                 currency = _settings.Currency,
-                amount = amountCentavos,
-                description = lineItemsTotal != amountCentavos
-                    ? $"Payment for Invoice {invoice.InvoiceNo} (adjusted balance)"
-                    : description,
-                name = $"Invoice {invoice.InvoiceNo}",
-                quantity = 1
+                amount = (long)(lineTotal * 100),
+                description = line.Description,
+                name = line.Description,
+                quantity = line.Qty
             });
         }
-        else
+
+        // Add discount line items (negative amounts aren't allowed by PayMongo,
+        // so add them as descriptive items with 0 amount if the balance already reflects them,
+        // or adjust via a balance-reconciliation line)
+        var lineItemsTotal = lineItems.Cast<dynamic>()
+            .Sum(li => (long)li.amount * (int)li.quantity);
+
+        // If discounts/adjustments changed the balance, add a reconciliation line
+        if (lineItemsTotal != amountCentavos)
         {
-            lineItems.AddRange(rawLineItems);
+            var diff = amountCentavos - lineItemsTotal;
+            if (diff < 0)
+            {
+                // Discounts / credits reduced the total
+                lineItems.Add(new
+                {
+                    currency = _settings.Currency,
+                    amount = diff, // negative amount
+                    description = invoice.DiscountAmount > 0
+                        ? $"Discount / Adjustment on Invoice {invoice.InvoiceNo}"
+                        : $"Adjustment on Invoice {invoice.InvoiceNo}",
+                    name = "Discount / Adjustment",
+                    quantity = 1
+                });
+            }
+            else
+            {
+                // Debit adjustments increased the total
+                lineItems.Add(new
+                {
+                    currency = _settings.Currency,
+                    amount = diff,
+                    description = $"Additional charges on Invoice {invoice.InvoiceNo}",
+                    name = "Additional Charges",
+                    quantity = 1
+                });
+            }
+
+            // PayMongo requires all amounts > 0 — if reconciliation resulted in negative,
+            // fall back to a single "adjusted balance" line item
+            if (diff < 0)
+            {
+                lineItems.Clear();
+                lineItems.Add(new
+                {
+                    currency = _settings.Currency,
+                    amount = amountCentavos,
+                    description = $"Payment for Invoice {invoice.InvoiceNo} (includes discounts/adjustments)",
+                    name = $"Invoice {invoice.InvoiceNo}",
+                    quantity = 1
+                });
+            }
         }
 
         // Build success/cancel URLs with invoice ID for tracking
@@ -491,29 +543,42 @@ public class PayMongoService : IPayMongoService
             AmountApplied = txn.Amount
         });
 
-        // Update invoice balances
-        var invoice = txn.Invoice;
-        if (invoice != null)
-        {
-            invoice.AmountPaid += txn.Amount;
-            invoice.Balance = invoice.TotalAmount - invoice.AmountPaid;
-
-            if (invoice.Balance <= 0)
-            {
-                invoice.Balance = 0;
-                invoice.Status = InvoiceStatus.Paid;
-            }
-            else if (invoice.AmountPaid > 0)
-            {
-                invoice.Status = InvoiceStatus.Partial;
-            }
-        }
-
-        await _db.SaveChangesAsync();
+        // Recalculate invoice totals, balance & status from payment allocations
+        await _billing.RecalculateInvoiceAsync(txn.InvoiceId);
 
         // Audit log (no specific user for webhook, use 0)
         await _audit.LogAsync(payment.ShopId, 0, "PayMongoWebhook", "Payment", payment.PaymentId,
             $"PayMongo payment confirmed via webhook. Amount: ₱{payment.Amount:N2}. Method: {paymentMethodType ?? "unknown"}. Resource: {resourceId}.", null);
+
+        // Notify shop admins about PayMongo payment confirmation
+        try
+        {
+            var adminUsers = await _db.Users
+                .Where(u => u.ShopId == txn.ShopId && u.IsActive
+                    && u.UserRoles.Any(ur => ur.Role!.RoleName == "Admin" || ur.Role!.RoleName == "SuperAdmin"))
+                .Select(u => u.UserId)
+                .ToListAsync();
+            foreach (var adminId in adminUsers)
+            {
+                await _notif.CreateAsync(adminId, txn.ShopId,
+                    "Online Payment Confirmed",
+                    $"PayMongo payment of ₱{payment.Amount:N2} for Invoice {txn.Invoice?.InvoiceNo} has been confirmed via {paymentMethodType ?? "online"}.",
+                    "success",
+                    $"/Admin/Payments/DetailsModal/{payment.PaymentId}");
+            }
+            // Also notify the user who initiated the payment
+            if (txn.InitiatedByUserId > 0)
+            {
+                await _notif.CreateAsync(txn.InitiatedByUserId, txn.ShopId,
+                    "Payment Confirmed",
+                    $"Your online payment of ₱{payment.Amount:N2} has been confirmed.",
+                    "success", null);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send payment confirmation notification");
+        }
 
         _logger.LogInformation("PayMongo payment confirmed. PaymentId: {PaymentId}, Amount: {Amount}, Method: {Method}",
             payment.PaymentId, payment.Amount, paymentMethodType);
@@ -716,28 +781,40 @@ public class PayMongoService : IPayMongoService
             AmountApplied = txn.Amount
         });
 
-        // Update invoice balances
-        var invoice = txn.Invoice;
-        if (invoice != null)
-        {
-            invoice.AmountPaid += txn.Amount;
-            invoice.Balance = invoice.TotalAmount - invoice.AmountPaid;
-
-            if (invoice.Balance <= 0)
-            {
-                invoice.Balance = 0;
-                invoice.Status = InvoiceStatus.Paid;
-            }
-            else if (invoice.AmountPaid > 0)
-            {
-                invoice.Status = InvoiceStatus.Partial;
-            }
-        }
-
-        await _db.SaveChangesAsync();
+        // Recalculate invoice totals, balance & status from payment allocations
+        await _billing.RecalculateInvoiceAsync(txn.InvoiceId);
 
         await _audit.LogAsync(payment.ShopId, txn.InitiatedByUserId, "PayMongoVerify", "Payment", payment.PaymentId,
             $"PayMongo payment verified on redirect. Amount: ₱{payment.Amount:N2}. Method: {paymentMethodType ?? "unknown"}.", ClientIp);
+
+        // Notify shop admins about verified payment
+        try
+        {
+            var adminUsers = await _db.Users
+                .Where(u => u.ShopId == txn.ShopId && u.IsActive
+                    && u.UserRoles.Any(ur => ur.Role!.RoleName == "Admin" || ur.Role!.RoleName == "SuperAdmin"))
+                .Select(u => u.UserId)
+                .ToListAsync();
+            foreach (var adminId in adminUsers)
+            {
+                await _notif.CreateAsync(adminId, txn.ShopId,
+                    "Online Payment Verified",
+                    $"PayMongo payment of ₱{payment.Amount:N2} for Invoice {txn.Invoice?.InvoiceNo} verified.",
+                    "success",
+                    $"/Admin/Payments/DetailsModal/{payment.PaymentId}");
+            }
+            if (txn.InitiatedByUserId > 0)
+            {
+                await _notif.CreateAsync(txn.InitiatedByUserId, txn.ShopId,
+                    "Payment Confirmed",
+                    $"Your online payment of ₱{payment.Amount:N2} has been confirmed.",
+                    "success", null);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send payment verification notification");
+        }
 
         _logger.LogInformation("VerifyAndRecord: Payment recorded. PaymentId: {PaymentId}, Amount: {Amount}",
             payment.PaymentId, payment.Amount);
@@ -830,5 +907,213 @@ public class PayMongoService : IPayMongoService
         }
 
         return $"{prefix}{next:D4}";
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  TEST CONNECTION
+    // ═══════════════════════════════════════════════════════════════════
+    public async Task<(bool Success, string Message)> TestConnectionAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_settings.SecretKey))
+            return (false, "PayMongo Secret Key is not configured.");
+
+        try
+        {
+            var response = await _http.GetAsync($"{_settings.BaseUrl}/links?limit=1");
+
+            if (response.IsSuccessStatusCode)
+                return (true, "PayMongo connection successful! API keys are valid.");
+
+            var body = await response.Content.ReadAsStringAsync();
+            return (false, $"PayMongo returned {(int)response.StatusCode}: {body}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "PayMongo test connection failed");
+            return (false, $"Connection failed: {ex.Message}");
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  REFUND PAYMENT
+    // ═══════════════════════════════════════════════════════════════════
+    public async Task<(bool Success, string Message)> RefundPaymentAsync(
+        long shopId, long invoiceId, decimal amount, string reason)
+    {
+        // Find the confirmed PayMongo transaction(s) for this invoice
+        var paidTxns = await _db.PayMongoTxns
+            .Include(t => t.Invoice)
+            .Where(t => t.ShopId == shopId
+                     && t.InvoiceId == invoiceId
+                     && t.PayMongoStatus == "paid"
+                     && t.PaymentId.HasValue)
+            .OrderByDescending(t => t.CreatedAt)
+            .ToListAsync();
+
+        if (!paidTxns.Any())
+            return (false, "No confirmed PayMongo payment found for this invoice.");
+
+        // Refund the most recent paid transaction first
+        var txn = paidTxns.First();
+        var refundAmountCentavos = (long)(amount * 100);
+
+        // First, we need the PayMongo payment ID from the transaction.
+        // For checkout sessions, we retrieve the payment ID from the session.
+        string? paymongoPaymentId = null;
+
+        try
+        {
+            string endpoint = txn.ResourceType == "link"
+                ? $"{_settings.BaseUrl}/links/{txn.PayMongoPaymentIntentId}"
+                : $"{_settings.BaseUrl}/checkout_sessions/{txn.PayMongoPaymentIntentId}";
+
+            var getResponse = await _http.GetAsync(endpoint);
+            if (getResponse.IsSuccessStatusCode)
+            {
+                var getBody = await getResponse.Content.ReadAsStringAsync();
+                var jsonDoc = JsonNode.Parse(getBody);
+                var payments = jsonDoc?["data"]?["attributes"]?["payments"] as JsonArray;
+                if (payments is { Count: > 0 })
+                {
+                    paymongoPaymentId = payments[0]?["data"]?["id"]?.GetValue<string>()
+                                     ?? payments[0]?["id"]?.GetValue<string>();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve PayMongo payment ID for refund");
+            return (false, $"Failed to retrieve payment details: {ex.Message}");
+        }
+
+        if (string.IsNullOrEmpty(paymongoPaymentId))
+            return (false, "Could not find the PayMongo payment ID to refund.");
+
+        // Create refund via PayMongo API
+        var payload = new
+        {
+            data = new
+            {
+                attributes = new
+                {
+                    amount = refundAmountCentavos,
+                    payment_id = paymongoPaymentId,
+                    reason = "others",
+                    notes = reason
+                }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower });
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        HttpResponseMessage response;
+        string responseBody;
+        try
+        {
+            response = await _http.PostAsync($"{_settings.BaseUrl}/refunds", content);
+            responseBody = await response.Content.ReadAsStringAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "PayMongo refund API call failed");
+            return (false, $"PayMongo refund API error: {ex.Message}");
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning("PayMongo refund failed: {Status} {Body}", response.StatusCode, responseBody);
+            return (false, $"PayMongo refund returned {(int)response.StatusCode}. The refund was applied internally but could not be processed on PayMongo.");
+        }
+
+        // Update local PayMongoTxn status
+        txn.PayMongoStatus = "refunded";
+        txn.UpdatedAt = DateTime.UtcNow;
+        txn.RawResponse = responseBody;
+        await _db.SaveChangesAsync();
+
+        var refundDocId = JsonNode.Parse(responseBody)?["data"]?["id"]?.GetValue<string>() ?? "unknown";
+
+        await _audit.LogAsync(shopId, 0, "Refund", "PayMongo", txn.PayMongoTxnId,
+            $"PayMongo refund issued. Amount: ₱{amount:N2}. Reason: {reason}. Refund ID: {refundDocId}.", null);
+
+        _logger.LogInformation("PayMongo refund issued. TxnId: {TxnId}, Amount: {Amount}, RefundId: {RefundId}",
+            txn.PayMongoTxnId, amount, refundDocId);
+
+        return (true, $"PayMongo refund of ₱{amount:N2} issued successfully. Refund ID: {refundDocId}");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  EXPIRE PENDING SESSIONS
+    // ═══════════════════════════════════════════════════════════════════
+    public async Task<int> ExpirePendingSessionsAsync(long shopId, long invoiceId)
+    {
+        var pendingTxns = await _db.PayMongoTxns
+            .Where(t => t.ShopId == shopId
+                     && t.InvoiceId == invoiceId
+                     && (t.PayMongoStatus == "pending" || t.PayMongoStatus == "active")
+                     && !t.PaymentId.HasValue)
+            .ToListAsync();
+
+        if (!pendingTxns.Any()) return 0;
+
+        int expired = 0;
+        foreach (var txn in pendingTxns)
+        {
+            try
+            {
+                if (txn.ResourceType == "checkout_session")
+                {
+                    // Expire checkout session via PayMongo API
+                    var response = await _http.PostAsync(
+                        $"{_settings.BaseUrl}/checkout_sessions/{txn.PayMongoPaymentIntentId}/expire",
+                        new StringContent("{}", Encoding.UTF8, "application/json"));
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        txn.PayMongoStatus = "expired";
+                        txn.UpdatedAt = DateTime.UtcNow;
+                        expired++;
+                        _logger.LogInformation("Expired PayMongo checkout session {Id} for invoice {InvoiceId}",
+                            txn.PayMongoPaymentIntentId, invoiceId);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Failed to expire checkout session {Id}: {Status}",
+                            txn.PayMongoPaymentIntentId, response.StatusCode);
+                        // Still mark locally as expired to prevent reuse
+                        txn.PayMongoStatus = "expired";
+                        txn.UpdatedAt = DateTime.UtcNow;
+                        expired++;
+                    }
+                }
+                else
+                {
+                    // Payment links can't be expired via API — archive locally via status
+                    txn.PayMongoStatus = "expired";
+                    txn.UpdatedAt = DateTime.UtcNow;
+                    expired++;
+                    _logger.LogInformation("Marked PayMongo link {Id} as expired for invoice {InvoiceId}",
+                        txn.PayMongoPaymentIntentId, invoiceId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error expiring PayMongo session {Id}", txn.PayMongoPaymentIntentId);
+                // Still mark locally as expired
+                txn.PayMongoStatus = "expired";
+                txn.UpdatedAt = DateTime.UtcNow;
+                expired++;
+            }
+        }
+
+        if (expired > 0)
+        {
+            await _db.SaveChangesAsync();
+            await _audit.LogAsync(shopId, 0, "ExpireSessions", "PayMongo", 0,
+                $"Expired {expired} pending PayMongo session(s) for invoice ID {invoiceId} due to balance change.", null);
+        }
+
+        return expired;
     }
 }

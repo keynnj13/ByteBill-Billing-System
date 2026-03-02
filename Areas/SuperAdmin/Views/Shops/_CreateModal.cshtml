@@ -1,4 +1,4 @@
-@model ShopFormViewModel
+@model ShopCreateViewModel
 
 <form id="shopCreateForm" asp-action="Create" asp-controller="Shops" asp-area="SuperAdmin" method="post" data-ajax="true">
     @Html.AntiForgeryToken()
@@ -13,40 +13,68 @@
                     <span asp-validation-for="Name" class="field-validation-error"></span>
                 </div>
                 <div class="form-group" style="flex: 1;">
-                    <label asp-for="Owner" class="form-label">Owner Name <span class="required">*</span></label>
-                    <input asp-for="Owner" class="form-input" placeholder="Enter owner's full name" />
-                    <span asp-validation-for="Owner" class="field-validation-error"></span>
-                </div>
-            </div>
-        </div>
-
-        <div class="form-section">
-            <h4 class="form-section-title">Contact Details</h4>
-            <div class="form-row">
-                <div class="form-group" style="flex: 1;">
-                    <label asp-for="Email" class="form-label">Email Address <span class="required">*</span></label>
+                    <label asp-for="Email" class="form-label">Shop Email <span class="required">*</span></label>
                     <input asp-for="Email" type="email" class="form-input" placeholder="shop@example.com" />
                     <span asp-validation-for="Email" class="field-validation-error"></span>
                 </div>
+            </div>
+            <div class="form-row">
                 <div class="form-group" style="flex: 1;">
                     <label asp-for="Phone" class="form-label">Phone Number</label>
                     <input asp-for="Phone" type="tel" class="form-input" placeholder="09XX-XXX-XXXX" />
                     <span asp-validation-for="Phone" class="field-validation-error"></span>
                 </div>
-            </div>
-            <div class="form-group">
-                <label asp-for="Address" class="form-label">Address</label>
-                <textarea asp-for="Address" class="form-input" rows="2" placeholder="Street, City, Province"></textarea>
-                <span asp-validation-for="Address" class="field-validation-error"></span>
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="Address" class="form-label">Address</label>
+                    <input asp-for="Address" class="form-input" placeholder="Street, City, Province" />
+                    <span asp-validation-for="Address" class="field-validation-error"></span>
+                </div>
             </div>
         </div>
 
         <div class="form-section">
-            <h4 class="form-section-title">Additional Information</h4>
-            <div class="form-group">
-                <label asp-for="Notes" class="form-label">Notes</label>
-                <textarea asp-for="Notes" class="form-input" rows="3" placeholder="Any notes about this shop..."></textarea>
-                <span asp-validation-for="Notes" class="field-validation-error"></span>
+            <h4 class="form-section-title">Shop Admin Account</h4>
+            <p class="form-section-desc">An admin user will be created and linked to this shop.</p>
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="AdminFirstName" class="form-label">First Name <span class="required">*</span></label>
+                    <input asp-for="AdminFirstName" class="form-input" placeholder="Juan" />
+                    <span asp-validation-for="AdminFirstName" class="field-validation-error"></span>
+                </div>
+                <div class="form-group" style="flex: 0.6;">
+                    <label asp-for="AdminMiddleName" class="form-label">Middle Name</label>
+                    <input asp-for="AdminMiddleName" class="form-input" placeholder="Santos" />
+                    <span asp-validation-for="AdminMiddleName" class="field-validation-error"></span>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="AdminLastName" class="form-label">Last Name <span class="required">*</span></label>
+                    <input asp-for="AdminLastName" class="form-input" placeholder="Dela Cruz" />
+                    <span asp-validation-for="AdminLastName" class="field-validation-error"></span>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="AdminEmail" class="form-label">Admin Email <span class="required">*</span></label>
+                    <input asp-for="AdminEmail" type="email" class="form-input" placeholder="admin@shop.com" />
+                    <span asp-validation-for="AdminEmail" class="field-validation-error"></span>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="AdminPhone" class="form-label">Admin Phone</label>
+                    <input asp-for="AdminPhone" type="tel" class="form-input" placeholder="09XX-XXX-XXXX" />
+                    <span asp-validation-for="AdminPhone" class="field-validation-error"></span>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="AdminPassword" class="form-label">Password <span class="required">*</span></label>
+                    <input asp-for="AdminPassword" type="password" class="form-input" placeholder="Min. 6 characters" />
+                    <span asp-validation-for="AdminPassword" class="field-validation-error"></span>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="AdminConfirmPassword" class="form-label">Confirm Password <span class="required">*</span></label>
+                    <input asp-for="AdminConfirmPassword" type="password" class="form-input" placeholder="Re-enter password" />
+                    <span asp-validation-for="AdminConfirmPassword" class="field-validation-error"></span>
+                </div>
             </div>
         </div>
     </div>
@@ -59,3 +87,7 @@
         </button>
     </div>
 </form>
+
+<style>
+    .form-section-desc { font-size: 12px; color: #9ca3af; margin: -8px 0 12px 0; }
+</style>

@@ -20,7 +20,8 @@ builder.Services.AddControllersWithViews();
 
 // Configure SQL Server database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
+        sql => sql.CommandTimeout(120)));
 
 // Configure authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -84,6 +85,7 @@ builder.Services.AddScoped<IAdjustmentService, AdjustmentService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IBillingCalculationService, BillingCalculationService>();
 builder.Services.AddScoped<ITaxCalculationService, TaxCalculationService>();
+builder.Services.AddScoped<ISuperAdminService, SuperAdminService>();
 
 // ── Xero Accounting integration ──────────────────────────────────────
 builder.Services.Configure<XeroSettings>(builder.Configuration.GetSection("Xero"));
@@ -107,6 +109,14 @@ builder.Services.AddRateLimiter(options =>
 });
 
 var app = builder.Build();
+
+// Pre-start LocalDB instance (avoids cold-start timeout during seeding)
+try
+{
+    using var startProcess = System.Diagnostics.Process.Start("sqllocaldb", "start MSSQLLocalDB");
+    startProcess?.WaitForExit(30_000);
+}
+catch { /* sqllocaldb not on PATH or not installed — will connect normally */ }
 
 // Seed database on first run
 using (var scope = app.Services.CreateScope())

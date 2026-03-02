@@ -1,0 +1,84 @@
+@model AssignSubscriptionViewModel
+@{
+    var plans = ViewBag.Plans as List<ByteBill_BS.Models.SubscriptionPlan> ?? new();
+}
+
+<form id="assignSubForm" asp-action="Assign" asp-controller="Subscriptions" asp-area="SuperAdmin" method="post" data-ajax="true">
+    @Html.AntiForgeryToken()
+
+    <div class="modal-form-body">
+        <div class="form-section">
+            <h4 class="form-section-title">Assign Subscription</h4>
+            <div class="form-group">
+                <label asp-for="ShopId" class="form-label">Shop <span class="required">*</span></label>
+                <select asp-for="ShopId" class="form-select">
+                    <option value="">Select a shop</option>
+                    @foreach (var shop in Model.AvailableShops)
+                    {
+                        <option value="@shop.Id">@shop.Name</option>
+                    }
+                </select>
+                <span asp-validation-for="ShopId" class="field-validation-error"></span>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="PlanId" class="form-label">Plan <span class="required">*</span></label>
+                    <select asp-for="PlanId" class="form-select" id="planSelect" onchange="updatePricePreview()">
+                        <option value="">Select a plan</option>
+                        @foreach (var plan in plans)
+                        {
+                            <option value="@plan.PlanId"
+                                    data-monthly="@plan.MonthlyPrice"
+                                    data-yearly="@plan.YearlyPrice"
+                                    data-permanent="@plan.PermanentPrice">
+                                @plan.PlanName — ₱@plan.MonthlyPrice.ToString("N0")/mo
+                            </option>
+                        }
+                    </select>
+                    <span asp-validation-for="PlanId" class="field-validation-error"></span>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="BillingCycle" class="form-label">Billing Cycle <span class="required">*</span></label>
+                    <select asp-for="BillingCycle" class="form-select" id="cycleSelect" onchange="updatePricePreview()">
+                        <option value="Monthly">Monthly</option>
+                        <option value="Yearly">Yearly</option>
+                        <option value="Permanent">Permanent (Lifetime)</option>
+                    </select>
+                </div>
+            </div>
+            <div id="pricePreview" class="price-preview" style="display:none;">
+                <span class="price-label">Subscription Price:</span>
+                <span class="price-value" id="previewAmount">₱0.00</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-form-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeAjaxModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" onclick="submitAjaxForm(event, 'assignSubForm')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            Assign Subscription
+        </button>
+    </div>
+</form>
+
+<script>
+    function updatePricePreview() {
+        var planSel = document.getElementById('planSelect');
+        var cycleSel = document.getElementById('cycleSelect');
+        var preview = document.getElementById('pricePreview');
+        var amount = document.getElementById('previewAmount');
+        var opt = planSel.options[planSel.selectedIndex];
+        if (!opt || !opt.value) { preview.style.display = 'none'; return; }
+        var cycle = cycleSel.value.toLowerCase();
+        var price = parseFloat(opt.dataset[cycle] || 0);
+        amount.textContent = '₱' + price.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        preview.style.display = 'flex';
+    }
+</script>
+
+<style>
+    .price-preview { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; margin-top: 4px; }
+    .price-label { font-size: 13px; color: #065f46; font-weight: 500; }
+    .price-value { font-size: 20px; font-weight: 700; color: #059669; }
+</style>
