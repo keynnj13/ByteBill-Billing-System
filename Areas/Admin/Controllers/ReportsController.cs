@@ -16,7 +16,12 @@ namespace ByteBill_BS.Areas.Admin.Controllers;
 public class ReportsController : Controller
 {
     private readonly ApplicationDbContext _db;
-    public ReportsController(ApplicationDbContext db) => _db = db;
+    private readonly ILogger<ReportsController> _logger;
+    public ReportsController(ApplicationDbContext db, ILogger<ReportsController> logger)
+    {
+        _db = db;
+        _logger = logger;
+    }
 
     private bool IsAuthorized()
     {
@@ -29,6 +34,9 @@ public class ReportsController : Controller
     public async Task<IActionResult> Index()
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        try
+        {
         var shopId = User.GetShopId();
 
         var thisMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
@@ -165,6 +173,12 @@ public class ReportsController : Controller
         };
 
         return View(vm);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Admin Reports Index failed to load.");
+            throw;
+        }
     }
 
     // ─── REVENUE REPORT ─────────────────────────────────────
@@ -328,8 +342,9 @@ public class ReportsController : Controller
 
         // Average completion days (for completed jobs)
         var completedJobs = jobOrders.Where(j => j.Status == JobOrderStatus.Completed).ToList();
-        var avgDays = completedJobs.Count > 0
-            ? (decimal)completedJobs.Where(j => j.UpdatedAt.HasValue).Average(j => (j.UpdatedAt!.Value - j.CreatedAt).TotalDays)
+        var completedWithDates = completedJobs.Where(j => j.UpdatedAt.HasValue).ToList();
+        var avgDays = completedWithDates.Count > 0
+            ? (decimal)completedWithDates.Average(j => (j.UpdatedAt!.Value - j.CreatedAt).TotalDays)
             : 0;
 
         // Service-level breakdown

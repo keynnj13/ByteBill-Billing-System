@@ -244,7 +244,7 @@ public class PaymentService : IPaymentService
         // Notify shop admins about new payment
         var adminUsers = await _db.Users
             .Where(u => u.ShopId == shopId && u.IsActive
-                && u.UserRoles.Any(ur => ur.Role!.RoleName == "Admin" || ur.Role!.RoleName == "SuperAdmin"))
+                && u.UserRoles.Any(ur => ur.Role!.RoleName == "Admin"))
             .Select(u => u.UserId)
             .ToListAsync();
         foreach (var adminId in adminUsers)

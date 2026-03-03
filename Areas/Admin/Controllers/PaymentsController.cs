@@ -21,12 +21,14 @@ public class PaymentsController : Controller
     private readonly IPaymentService _paymentService;
     private readonly ApplicationDbContext _db;
     private readonly IXeroService _xero;
+    private readonly ILogger<PaymentsController> _logger;
 
-    public PaymentsController(IPaymentService paymentService, ApplicationDbContext db, IXeroService xero)
+    public PaymentsController(IPaymentService paymentService, ApplicationDbContext db, IXeroService xero, ILogger<PaymentsController> logger)
     {
         _paymentService = paymentService;
         _db = db;
         _xero = xero;
+        _logger = logger;
     }
 
     private bool IsAuthorized() => User.IsInRoles("Admin", "SuperAdmin");
@@ -263,9 +265,17 @@ public class PaymentsController : Controller
     {
         if (!IsAuthorized()) return Forbid();
 
-        var vm = await GetPaymentDetailAsync(id);
-        if (vm == null) return NotFound();
-        return PartialView("_DetailsModal", vm);
+        try
+        {
+            var vm = await GetPaymentDetailAsync(id);
+            if (vm == null) return NotFound();
+            return PartialView("_DetailsModal", vm);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Payment DetailsModal failed for id={PaymentId}", id);
+            return StatusCode(500, "Failed to load payment details.");
+        }
     }
 
     [HttpGet]
@@ -381,6 +391,19 @@ public class PaymentsController : Controller
 
                         col.Item().Row(r => { r.RelativeItem().Text("Subtotal").FontSize(9).FontColor(Colors.Grey.Medium); r.RelativeItem().AlignRight().Text($"\u20B1{vm.InvoiceSubtotal:N2}").FontSize(9); });
 
+                        foreach (var disc in vm.Discounts)
+                        {
+                            col.Item().Row(r => { r.RelativeItem().Text(disc.Label).FontSize(9).FontColor(Colors.Red.Darken1); r.RelativeItem().AlignRight().Text($"-\u20B1{disc.Amount:N2}").FontSize(9).FontColor(Colors.Red.Darken1); });
+                            if (!string.IsNullOrEmpty(disc.BeneficiaryName))
+                                col.Item().Text($"  {disc.BeneficiaryName}{(!string.IsNullOrEmpty(disc.BeneficiaryIdNo) ? $" (ID: {disc.BeneficiaryIdNo})" : "")}").FontSize(7).FontColor(Colors.Grey.Medium);
+                        }
+
+                        if (vm.InvoiceTotalAdjustments != 0)
+                        {
+                            var adjColor = vm.InvoiceTotalAdjustments < 0 ? Colors.Red.Darken1 : Colors.Grey.Medium;
+                            col.Item().Row(r => { r.RelativeItem().Text("Adjustments").FontSize(9).FontColor(adjColor); r.RelativeItem().AlignRight().Text($"\u20B1{vm.InvoiceTotalAdjustments:N2}").FontSize(9).FontColor(adjColor); });
+                        }
+
                         if (vm.IsVatRegistered)
                         {
                             if (vm.VatableSales > 0)
@@ -390,13 +413,6 @@ public class PaymentsController : Controller
                             if (vm.ZeroRatedSales > 0)
                                 col.Item().Row(r => { r.RelativeItem().Text("Zero-Rated Sales").FontSize(9).FontColor(Colors.Grey.Medium); r.RelativeItem().AlignRight().Text($"\u20B1{vm.ZeroRatedSales:N2}").FontSize(9); });
                             col.Item().Row(r => { r.RelativeItem().Text("VAT (12%)").FontSize(9).FontColor(Colors.Grey.Medium); r.RelativeItem().AlignRight().Text($"\u20B1{vm.VatAmount:N2}").FontSize(9); });
-                        }
-
-                        foreach (var disc in vm.Discounts)
-                        {
-                            col.Item().Row(r => { r.RelativeItem().Text(disc.Label).FontSize(9).FontColor(Colors.Red.Darken1); r.RelativeItem().AlignRight().Text($"-\u20B1{disc.Amount:N2}").FontSize(9).FontColor(Colors.Red.Darken1); });
-                            if (!string.IsNullOrEmpty(disc.BeneficiaryName))
-                                col.Item().Text($"  {disc.BeneficiaryName}{(!string.IsNullOrEmpty(disc.BeneficiaryIdNo) ? $" (ID: {disc.BeneficiaryIdNo})" : "")}").FontSize(7).FontColor(Colors.Grey.Medium);
                         }
 
                         col.Item().PaddingTop(4).Row(r => { r.RelativeItem().Text("Total").FontSize(9).Bold(); r.RelativeItem().AlignRight().Text($"\u20B1{vm.InvoiceTotal:N2}").FontSize(9).Bold(); });
@@ -425,7 +441,7 @@ public class PaymentsController : Controller
 
         // Get invoice tax breakdown for receipt
         var firstAlloc = dto.Allocations.FirstOrDefault();
-        decimal invSubtotal = 0, invDiscount = 0, vatableSales = 0, vatExemptSales = 0, zeroRatedSales = 0, vatAmount = 0, invTotal = 0;
+        decimal invSubtotal = 0, invDiscount = 0, invAdjustments = 0, vatableSales = 0, vatExemptSales = 0, zeroRatedSales = 0, vatAmount = 0, invTotal = 0;
         var discounts = new List<ReceiptDiscountItem>();
         var lineItems = new List<ReceiptLineItem>();
         var shop = await _db.Shops.AsNoTracking().FirstOrDefaultAsync(s => s.ShopId == shopId);
@@ -441,6 +457,7 @@ public class PaymentsController : Controller
             {
                 invSubtotal = invoice.Subtotal;
                 invDiscount = invoice.DiscountAmount;
+                invAdjustments = invoice.TotalAdjustments;
                 vatableSales = invoice.VatableSales;
                 vatExemptSales = invoice.VatExemptSales;
                 zeroRatedSales = invoice.ZeroRatedSales;
@@ -492,6 +509,7 @@ public class PaymentsController : Controller
             }).ToList(),
             InvoiceSubtotal = invSubtotal,
             InvoiceDiscountAmount = invDiscount,
+            InvoiceTotalAdjustments = invAdjustments,
             VatableSales = vatableSales,
             VatExemptSales = vatExemptSales,
             ZeroRatedSales = zeroRatedSales,

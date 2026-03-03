@@ -209,7 +209,7 @@ public class AdjustmentService : IAdjustmentService
         var amountSign = adjType == AdjustmentType.Debit ? "+" : "-";
         var adminUserIds = await _db.UserRoles
             .Where(ura => ura.User != null && ura.User.ShopId == shopId
-                       && (ura.Role!.RoleName == "Admin" || ura.Role!.RoleName == "SuperAdmin"))
+                       && ura.Role!.RoleName == "Admin")
             .Select(ura => ura.UserId)
             .Distinct()
             .ToListAsync();

@@ -426,7 +426,7 @@ public class JobOrderService : IJobOrderService
         // Notify admins about status change
         var adminIds = await _db.Users
             .Where(u => u.ShopId == shopId && u.IsActive && u.UserId != userId
-                && u.UserRoles.Any(ur => ur.Role!.RoleName == "Admin" || ur.Role!.RoleName == "SuperAdmin"))
+                && u.UserRoles.Any(ur => ur.Role!.RoleName == "Admin"))
             .Select(u => u.UserId)
             .ToListAsync();
         foreach (var adminId in adminIds)

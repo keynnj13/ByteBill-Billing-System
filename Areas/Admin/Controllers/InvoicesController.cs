@@ -20,14 +20,16 @@ public class InvoicesController : Controller
     private readonly IAuditService _audit;
     private readonly ITaxCalculationService _tax;
     private readonly IXeroService _xero;
+    private readonly ILogger<InvoicesController> _logger;
 
-    public InvoicesController(IInvoiceService invoiceService, ApplicationDbContext db, IAuditService audit, ITaxCalculationService tax, IXeroService xero)
+    public InvoicesController(IInvoiceService invoiceService, ApplicationDbContext db, IAuditService audit, ITaxCalculationService tax, IXeroService xero, ILogger<InvoicesController> logger)
     {
         _invoiceService = invoiceService;
         _db = db;
         _audit = audit;
         _tax = tax;
         _xero = xero;
+        _logger = logger;
     }
 
     private bool IsAuthorized() => User.IsInRoles("Admin", "SuperAdmin");
@@ -80,6 +82,9 @@ public class InvoicesController : Controller
                     CustomerInitials = GetInitials(i.CustomerName),
                     JobNumber = i.JobOrderNo,
                     Status = parsedStatus,
+                    Subtotal = i.Subtotal,
+                    DiscountAmount = i.DiscountAmount,
+                    TotalAdjustments = i.TotalAdjustments,
                     Total = i.TotalAmount,
                     AmountPaid = i.AmountPaid,
                     Balance = i.Balance,
@@ -247,9 +252,17 @@ public class InvoicesController : Controller
     {
         if (!IsAuthorized()) return Forbid();
 
-        var vm = await GetInvoiceDetailAsync(id);
-        if (vm == null) return NotFound();
-        return PartialView("_DetailsModal", vm);
+        try
+        {
+            var vm = await GetInvoiceDetailAsync(id);
+            if (vm == null) return NotFound();
+            return PartialView("_DetailsModal", vm);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Invoice DetailsModal failed for id={InvoiceId}", id);
+            return StatusCode(500, "Failed to load invoice details.");
+        }
     }
 
     private async Task<InvoiceDetailViewModel?> GetInvoiceDetailAsync(long id)
@@ -378,6 +391,9 @@ public class InvoicesController : Controller
                 CustomerInitials = GetInitials(i.Customer!.FirstName + " " + i.Customer.LastName),
                 JobNumber = i.JobOrder!.JobOrderNo,
                 Status = i.Status,
+                Subtotal = i.Subtotal,
+                DiscountAmount = i.DiscountAmount,
+                TotalAdjustments = i.TotalAdjustments,
                 Total = i.TotalAmount,
                 AmountPaid = i.AmountPaid,
                 Balance = i.Balance,

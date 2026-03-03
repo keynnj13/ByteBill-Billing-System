@@ -118,17 +118,25 @@ try
 }
 catch { /* sqllocaldb not on PATH or not installed — will connect normally */ }
 
-// Seed database on first run
-using (var scope = app.Services.CreateScope())
+// Seed database on first run (wrapped in try-catch to prevent 500.30 on hosting)
+try
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await DbSeeder.SeedAsync(db);
 }
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+    logger.LogError(ex, "DbSeeder failed during startup — app will continue without seeding.");
+}
 
 // Configure the HTTP request pipeline.
+// Temporarily show detailed errors on all environments for debugging
+app.UseDeveloperExceptionPage();
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
+    // app.UseExceptionHandler("/Home/Error");  // Re-enable after debugging
     app.UseHsts();
 }
 

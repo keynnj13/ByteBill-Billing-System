@@ -73,13 +73,6 @@
                         <span>Subtotal</span>
                         <span>₱@Model.Subtotal.ToString("N2")</span>
                     </div>
-                    @if (Model.VatAmount > 0)
-                    {
-                        <div class="totals-row">
-                            <span>VAT (12%)</span>
-                            <span>₱@Model.VatAmount.ToString("N2")</span>
-                        </div>
-                    }
                     @if (Model.Discounts.Any())
                     {
                         @foreach (var disc in Model.Discounts)
@@ -95,6 +88,20 @@
                         <div class="totals-row">
                             <span>Discount</span>
                             <span class="text-danger">-₱@Model.DiscountAmount.ToString("N2")</span>
+                        </div>
+                    }
+                    @if (Model.VatAmount > 0)
+                    {
+                        <div class="totals-row">
+                            <span>VAT (12%)</span>
+                            <span>₱@Model.VatAmount.ToString("N2")</span>
+                        </div>
+                    }
+                    @if (Model.TotalAdjustments != 0)
+                    {
+                        <div class="totals-row">
+                            <span style="color: @(Model.TotalAdjustments < 0 ? "#dc2626" : "inherit");">Adjustments</span>
+                            <span class="@(Model.TotalAdjustments < 0 ? "text-danger" : "")">₱@Model.TotalAdjustments.ToString("N2")</span>
                         </div>
                     }
                     <div class="totals-row totals-grand">
@@ -185,11 +192,11 @@
                 <h3 class="section-title">Amount Summary</h3>
                 <div class="amount-card amount-total">
                     <span class="amount-label">Total</span>
-                    <span class="amount-value">₱@Model.Total.ToString("N2")</span>
+                    <span class="amount-value">₱@Model.GrossTotal.ToString("N2")</span>
                 </div>
                 <div class="amount-card amount-paid">
                     <span class="amount-label">Paid</span>
-                    <span class="amount-value">₱@Model.AmountPaid.ToString("N2")</span>
+                    <span class="amount-value">₱@Model.EffectivePaid.ToString("N2")</span>
                 </div>
                 <div class="amount-card amount-balance">
                     <span class="amount-label">Balance</span>

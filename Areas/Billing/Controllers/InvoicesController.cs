@@ -18,12 +18,14 @@ public class InvoicesController : Controller
     private readonly IInvoiceService _invoiceService;
     private readonly ApplicationDbContext _db;
     private readonly ITaxCalculationService _tax;
+    private readonly ILogger<InvoicesController> _logger;
 
-    public InvoicesController(IInvoiceService invoiceService, ApplicationDbContext db, ITaxCalculationService tax)
+    public InvoicesController(IInvoiceService invoiceService, ApplicationDbContext db, ITaxCalculationService tax, ILogger<InvoicesController> logger)
     {
         _invoiceService = invoiceService;
         _db = db;
         _tax = tax;
+        _logger = logger;
     }
 
     private bool IsAuthorized() => User.IsInRoles("Billing", "Admin", "SuperAdmin");
@@ -75,6 +77,9 @@ public class InvoicesController : Controller
                     CustomerInitials = GetInitials(i.CustomerName),
                     JobNumber = i.JobOrderNo,
                     Status = parsedStatus,
+                    Subtotal = i.Subtotal,
+                    DiscountAmount = i.DiscountAmount,
+                    TotalAdjustments = i.TotalAdjustments,
                     Total = i.TotalAmount,
                     AmountPaid = i.AmountPaid,
                     Balance = i.Balance,
@@ -105,9 +110,17 @@ public class InvoicesController : Controller
     {
         if (!IsAuthorized()) return Forbid();
 
-        var vm = await GetInvoiceDetailAsync(id);
-        if (vm == null) return NotFound();
-        return PartialView("_DetailsModal", vm);
+        try
+        {
+            var vm = await GetInvoiceDetailAsync(id);
+            if (vm == null) return NotFound();
+            return PartialView("_DetailsModal", vm);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Invoice DetailsModal failed for id={InvoiceId}", id);
+            return StatusCode(500, "Failed to load invoice details.");
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════

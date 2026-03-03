@@ -78,6 +78,9 @@ public class InvoiceService : IInvoiceService
                 InvoiceNo = i.InvoiceNo,
                 CustomerName = i.Customer!.FirstName + " " + i.Customer.LastName,
                 JobOrderNo = i.JobOrder!.JobOrderNo,
+                Subtotal = i.Subtotal,
+                DiscountAmount = i.DiscountAmount,
+                TotalAdjustments = i.TotalAdjustments,
                 TotalAmount = i.TotalAmount,
                 AmountPaid = i.AmountPaid,
                 Balance = i.Balance,
@@ -160,7 +163,9 @@ public class InvoiceService : IInvoiceService
                     AdjustmentType = a.AdjustmentType.ToString(),
                     Amount = a.Amount,
                     Reason = a.Reason,
-                    CreatedByName = a.CreatedByUser!.FirstName + " " + a.CreatedByUser.LastName,
+                    CreatedByName = a.CreatedByUser != null
+                        ? a.CreatedByUser.FirstName + " " + a.CreatedByUser.LastName
+                        : "Unknown",
                     CreatedAt = a.CreatedAt
                 }).ToList(),
 
@@ -302,7 +307,7 @@ public class InvoiceService : IInvoiceService
         // Notify shop admins about new invoice
         var adminUsers = await _db.Users
             .Where(u => u.ShopId == shopId && u.IsActive
-                && u.UserRoles.Any(ur => ur.Role!.RoleName == "Admin" || ur.Role!.RoleName == "SuperAdmin"))
+                && u.UserRoles.Any(ur => ur.Role!.RoleName == "Admin"))
             .Select(u => u.UserId)
             .ToListAsync();
         foreach (var adminId in adminUsers)

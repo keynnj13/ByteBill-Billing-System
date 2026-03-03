@@ -1316,7 +1316,7 @@ public class SuperAdminService : ISuperAdminService
             .ToListAsync();
 
         var total = payments.Sum(p => p.Amount);
-        var shopCount = payments.Select(p => p.Subscription.ShopId).Distinct().Count();
+        var shopCount = payments.Where(p => p.Subscription != null).Select(p => p.Subscription!.ShopId).Distinct().Count();
 
         vm.SummaryCards = new()
         {
@@ -1328,6 +1328,7 @@ public class SuperAdminService : ISuperAdminService
 
         // Monthly chart
         vm.ChartData = payments
+            .Where(p => p.PaidAt.HasValue)
             .GroupBy(p => new { p.PaidAt!.Value.Year, p.PaidAt!.Value.Month })
             .Select(g => new ChartDataPoint { Label = $"{g.Key.Year}-{g.Key.Month:D2}", Value = g.Sum(x => x.Amount) })
             .OrderBy(c => c.Label)
@@ -1335,7 +1336,7 @@ public class SuperAdminService : ISuperAdminService
 
         vm.TableRows = payments.Select(p => new ReportTableRow
         {
-            Cells = new[] { p.ReferenceNumber, p.Subscription.Shop.ShopName, p.Subscription.Plan.PlanName, p.Amount.ToString("C"), p.PaidAt?.ToString("MMM dd, yyyy") ?? "—" }
+            Cells = new[] { p.ReferenceNumber, p.Subscription?.Shop?.ShopName ?? "—", p.Subscription?.Plan?.PlanName ?? "—", p.Amount.ToString("C"), p.PaidAt?.ToString("MMM dd, yyyy") ?? "—" }
         }).ToList();
     }
 
@@ -1419,13 +1420,13 @@ public class SuperAdminService : ISuperAdminService
         };
 
         vm.ChartData = subs
-            .GroupBy(s => s.Plan.PlanName)
+            .GroupBy(s => s.Plan?.PlanName ?? "Unknown")
             .Select(g => new ChartDataPoint { Label = g.Key, Value = g.Count() })
             .ToList();
 
         vm.TableRows = subs.Select(s => new ReportTableRow
         {
-            Cells = new[] { s.Shop.ShopName, s.Plan.PlanName, s.BillingCycle, s.Price.ToString("C"), s.Status, s.StartDate.ToString("MMM dd, yyyy") }
+            Cells = new[] { s.Shop?.ShopName ?? "—", s.Plan?.PlanName ?? "—", s.BillingCycle, s.Price.ToString("C"), s.Status, s.StartDate.ToString("MMM dd, yyyy") }
         }).ToList();
     }
 
@@ -1457,7 +1458,7 @@ public class SuperAdminService : ISuperAdminService
 
         vm.TableRows = payments.Select(p => new ReportTableRow
         {
-            Cells = new[] { p.ReferenceNumber, p.Subscription.Shop.ShopName, p.Amount.ToString("C"), p.Status, p.PaymentMethod ?? "—", (p.PaidAt ?? p.CreatedAt).ToString("MMM dd, yyyy") }
+            Cells = new[] { p.ReferenceNumber, p.Subscription?.Shop?.ShopName ?? "—", p.Amount.ToString("C"), p.Status, p.PaymentMethod ?? "—", (p.PaidAt ?? p.CreatedAt).ToString("MMM dd, yyyy") }
         }).ToList();
     }
 

@@ -9,6 +9,9 @@ public class InvoiceListItemDto
     public string InvoiceNo { get; set; } = string.Empty;
     public string CustomerName { get; set; } = string.Empty;
     public string JobOrderNo { get; set; } = string.Empty;
+    public decimal Subtotal { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public decimal TotalAdjustments { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal AmountPaid { get; set; }
     public decimal Balance { get; set; }

@@ -28,18 +28,27 @@ public class InvoiceItemViewModel
     public string StatusDisplay => Status.ToString();
     public string StatusClass => Status switch
     {
-        InvoiceStatus.Unpaid => "status-pending",
+        InvoiceStatus.Unpaid => "status-danger",
         InvoiceStatus.Partial => "status-partial",
         InvoiceStatus.Paid => "status-success",
         InvoiceStatus.Void => "status-muted",
         _ => "status-muted"
     };
+    public decimal Subtotal { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public decimal TotalAdjustments { get; set; }
     public decimal Total { get; set; }
     public decimal AmountPaid { get; set; }
     public decimal Balance { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? DueDate { get; set; }
     public bool IsOverdue => DueDate.HasValue && DueDate.Value < DateTime.Today && Status != InvoiceStatus.Paid && Status != InvoiceStatus.Void;
+
+    /// <summary>Original invoice amount before deductions (Subtotal + positive adjustments).</summary>
+    public decimal GrossTotal => Subtotal + Math.Max(0, TotalAdjustments);
+
+    /// <summary>Total settled amount: actual payments + discounts + credit adjustments.</summary>
+    public decimal EffectivePaid => AmountPaid + Math.Max(0, GrossTotal - Total);
 }
 
 public class InvoiceDetailViewModel
@@ -70,7 +79,7 @@ public class InvoiceDetailViewModel
     public string StatusDisplay => Status.ToString();
     public string StatusClass => Status switch
     {
-        InvoiceStatus.Unpaid => "status-pending",
+        InvoiceStatus.Unpaid => "status-danger",
         InvoiceStatus.Partial => "status-partial",
         InvoiceStatus.Paid => "status-success",
         InvoiceStatus.Void => "status-muted",
@@ -90,6 +99,12 @@ public class InvoiceDetailViewModel
     public decimal Total { get; set; }
     public decimal AmountPaid { get; set; }
     public decimal Balance { get; set; }
+
+    /// <summary>Original invoice amount before deductions (Subtotal + positive adjustments).</summary>
+    public decimal GrossTotal => Subtotal + Math.Max(0, TotalAdjustments);
+
+    /// <summary>Total settled amount: actual payments + discounts + credit adjustments.</summary>
+    public decimal EffectivePaid => AmountPaid + Math.Max(0, GrossTotal - Total);
     
     // Shop Tax Info
     public string? ShopTIN { get; set; }

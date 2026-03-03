@@ -85,6 +85,7 @@ public class PaymentDetailViewModel
     // BIR Tax Breakdown (from related invoice)
     public decimal InvoiceSubtotal { get; set; }
     public decimal InvoiceDiscountAmount { get; set; }
+    public decimal InvoiceTotalAdjustments { get; set; }
     public decimal VatableSales { get; set; }
     public decimal VatExemptSales { get; set; }
     public decimal ZeroRatedSales { get; set; }

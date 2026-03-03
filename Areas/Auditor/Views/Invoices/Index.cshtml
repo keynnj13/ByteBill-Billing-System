@@ -93,8 +93,8 @@
                                     </div>
                                 </td>
                                 <td class="text-center"><span class="job-link">@(inv.JobNumber ?? "—")</span></td>
-                                <td class="text-right font-medium">₱@inv.Total.ToString("N2")</td>
-                                <td class="text-right">₱@inv.AmountPaid.ToString("N2")</td>
+                                <td class="text-right font-medium">₱@inv.GrossTotal.ToString("N2")</td>
+                                <td class="text-right">₱@inv.EffectivePaid.ToString("N2")</td>
                                 <td class="text-right">
                                     <span class="@(inv.Balance > 0 ? "text-danger font-medium" : "")">₱@inv.Balance.ToString("N2")</span>
                                 </td>

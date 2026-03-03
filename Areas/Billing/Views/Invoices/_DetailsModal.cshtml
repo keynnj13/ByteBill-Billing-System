@@ -19,11 +19,11 @@
     <div class="modal-stats-row">
         <div class="modal-stat">
             <span class="modal-stat-label">Total</span>
-            <span class="modal-stat-value">@Model.Total.ToString("C")</span>
+            <span class="modal-stat-value">@Model.GrossTotal.ToString("C")</span>
         </div>
         <div class="modal-stat">
             <span class="modal-stat-label">Paid</span>
-            <span class="modal-stat-value" style="color: #10b981;">@Model.AmountPaid.ToString("C")</span>
+            <span class="modal-stat-value" style="color: #10b981;">@Model.EffectivePaid.ToString("C")</span>
         </div>
         <div class="modal-stat">
             <span class="modal-stat-label">Balance</span>
@@ -95,13 +95,6 @@
                         <td colspan="3" class="text-right" style="color: #6b7280;">Subtotal</td>
                         <td class="text-right">@Model.Subtotal.ToString("C")</td>
                     </tr>
-                    @if (Model.VatAmount > 0)
-                    {
-                        <tr>
-                            <td colspan="3" class="text-right" style="color: #6b7280;">VAT (12%)</td>
-                            <td class="text-right">@Model.VatAmount.ToString("C")</td>
-                        </tr>
-                    }
                     @if (Model.Discounts.Any())
                     {
                         @foreach (var disc in Model.Discounts)
@@ -117,8 +110,22 @@
                     else if (Model.DiscountAmount > 0)
                     {
                         <tr>
-                            <td colspan="3" class="text-right" style="color: #6b7280;">Discount</td>
+                            <td colspan="3" class="text-right" style="color: #dc2626;">Discount</td>
                             <td class="text-right text-danger">-@Model.DiscountAmount.ToString("C")</td>
+                        </tr>
+                    }
+                    @if (Model.VatAmount > 0)
+                    {
+                        <tr>
+                            <td colspan="3" class="text-right" style="color: #6b7280;">VAT (12%)</td>
+                            <td class="text-right">@Model.VatAmount.ToString("C")</td>
+                        </tr>
+                    }
+                    @if (Model.TotalAdjustments != 0)
+                    {
+                        <tr>
+                            <td colspan="3" class="text-right" style="color: @(Model.TotalAdjustments < 0 ? "#dc2626" : "#6b7280"); font-size: 12px;">Adjustments</td>
+                            <td class="text-right @(Model.TotalAdjustments < 0 ? "text-danger" : "")" style="font-size: 12px;">@Model.TotalAdjustments.ToString("C")</td>
                         </tr>
                     }
                     <tr style="border-top: 2px solid #e5e7eb;">

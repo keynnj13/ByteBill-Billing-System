@@ -238,6 +238,8 @@ public class PayMongoService : IPayMongoService
         var invoice = await _db.Invoices
             .Include(i => i.Customer)
             .Include(i => i.InvoiceLines)
+            .Include(i => i.InvoiceDiscounts)
+            .Include(i => i.Shop)
             .FirstOrDefaultAsync(i => i.ShopId == shopId && i.InvoiceId == req.InvoiceId);
 
         if (invoice is null)
@@ -253,77 +255,79 @@ public class PayMongoService : IPayMongoService
             return ApiResponse<PayMongoPaymentResult>.Fail("Invoice has no outstanding balance.");
 
         var amountCentavos = (long)(invoice.Balance * 100);
-        var description = req.Description ?? $"Payment for Invoice {invoice.InvoiceNo}";
 
-        // Build line items from invoice lines with VAT breakdown
+        // Build description with VAT/discount breakdown
+        var descParts = new List<string> { $"Payment for Invoice {invoice.InvoiceNo}" };
+        var subtotal = invoice.InvoiceLines.Sum(l => l.Qty * l.UnitPrice);
+
+        if (invoice.DiscountAmount > 0)
+        {
+            var discountLabels = invoice.InvoiceDiscounts.Any()
+                ? string.Join(", ", invoice.InvoiceDiscounts.Select(d => d.Label))
+                : "Discount";
+            descParts.Add($"Subtotal: ₱{subtotal:N2}");
+            descParts.Add($"{discountLabels}: -₱{invoice.DiscountAmount:N2}");
+        }
+
+        if (invoice.VatAmount > 0)
+            descParts.Add($"VAT (12%): ₱{invoice.VatAmount:N2}");
+
+        descParts.Add($"Total: ₱{invoice.Balance:N2}");
+
+        var description = req.Description ?? string.Join(" | ", descParts);
+
+        // Build line items from invoice lines
+        // When discounts exist, proportionally scale item prices so the PayMongo total equals the invoice balance
         var lineItems = new List<object>();
+        var hasDiscountOrAdjustment = subtotal != invoice.Balance && subtotal > 0;
+        var scaleFactor = hasDiscountOrAdjustment && subtotal > 0
+            ? invoice.Balance / subtotal
+            : 1m;
 
-        // Always show individual line items
         foreach (var line in invoice.InvoiceLines)
         {
             var lineTotal = line.Qty * line.UnitPrice;
+            var adjustedTotal = Math.Round(lineTotal * scaleFactor, 2);
+            var adjustedUnitPrice = line.Qty > 0 ? Math.Round(adjustedTotal / line.Qty, 2) : adjustedTotal;
+
+            var itemName = line.Description;
+            var itemDesc = line.Description;
+
+            // If prices were adjusted, show original price in description
+            if (hasDiscountOrAdjustment && adjustedUnitPrice != line.UnitPrice)
+            {
+                itemDesc = $"{line.Description} (Original: ₱{line.UnitPrice:N2})";
+            }
 
             lineItems.Add(new
             {
                 currency = _settings.Currency,
-                amount = (long)(lineTotal * 100),
-                description = line.Description,
-                name = line.Description,
-                quantity = line.Qty
+                amount = (long)(adjustedUnitPrice * 100) * line.Qty,
+                description = itemDesc,
+                name = itemName,
+                quantity = 1 // Use quantity=1 since amount is already the line total
             });
         }
 
-        // Add discount line items (negative amounts aren't allowed by PayMongo,
-        // so add them as descriptive items with 0 amount if the balance already reflects them,
-        // or adjust via a balance-reconciliation line)
-        var lineItemsTotal = lineItems.Cast<dynamic>()
-            .Sum(li => (long)li.amount * (int)li.quantity);
-
-        // If discounts/adjustments changed the balance, add a reconciliation line
-        if (lineItemsTotal != amountCentavos)
+        // Ensure line items total matches the invoice balance exactly
+        var lineItemsSum = lineItems.Cast<dynamic>().Sum(li => (long)li.amount);
+        if (lineItemsSum != amountCentavos && lineItems.Count > 0)
         {
-            var diff = amountCentavos - lineItemsTotal;
-            if (diff < 0)
-            {
-                // Discounts / credits reduced the total
-                lineItems.Add(new
-                {
-                    currency = _settings.Currency,
-                    amount = diff, // negative amount
-                    description = invoice.DiscountAmount > 0
-                        ? $"Discount / Adjustment on Invoice {invoice.InvoiceNo}"
-                        : $"Adjustment on Invoice {invoice.InvoiceNo}",
-                    name = "Discount / Adjustment",
-                    quantity = 1
-                });
-            }
-            else
-            {
-                // Debit adjustments increased the total
-                lineItems.Add(new
-                {
-                    currency = _settings.Currency,
-                    amount = diff,
-                    description = $"Additional charges on Invoice {invoice.InvoiceNo}",
-                    name = "Additional Charges",
-                    quantity = 1
-                });
-            }
+            // Adjust the last line item to reconcile any rounding differences
+            var diff = amountCentavos - lineItemsSum;
+            var lastItem = lineItems[^1];
+            var lastAmount = (long)((dynamic)lastItem).amount;
+            var lastName = (string)((dynamic)lastItem).name;
+            var lastDesc = (string)((dynamic)lastItem).description;
 
-            // PayMongo requires all amounts > 0 — if reconciliation resulted in negative,
-            // fall back to a single "adjusted balance" line item
-            if (diff < 0)
+            lineItems[^1] = new
             {
-                lineItems.Clear();
-                lineItems.Add(new
-                {
-                    currency = _settings.Currency,
-                    amount = amountCentavos,
-                    description = $"Payment for Invoice {invoice.InvoiceNo} (includes discounts/adjustments)",
-                    name = $"Invoice {invoice.InvoiceNo}",
-                    quantity = 1
-                });
-            }
+                currency = _settings.Currency,
+                amount = lastAmount + diff,
+                description = lastDesc,
+                name = lastName,
+                quantity = 1
+            };
         }
 
         // Build success/cancel URLs with invoice ID for tracking
@@ -543,8 +547,13 @@ public class PayMongoService : IPayMongoService
             AmountApplied = txn.Amount
         });
 
+        await _db.SaveChangesAsync();
+
         // Recalculate invoice totals, balance & status from payment allocations
         await _billing.RecalculateInvoiceAsync(txn.InvoiceId);
+
+        // Generate double-entry accounting records for the payment
+        await _billing.GeneratePaymentEntriesAsync(txn.ShopId, payment.PaymentId);
 
         // Audit log (no specific user for webhook, use 0)
         await _audit.LogAsync(payment.ShopId, 0, "PayMongoWebhook", "Payment", payment.PaymentId,
@@ -555,7 +564,7 @@ public class PayMongoService : IPayMongoService
         {
             var adminUsers = await _db.Users
                 .Where(u => u.ShopId == txn.ShopId && u.IsActive
-                    && u.UserRoles.Any(ur => ur.Role!.RoleName == "Admin" || ur.Role!.RoleName == "SuperAdmin"))
+                    && u.UserRoles.Any(ur => ur.Role!.RoleName == "Admin"))
                 .Select(u => u.UserId)
                 .ToListAsync();
             foreach (var adminId in adminUsers)
@@ -781,8 +790,13 @@ public class PayMongoService : IPayMongoService
             AmountApplied = txn.Amount
         });
 
+        await _db.SaveChangesAsync();
+
         // Recalculate invoice totals, balance & status from payment allocations
         await _billing.RecalculateInvoiceAsync(txn.InvoiceId);
+
+        // Generate double-entry accounting records for the payment
+        await _billing.GeneratePaymentEntriesAsync(txn.ShopId, payment.PaymentId);
 
         await _audit.LogAsync(payment.ShopId, txn.InitiatedByUserId, "PayMongoVerify", "Payment", payment.PaymentId,
             $"PayMongo payment verified on redirect. Amount: ₱{payment.Amount:N2}. Method: {paymentMethodType ?? "unknown"}.", ClientIp);
@@ -792,7 +806,7 @@ public class PayMongoService : IPayMongoService
         {
             var adminUsers = await _db.Users
                 .Where(u => u.ShopId == txn.ShopId && u.IsActive
-                    && u.UserRoles.Any(ur => ur.Role!.RoleName == "Admin" || ur.Role!.RoleName == "SuperAdmin"))
+                    && u.UserRoles.Any(ur => ur.Role!.RoleName == "Admin"))
                 .Select(u => u.UserId)
                 .ToListAsync();
             foreach (var adminId in adminUsers)
