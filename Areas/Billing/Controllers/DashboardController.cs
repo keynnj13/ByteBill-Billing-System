@@ -35,40 +35,39 @@ public class DashboardController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? period, DateTime? from, DateTime? to)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
         var shopId = User.GetShopId();
+        var (dateFrom, dateTo, activePeriod) = ResolveDateRange(period, from, to);
+        var hasDateFilter = dateFrom != DateTime.MinValue;
         var today = DateTime.UtcNow.Date;
         var tomorrow = today.AddDays(1);
 
-        // Revenue & payment stats
-        var todayRevenue = await _db.Payments
-            .Where(p => p.ShopId == shopId && p.PaymentDate >= today && p.PaymentDate < tomorrow
-                        && p.Status != PaymentStatus.Refunded)
-            .SumAsync(p => (decimal?)p.Amount) ?? 0;
+        // Revenue (confirmed payments – filtered by date range)
+        var payBase = _db.Payments
+            .Where(p => p.ShopId == shopId && p.Status != PaymentStatus.Refunded);
+        if (hasDateFilter) payBase = payBase.Where(p => p.PaymentDate >= dateFrom && p.PaymentDate <= dateTo);
 
-        var paidTodayCount = await _db.Payments
-            .Where(p => p.ShopId == shopId && p.PaymentDate >= today && p.PaymentDate < tomorrow
-                        && p.Status != PaymentStatus.Refunded)
-            .CountAsync();
+        var periodRevenue = await payBase.SumAsync(p => (decimal?)p.Amount) ?? 0;
 
-        // Invoice stats
-        var pendingInvoices = await _db.Invoices
+        // Paid count
+        var paidCount = await payBase.CountAsync();
+
+        // Invoice stats (filtered by InvoiceDate when date range specified)
+        var invBase = _db.Invoices
             .Where(i => i.ShopId == shopId && !i.IsArchived
-                        && (i.Status == InvoiceStatus.Unpaid || i.Status == InvoiceStatus.Partial))
-            .CountAsync();
+                        && (i.Status == InvoiceStatus.Unpaid || i.Status == InvoiceStatus.Partial));
+        if (hasDateFilter) invBase = invBase.Where(i => i.InvoiceDate >= dateFrom && i.InvoiceDate <= dateTo);
 
-        var outstandingBalance = await _db.Invoices
-            .Where(i => i.ShopId == shopId && !i.IsArchived
-                        && (i.Status == InvoiceStatus.Unpaid || i.Status == InvoiceStatus.Partial))
+        var pendingInvoices = await invBase.CountAsync();
+
+        var outstandingBalance = await invBase
             .SumAsync(i => (decimal?)i.Balance) ?? 0;
 
-        var overdueCount = await _db.Invoices
-            .Where(i => i.ShopId == shopId && !i.IsArchived
-                        && (i.Status == InvoiceStatus.Unpaid || i.Status == InvoiceStatus.Partial)
-                        && i.DueDate.HasValue && i.DueDate < today)
+        var overdueCount = await invBase
+            .Where(i => i.DueDate.HasValue && i.DueDate < today)
             .CountAsync();
 
         // Recent activity from audit logs (billing-related)
@@ -129,16 +128,36 @@ public class DashboardController : Controller
         {
             UserRole = UserRole.Billing,
             UserName = User.GetFullName(),
-            TodayRevenue = todayRevenue,
+            PeriodRevenue = periodRevenue,
+            TodayRevenue = periodRevenue,
             PendingInvoices = pendingInvoices,
-            PaidToday = paidTodayCount,
+            PaidToday = paidCount,
             OutstandingBalance = outstandingBalance,
             OverdueInvoices = overdueCount,
             RecentActivity = recentActivity,
             RecentPayments = recentPayments,
-            RecentInvoices = unpaidInvoices
+            RecentInvoices = unpaidInvoices,
+            ActivePeriod = activePeriod,
+            FilterFrom = dateFrom == DateTime.MinValue ? null : dateFrom,
+            FilterTo = dateTo == DateTime.MaxValue ? null : dateTo
         };
 
         return View(viewModel);
+    }
+
+    private static (DateTime from, DateTime to, string period) ResolveDateRange(string? period, DateTime? from, DateTime? to)
+    {
+        var today = DateTime.UtcNow.Date;
+        return period switch
+        {
+            "today"   => (today, today.AddDays(1).AddTicks(-1), "today"),
+            "week"    => (today.AddDays(-(int)today.DayOfWeek), today.AddDays(1).AddTicks(-1), "week"),
+            "month"   => (new DateTime(today.Year, today.Month, 1), today.AddDays(1).AddTicks(-1), "month"),
+            "last30"  => (today.AddDays(-30), today.AddDays(1).AddTicks(-1), "last30"),
+            "last3mo" => (today.AddMonths(-3), today.AddDays(1).AddTicks(-1), "last3mo"),
+            "custom" when from.HasValue && to.HasValue =>
+                (from.Value.Date, to.Value.Date.AddDays(1).AddTicks(-1), "custom"),
+            _ => (DateTime.MinValue, DateTime.MaxValue, "all")
+        };
     }
 }

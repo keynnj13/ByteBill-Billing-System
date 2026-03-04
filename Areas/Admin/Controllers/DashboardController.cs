@@ -88,6 +88,7 @@ public class DashboardController : Controller
             CompletedToday = data.CompletedToday,
             TodayRevenue = data.TodayRevenue,
             WeekRevenue = data.WeekRevenue,
+            PeriodRevenue = data.PeriodRevenue,
             PendingInvoices = data.UnpaidInvoices,
             OutstandingAmount = data.OutstandingAmount,
             LowStockItems = data.LowStockCount,
@@ -134,9 +135,10 @@ public class DashboardController : Controller
             .Where(p => p.PaymentDate.Date >= weekStart)
             .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
-        var periodRevenue = hasDateFilter
-            ? await payBase.SumAsync(p => (decimal?)p.Amount) ?? 0m
-            : weekRevenue;
+        var periodRevenue = await _db.Payments
+            .Where(p => p.ShopId == shopId && p.Status == PaymentStatus.Confirmed)
+            .Where(p => !hasDateFilter || (p.PaymentDate >= dateFrom && p.PaymentDate <= dateTo))
+            .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
         // ── Invoices (filtered) ──
         var invBase = _db.Invoices.Where(i => i.ShopId == shopId);
@@ -268,6 +270,7 @@ public class DashboardController : Controller
             CompletedToday = jobOrders?.CompletedToday ?? 0,
             TodayRevenue = todayRevenue,
             WeekRevenue = weekRevenue,
+            PeriodRevenue = periodRevenue,
             UnpaidInvoices = invoiceStats?.Unpaid ?? 0,
             OutstandingAmount = invoiceStats?.Outstanding ?? 0m,
             LowStockCount = lowStockCount,
@@ -298,6 +301,7 @@ public class DashboardPollDto
     public int CompletedToday { get; set; }
     public decimal TodayRevenue { get; set; }
     public decimal WeekRevenue { get; set; }
+    public decimal PeriodRevenue { get; set; }
     public int UnpaidInvoices { get; set; }
     public decimal OutstandingAmount { get; set; }
     public int LowStockCount { get; set; }

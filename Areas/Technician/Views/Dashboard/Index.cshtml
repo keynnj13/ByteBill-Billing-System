@@ -19,11 +19,45 @@
     </div>
 </div>
 
+@{
+    string PeriodLabel(string baseName) => Model.ActivePeriod switch
+    {
+        "all"     => $"Total {baseName}",
+        "today"   => $"{baseName} Today",
+        "week"    => $"{baseName} This Week",
+        "month"   => $"{baseName} This Month",
+        "last30"  => $"{baseName} (Last 30 Days)",
+        "last3mo" => $"{baseName} (Last 3 Months)",
+        "custom"  => Model.FilterFrom.HasValue && Model.FilterTo.HasValue
+                     ? $"{baseName} ({Model.FilterFrom.Value:MMM d} – {Model.FilterTo.Value:MMM d})"
+                     : baseName,
+        _         => baseName
+    };
+}
+
+<!-- Date Filter -->
+<div class="dash-filter" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:24px;">
+    <a href="@Url.Action("Index")" class="filter-btn @(Model.ActivePeriod == "all" ? "filter-btn-active" : "")">All Time</a>
+    <a href="@Url.Action("Index", new { period = "today" })" class="filter-btn @(Model.ActivePeriod == "today" ? "filter-btn-active" : "")">Today</a>
+    <a href="@Url.Action("Index", new { period = "week" })" class="filter-btn @(Model.ActivePeriod == "week" ? "filter-btn-active" : "")">This Week</a>
+    <a href="@Url.Action("Index", new { period = "month" })" class="filter-btn @(Model.ActivePeriod == "month" ? "filter-btn-active" : "")">This Month</a>
+    <a href="@Url.Action("Index", new { period = "last30" })" class="filter-btn @(Model.ActivePeriod == "last30" ? "filter-btn-active" : "")">Last 30 Days</a>
+    <a href="@Url.Action("Index", new { period = "last3mo" })" class="filter-btn @(Model.ActivePeriod == "last3mo" ? "filter-btn-active" : "")">Last 3 Months</a>
+    <span style="width:1px;height:24px;background:#e5e7eb;margin:0 4px;"></span>
+    <form method="get" style="display:flex;gap:6px;align-items:center;">
+        <input type="hidden" name="period" value="custom" />
+        <input type="date" name="from" value="@(Model.ActivePeriod == "custom" && Model.FilterFrom.HasValue ? Model.FilterFrom.Value.ToString("yyyy-MM-dd") : "")" class="form-input" style="font-size:13px;padding:6px 10px;width:150px;" />
+        <span style="color:#9ca3af;font-size:13px;">to</span>
+        <input type="date" name="to" value="@(Model.ActivePeriod == "custom" && Model.FilterTo.HasValue ? Model.FilterTo.Value.ToString("yyyy-MM-dd") : "")" class="form-input" style="font-size:13px;padding:6px 10px;width:150px;" />
+        <button type="submit" class="btn btn-outline-primary btn-sm">Apply</button>
+    </form>
+</div>
+
 <!-- KPI Cards -->
 <div class="tech-kpi-grid">
     <div class="tech-kpi-card">
         <div class="tech-kpi-header">
-            <span class="tech-kpi-label">My Jobs Today</span>
+            <span class="tech-kpi-label">@PeriodLabel("My Jobs")</span>
             <div class="tech-kpi-icon-wrap tech-kpi-icon-blue">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
             </div>
@@ -34,7 +68,7 @@
 
     <div class="tech-kpi-card">
         <div class="tech-kpi-header">
-            <span class="tech-kpi-label">Completed Today</span>
+            <span class="tech-kpi-label">@PeriodLabel("Completed")</span>
             <div class="tech-kpi-icon-wrap tech-kpi-icon-green">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
             </div>
@@ -45,7 +79,7 @@
 
     <div class="tech-kpi-card">
         <div class="tech-kpi-header">
-            <span class="tech-kpi-label">In Progress</span>
+            <span class="tech-kpi-label">@PeriodLabel("In Progress")</span>
             <div class="tech-kpi-icon-wrap tech-kpi-icon-amber">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
             </div>
@@ -56,7 +90,7 @@
 
     <div class="tech-kpi-card">
         <div class="tech-kpi-header">
-            <span class="tech-kpi-label">Waiting Parts</span>
+            <span class="tech-kpi-label">@PeriodLabel("Waiting Parts")</span>
             <div class="tech-kpi-icon-wrap tech-kpi-icon-purple">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
             </div>
@@ -144,6 +178,24 @@
 </div>
 
 <style>
+    /* Filter buttons */
+    .filter-btn {
+        display: inline-block;
+        padding: 6px 14px;
+        border-radius: 9999px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #4b5563;
+        background: #f3f4f6;
+        border: 1px solid transparent;
+        text-decoration: none;
+        transition: all 0.15s;
+        cursor: pointer;
+    }
+    .filter-btn:hover { background: #e5e7eb; color: #1f2937; text-decoration: none; }
+    .filter-btn-active { background: #3b82f6; color: #fff !important; border-color: #3b82f6; }
+    .filter-btn-active:hover { background: #2563eb; }
+
     /* ── Welcome Banner ── */
     .tech-welcome {
         display: flex;

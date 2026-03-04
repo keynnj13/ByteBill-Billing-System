@@ -12,6 +12,11 @@ public class JobOrderListViewModel
     public int CurrentPage { get; set; } = 1;
     public int PageSize { get; set; } = 10;
     public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+
+    // KPI counts (across all records, not just current page)
+    public int InProgressCount { get; set; }
+    public int CompletedCount { get; set; }
+    public int PendingInvoicingCount { get; set; }
 }
 
 public class JobOrderItemViewModel

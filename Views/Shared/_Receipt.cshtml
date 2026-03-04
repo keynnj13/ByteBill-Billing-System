@@ -92,9 +92,18 @@
             @if (!string.IsNullOrEmpty(shopPhone) || !string.IsNullOrEmpty(shopEmail))
             {
                 <div class="receipt-shop-detail">
-                    @if (!string.IsNullOrEmpty(shopPhone)) { <span>@shopPhone</span> }
-                    @if (!string.IsNullOrEmpty(shopPhone) && !string.IsNullOrEmpty(shopEmail)) { <span> · </span> }
-                    @if (!string.IsNullOrEmpty(shopEmail)) { <span>@shopEmail</span> }
+                    @if (!string.IsNullOrEmpty(shopPhone))
+                    {
+                        <span>@shopPhone</span>
+                    }
+                    @if (!string.IsNullOrEmpty(shopPhone) && !string.IsNullOrEmpty(shopEmail))
+                    {
+                        <span> &middot; </span>
+                    }
+                    @if (!string.IsNullOrEmpty(shopEmail))
+                    {
+                        <span>@shopEmail</span>
+                    }
                 </div>
             }
             @if (!string.IsNullOrEmpty(shopTIN))

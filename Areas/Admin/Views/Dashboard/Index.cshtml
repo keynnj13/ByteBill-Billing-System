@@ -11,6 +11,10 @@
         <h1 class="dash-title">Welcome back, @Model.UserName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()</h1>
         <p class="dash-subtitle">Here's what's happening at <strong>@Model.ShopName</strong> today.</p>
     </div>
+    <div class="dash-live-badge" id="dash-live-status">
+        <span class="live-dot" id="live-dot"></span>
+        <span id="live-text">Live</span>
+    </div>
 </div>
 
 <!-- ═══ Date Filter ═══ -->
@@ -31,17 +35,36 @@
     </form>
 </div>
 
+@{
+    string PeriodLabel(string baseName) => Model.ActivePeriod switch
+    {
+        "all"     => $"Total {baseName}",
+        "today"   => $"Today's {baseName}",
+        "week"    => $"Weekly {baseName}",
+        "month"   => $"Monthly {baseName}",
+        "last30"  => $"Last 30 Days {baseName}",
+        "last3mo" => $"Last 3 Months {baseName}",
+        "custom"  => Model.FilterFrom.HasValue && Model.FilterTo.HasValue
+                     ? $"{baseName} ({Model.FilterFrom.Value:MMM d} – {Model.FilterTo.Value:MMM d})"
+                     : baseName,
+        _         => baseName
+    };
+}
+
 <!-- ═══ KPI Cards ═══ -->
 <div class="kpi-grid">
-    <!-- Today's Revenue -->
+    <!-- Revenue -->
     <div class="kpi-card">
         <div class="kpi-icon kpi-icon-green">
             <span class="kpi-peso-icon">₱</span>
         </div>
         <div class="kpi-body">
-            <span class="kpi-label">Today's Revenue</span>
-            <span class="kpi-value" id="kpi-today-revenue">₱@Model.TodayRevenue.ToString("N2")</span>
-            <span class="kpi-sub" id="kpi-week-revenue">Week: ₱@Model.WeekRevenue.ToString("N2")</span>
+            <span class="kpi-label" id="kpi-revenue-label">@PeriodLabel("Revenue")</span>
+            <span class="kpi-value" id="kpi-today-revenue">₱@Model.PeriodRevenue.ToString("N2")</span>
+            @if (Model.ActivePeriod == "today")
+            {
+                <span class="kpi-sub" id="kpi-week-revenue">Week: ₱@Model.WeekRevenue.ToString("N2")</span>
+            }
         </div>
     </div>
 
@@ -115,47 +138,40 @@
             <a asp-action="Index" asp-controller="JobOrders" class="btn btn-ghost btn-sm">View All</a>
         </div>
         <div class="card-body p-0">
-            @if (Model.RecentJobOrders.Any())
-            {
-                <div class="table-container">
-                    <table class="table" style="table-layout: fixed;">
-                        <colgroup>
-                            <col style="width: 22%;" />
-                            <col style="width: 22%;" />
-                            <col style="width: 18%;" />
-                            <col style="width: 20%;" />
-                            <col style="width: 18%;" />
-                        </colgroup>
-                        <thead>
+            <div class="table-container">
+                <table class="table" style="table-layout: fixed;">
+                    <colgroup>
+                        <col style="width: 22%;" />
+                        <col style="width: 22%;" />
+                        <col style="width: 18%;" />
+                        <col style="width: 20%;" />
+                        <col style="width: 18%;" />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Customer</th>
+                            <th>Device</th>
+                            <th>Technician</th>
+                            <th class="text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-jobs-body">
+                        @foreach (var job in Model.RecentJobOrders)
+                        {
                             <tr>
-                                <th>Order #</th>
-                                <th>Customer</th>
-                                <th>Device</th>
-                                <th>Technician</th>
-                                <th class="text-center">Status</th>
+                                <td>
+                                    <a asp-action="Details" asp-controller="JobOrders" asp-route-id="@job.Id" class="text-primary font-medium" style="font-weight:600;color:#3b82f6;text-decoration:none;font-size:13px;">@job.JobNumber</a>
+                                </td>
+                                <td style="font-size:13px;color:#374151;">@job.CustomerName</td>
+                                <td style="font-size:13px;color:#374151;">@job.DeviceType</td>
+                                <td style="font-size:13px;color:@(job.TechnicianName != null ? "#374151" : "#d1d5db");@(job.TechnicianName == null ? "font-style:italic;" : "")">@(job.TechnicianName ?? "Unassigned")</td>
+                                <td class="text-center"><span class="status-indicator status-@job.StatusBadgeClass">@job.StatusName</span></td>
                             </tr>
-                        </thead>
-                        <tbody id="recent-jobs-body">
-                            @foreach (var job in Model.RecentJobOrders)
-                            {
-                                <tr>
-                                    <td>
-                                        <a asp-action="Details" asp-controller="JobOrders" asp-route-id="@job.Id" class="text-primary font-medium" style="font-weight:600;color:#3b82f6;text-decoration:none;font-size:13px;">@job.JobNumber</a>
-                                    </td>
-                                    <td style="font-size:13px;color:#374151;">@job.CustomerName</td>
-                                    <td style="font-size:13px;color:#374151;">@job.DeviceType</td>
-                                    <td style="font-size:13px;color:@(job.TechnicianName != null ? "#374151" : "#d1d5db");@(job.TechnicianName == null ? "font-style:italic;" : "")">@(job.TechnicianName ?? "Unassigned")</td>
-                                    <td class="text-center"><span class="status-indicator status-@job.StatusBadgeClass">@job.StatusName</span></td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
-            else
-            {
-                <partial name="~/Views/Shared/_EmptyState.cshtml" model="@(new { Icon = "clipboard", Title = "No job orders yet", Description = "Create your first job order" })" />
-            }
+                        }
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -165,22 +181,19 @@
             <h3 class="card-title">Recent Activity</h3>
         </div>
         <div class="card-body p-0">
-            @if (Model.RecentActivity.Any())
-            {
-                <ul class="activity-list" id="activity-list">
-                    @foreach (var activity in Model.RecentActivity)
-                    {
-                        <li class="activity-item">
-                            <div class="activity-dot activity-dot-@activity.IconColor"></div>
-                            <div class="activity-content">
-                                <p class="activity-title">@activity.Title</p>
-                                <p class="activity-description">@activity.Description</p>
-                            </div>
-                            <span class="activity-time">@activity.TimeAgo</span>
-                        </li>
-                    }
-                </ul>
-            }
+            <ul class="activity-list" id="activity-list">
+                @foreach (var activity in Model.RecentActivity)
+                {
+                    <li class="activity-item">
+                        <div class="activity-dot activity-dot-@activity.IconColor"></div>
+                        <div class="activity-content">
+                            <p class="activity-title">@activity.Title</p>
+                            <p class="activity-description">@activity.Description</p>
+                        </div>
+                        <span class="activity-time">@activity.TimeAgo</span>
+                    </li>
+                }
+            </ul>
         </div>
     </div>
 </div>
@@ -330,7 +343,12 @@
             }
         });
 
-        // ── Real-time Polling (every 15 seconds) ──
+        // ══════════════════════════════════════════════════
+        //  Real-time Polling (every 5 seconds)
+        // ══════════════════════════════════════════════════
+        var _pollInterval = 5000;
+        var _pollTimer = null;
+
         function formatPeso(val) {
             return '₱' + Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
@@ -346,13 +364,17 @@
             }
         }
 
-        function getActivityDotClass(newStatus) {
-            switch (newStatus) {
-                case 'Completed': return 'activity-dot-success';
-                case 'InProgress': case 'Pending': return 'activity-dot-primary';
-                case 'Cancelled': return 'activity-dot-danger';
-                case 'WaitingForParts': return 'activity-dot-warning';
-                default: return 'activity-dot-info';
+        function updateLiveStatus(ok) {
+            var dot = document.getElementById('live-dot');
+            var txt = document.getElementById('live-text');
+            if (!dot || !txt) return;
+            if (ok) {
+                dot.className = 'live-dot live-dot-ok';
+                var now = new Date();
+                txt.textContent = 'Updated ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            } else {
+                dot.className = 'live-dot live-dot-err';
+                txt.textContent = 'Reconnecting\u2026';
             }
         }
 
@@ -364,13 +386,19 @@
             @if (Model.FilterFrom.HasValue) { <text>qs.push('from=@Model.FilterFrom.Value.ToString("yyyy-MM-dd")');</text> }
             @if (Model.FilterTo.HasValue) { <text>qs.push('to=@Model.FilterTo.Value.ToString("yyyy-MM-dd")');</text> }
             if (qs.length) pollUrl += (pollUrl.indexOf('?') >= 0 ? '&' : '?') + qs.join('&');
+
             fetch(pollUrl)
-                .then(function(r) { return r.json(); })
+                .then(function(r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                })
                 .then(function(d) {
+                    updateLiveStatus(true);
+
                     // ── Update KPI cards ──
                     var el;
                     el = document.getElementById('kpi-today-revenue');
-                    if (el) el.textContent = formatPeso(d.todayRevenue);
+                    if (el) el.textContent = formatPeso(d.periodRevenue);
                     el = document.getElementById('kpi-week-revenue');
                     if (el) el.textContent = 'Week: ' + formatPeso(d.weekRevenue);
                     el = document.getElementById('kpi-pending-jobs');
@@ -385,14 +413,14 @@
                     if (el) el.textContent = d.lowStockCount;
 
                     // ── Update Revenue Bar Chart ──
-                    if (d.revenueChart && d.revenueChart.length) {
+                    if (revenueChart && d.revenueChart && d.revenueChart.length) {
                         revenueChart.data.labels = d.revenueChart.map(function(c) { return c.label; });
                         revenueChart.data.datasets[0].data = d.revenueChart.map(function(c) { return c.value; });
                         revenueChart.update('none');
                     }
 
                     // ── Update Job Status Doughnut ──
-                    if (d.jobOrderChart && d.jobOrderChart.length) {
+                    if (jobStatusChart && d.jobOrderChart && d.jobOrderChart.length) {
                         var newLabels = d.jobOrderChart.map(function(c) { return c.label; });
                         var newValues = d.jobOrderChart.map(function(c) { return c.value; });
                         var newColors = newLabels.map(function(l) { return statusColorMap[l] || fallbackColor; });
@@ -434,11 +462,27 @@
                         }).join('');
                     }
                 })
-                .catch(function(err) { console.warn('Dashboard poll error:', err); });
+                .catch(function(err) {
+                    console.warn('Dashboard poll error:', err);
+                    updateLiveStatus(false);
+                });
         }
 
-        // Start polling every 15 seconds
-        setInterval(pollDashboard, 15000);
+        // ── Visibility-aware polling: pause when tab is hidden ──
+        function startPolling() {
+            if (_pollTimer) return;
+            pollDashboard();
+            _pollTimer = setInterval(pollDashboard, _pollInterval);
+        }
+        function stopPolling() {
+            if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+        }
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) stopPolling(); else startPolling();
+        });
+
+        // Start immediately
+        startPolling();
     });
 </script>
 
@@ -463,6 +507,25 @@
     }
     .dash-subtitle strong { color: var(--gray-700, #374151); }
     .dash-actions { display: flex; gap: 12px; }
+
+    /* Live status badge */
+    .dash-live-badge {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        background: var(--gray-50, #f9fafb);
+        border: 1px solid var(--gray-200, #e5e7eb);
+        border-radius: var(--radius-full, 9999px);
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--gray-500, #6b7280);
+        white-space: nowrap;
+        height: fit-content;
+        margin-top: 4px;
+    }
+    .live-dot-ok { background: #10b981 !important; }
+    .live-dot-err { background: #ef4444 !important; animation: none !important; }
 
     /* Filter buttons */
     .filter-btn {

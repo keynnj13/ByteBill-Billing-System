@@ -26,38 +26,41 @@ public class DashboardController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? period, DateTime? from, DateTime? to)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
         var shopId = User.GetShopId();
+        var (dateFrom, dateTo, activePeriod) = ResolveDateRange(period, from, to);
+        var hasDateFilter = dateFrom != DateTime.MinValue;
         var now = DateTime.UtcNow;
-        var thisMonth = new DateTime(now.Year, now.Month, 1);
         var today = now.Date;
 
-        // ── Revenue MTD (confirmed payments) ──
-        var revenueMtd = await _db.Payments
-            .Where(p => p.ShopId == shopId && p.Status == PaymentStatus.Confirmed && p.PaymentDate >= thisMonth)
-            .SumAsync(p => (decimal?)p.Amount) ?? 0;
+        // ── Revenue (confirmed payments – filtered) ──
+        var payBase = _db.Payments.Where(p => p.ShopId == shopId && p.Status == PaymentStatus.Confirmed);
+        if (hasDateFilter) payBase = payBase.Where(p => p.PaymentDate >= dateFrom && p.PaymentDate <= dateTo);
+        var periodRevenue = await payBase.SumAsync(p => (decimal?)p.Amount) ?? 0;
 
-        // ── Refunds MTD ──
-        var refundsMtd = await _db.CreditDebitAdjustments
-            .Where(a => a.ShopId == shopId && a.AdjustmentType == AdjustmentType.Refund
-                     && a.Status == AdjustmentStatus.Approved && a.CreatedAt >= thisMonth)
-            .SumAsync(a => (decimal?)a.Amount) ?? 0;
+        // ── Refunds (filtered) ──
+        var refBase = _db.CreditDebitAdjustments
+            .Where(a => a.ShopId == shopId && a.AdjustmentType == AdjustmentType.Refund && a.Status == AdjustmentStatus.Approved);
+        if (hasDateFilter) refBase = refBase.Where(a => a.CreatedAt >= dateFrom && a.CreatedAt <= dateTo);
+        var periodRefunds = await refBase.SumAsync(a => (decimal?)a.Amount) ?? 0;
 
-        // ── Adjustments MTD (credits + debits) ──
-        var adjustmentsMtd = await _db.CreditDebitAdjustments
-            .Where(a => a.ShopId == shopId && a.Status == AdjustmentStatus.Approved
-                     && a.AdjustmentType != AdjustmentType.Refund && a.CreatedAt >= thisMonth)
-            .SumAsync(a => (decimal?)a.Amount) ?? 0;
+        // ── Adjustments (filtered) ──
+        var adjBase = _db.CreditDebitAdjustments
+            .Where(a => a.ShopId == shopId && a.Status == AdjustmentStatus.Approved && a.AdjustmentType != AdjustmentType.Refund);
+        if (hasDateFilter) adjBase = adjBase.Where(a => a.CreatedAt >= dateFrom && a.CreatedAt <= dateTo);
+        var periodAdjustments = await adjBase.SumAsync(a => (decimal?)a.Amount) ?? 0;
 
-        // ── Voided Invoices MTD ──
-        var voidedMtd = await _db.Invoices
-            .CountAsync(i => i.ShopId == shopId && i.Status == InvoiceStatus.Void && i.CreatedAt >= thisMonth);
+        // ── Voided Invoices (filtered) ──
+        var voidBase = _db.Invoices.Where(i => i.ShopId == shopId && i.Status == InvoiceStatus.Void);
+        if (hasDateFilter) voidBase = voidBase.Where(i => i.CreatedAt >= dateFrom && i.CreatedAt <= dateTo);
+        var voidedCount = await voidBase.CountAsync();
 
-        // ── Invoice stats ──
-        var totalInvoicesMtd = await _db.Invoices
-            .CountAsync(i => i.ShopId == shopId && i.CreatedAt >= thisMonth);
+        // ── Invoice stats (filtered where applicable) ──
+        var invCountBase = _db.Invoices.Where(i => i.ShopId == shopId);
+        if (hasDateFilter) invCountBase = invCountBase.Where(i => i.CreatedAt >= dateFrom && i.CreatedAt <= dateTo);
+        var totalInvoicesInPeriod = await invCountBase.CountAsync();
         var unpaidInvoices = await _db.Invoices
             .CountAsync(i => i.ShopId == shopId && (i.Status == InvoiceStatus.Unpaid || i.Status == InvoiceStatus.Partial));
         var overdueInvoices = await _db.Invoices
@@ -67,35 +70,39 @@ public class DashboardController : Controller
             .Where(i => i.ShopId == shopId && (i.Status == InvoiceStatus.Unpaid || i.Status == InvoiceStatus.Partial))
             .SumAsync(i => (decimal?)i.Balance) ?? 0;
 
-        // ── Payment count MTD ──
-        var paymentCountMtd = await _db.Payments
-            .CountAsync(p => p.ShopId == shopId && p.Status == PaymentStatus.Confirmed && p.PaymentDate >= thisMonth);
+        // ── Payment count (filtered) ──
+        var paymentCount = await payBase.CountAsync();
 
         // ── Collection rate ──
-        var totalBilled = revenueMtd + outstandingBalance;
-        var collectionRate = totalBilled > 0 ? Math.Round(revenueMtd / totalBilled * 100, 1) : 100;
+        var totalBilled = periodRevenue + outstandingBalance;
+        var collectionRate = totalBilled > 0 ? Math.Round(periodRevenue / totalBilled * 100, 1) : 100;
 
-        // ── Revenue chart – last 7 days ──
-        var sevenDaysAgo = today.AddDays(-6);
+        // ── Revenue chart – last 7 days or within date range ──
+        var chartStart = hasDateFilter ? dateFrom : today.AddDays(-6);
+        var chartEnd = hasDateFilter ? dateTo : today.AddDays(1).AddTicks(-1);
         var dailyRevenue = await _db.Payments
-            .Where(p => p.ShopId == shopId && p.Status == PaymentStatus.Confirmed && p.PaymentDate >= sevenDaysAgo)
+            .Where(p => p.ShopId == shopId && p.Status == PaymentStatus.Confirmed
+                     && p.PaymentDate >= chartStart && p.PaymentDate <= chartEnd)
             .GroupBy(p => p.PaymentDate.Date)
             .Select(g => new { Date = g.Key, Total = g.Sum(p => p.Amount) })
             .ToListAsync();
 
         var revenueChart = new List<ChartDataPoint>();
-        for (int d = 0; d < 7; d++)
+        var chartDays = hasDateFilter
+            ? Math.Min((int)(dateTo.Date - dateFrom.Date).TotalDays + 1, 14)
+            : 7;
+        for (int d = 0; d < chartDays; d++)
         {
-            var date = sevenDaysAgo.AddDays(d);
-            var amount = dailyRevenue.FirstOrDefault(r => r.Date == date)?.Total ?? 0;
+            var date = (hasDateFilter ? dateFrom : today.AddDays(-6)).AddDays(d);
+            var amount = dailyRevenue.FirstOrDefault(r => r.Date == date.Date)?.Total ?? 0;
             revenueChart.Add(new ChartDataPoint { Label = date.ToString("ddd"), Value = amount });
         }
 
-        // ── Invoice status breakdown ──
-        var paidCount = await _db.Invoices.CountAsync(i => i.ShopId == shopId && i.Status == InvoiceStatus.Paid && i.CreatedAt >= thisMonth);
-        var unpaidCount = await _db.Invoices.CountAsync(i => i.ShopId == shopId && i.Status == InvoiceStatus.Unpaid && i.CreatedAt >= thisMonth);
-        var partialCount = await _db.Invoices.CountAsync(i => i.ShopId == shopId && i.Status == InvoiceStatus.Partial && i.CreatedAt >= thisMonth);
-        var voidCount = voidedMtd;
+        // ── Invoice status breakdown (filtered) ──
+        var paidCount = await invCountBase.CountAsync(i => i.Status == InvoiceStatus.Paid);
+        var unpaidCount = await invCountBase.CountAsync(i => i.Status == InvoiceStatus.Unpaid);
+        var partialCount = await invCountBase.CountAsync(i => i.Status == InvoiceStatus.Partial);
+        var voidCount = voidedCount;
 
         // ── Recent 5 invoices ──
         var recentInvoices = await _db.Invoices
@@ -165,24 +172,28 @@ public class DashboardController : Controller
 
         var viewModel = new DashboardViewModel
         {
-            TodayRevenue = revenueMtd,
-            MonthlyRevenue = revenueMtd,
+            PeriodRevenue = periodRevenue,
+            TodayRevenue = periodRevenue,
+            MonthlyRevenue = periodRevenue,
             OutstandingBalance = outstandingBalance,
-            TotalInvoices = totalInvoicesMtd,
+            TotalInvoices = totalInvoicesInPeriod,
             UnpaidInvoices = unpaidInvoices,
             OverdueInvoices = overdueInvoices,
             RecentActivity = recentActivity,
             RecentInvoices = recentInvoices,
             RecentPayments = recentPayments,
             RevenueChart = revenueChart,
-            PendingJobOrders = new List<JobOrderSummary>()
+            PendingJobOrders = new List<JobOrderSummary>(),
+            ActivePeriod = activePeriod,
+            FilterFrom = dateFrom == DateTime.MinValue ? null : dateFrom,
+            FilterTo = dateTo == DateTime.MaxValue ? null : dateTo
         };
 
-        ViewBag.TotalRevenueMTD = revenueMtd;
-        ViewBag.TotalRefundsMTD = refundsMtd;
-        ViewBag.TotalAdjustmentsMTD = adjustmentsMtd;
-        ViewBag.VoidedInvoicesMTD = voidedMtd;
-        ViewBag.PaymentCountMTD = paymentCountMtd;
+        ViewBag.TotalRevenueMTD = periodRevenue;
+        ViewBag.TotalRefundsMTD = periodRefunds;
+        ViewBag.TotalAdjustmentsMTD = periodAdjustments;
+        ViewBag.VoidedInvoicesMTD = voidedCount;
+        ViewBag.PaymentCountMTD = paymentCount;
         ViewBag.CollectionRate = collectionRate;
         ViewBag.PaidCount = paidCount;
         ViewBag.UnpaidCount = unpaidCount;
@@ -194,27 +205,46 @@ public class DashboardController : Controller
 
     /// <summary>Polling endpoint for real-time Auditor dashboard updates.</summary>
     [HttpGet]
-    public async Task<IActionResult> Poll()
+    public async Task<IActionResult> Poll(string? period, DateTime? from, DateTime? to)
     {
         if (!IsAuthorized()) return Forbid();
         var shopId = User.GetShopId();
-        var thisMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var (dateFrom, dateTo, _) = ResolveDateRange(period, from, to);
+        var hasDateFilter = dateFrom != DateTime.MinValue;
 
-        var revenueMtd = await _db.Payments
-            .Where(p => p.ShopId == shopId && p.Status == PaymentStatus.Confirmed && p.PaymentDate >= thisMonth)
-            .SumAsync(p => (decimal?)p.Amount) ?? 0;
-        var refundsMtd = await _db.CreditDebitAdjustments
-            .Where(a => a.ShopId == shopId && a.AdjustmentType == AdjustmentType.Refund
-                     && a.Status == AdjustmentStatus.Approved && a.CreatedAt >= thisMonth)
-            .SumAsync(a => (decimal?)a.Amount) ?? 0;
-        var adjustmentsMtd = await _db.CreditDebitAdjustments
-            .Where(a => a.ShopId == shopId && a.Status == AdjustmentStatus.Approved
-                     && a.AdjustmentType != AdjustmentType.Refund && a.CreatedAt >= thisMonth)
-            .SumAsync(a => (decimal?)a.Amount) ?? 0;
-        var voidedMtd = await _db.Invoices
-            .CountAsync(i => i.ShopId == shopId && i.Status == InvoiceStatus.Void && i.CreatedAt >= thisMonth);
+        var payBase = _db.Payments.Where(p => p.ShopId == shopId && p.Status == PaymentStatus.Confirmed);
+        if (hasDateFilter) payBase = payBase.Where(p => p.PaymentDate >= dateFrom && p.PaymentDate <= dateTo);
+        var revenue = await payBase.SumAsync(p => (decimal?)p.Amount) ?? 0;
 
-        return Json(new { revenueMtd, refundsMtd, adjustmentsMtd, voidedMtd });
+        var refBase = _db.CreditDebitAdjustments.Where(a => a.ShopId == shopId && a.AdjustmentType == AdjustmentType.Refund && a.Status == AdjustmentStatus.Approved);
+        if (hasDateFilter) refBase = refBase.Where(a => a.CreatedAt >= dateFrom && a.CreatedAt <= dateTo);
+        var refunds = await refBase.SumAsync(a => (decimal?)a.Amount) ?? 0;
+
+        var adjBase = _db.CreditDebitAdjustments.Where(a => a.ShopId == shopId && a.Status == AdjustmentStatus.Approved && a.AdjustmentType != AdjustmentType.Refund);
+        if (hasDateFilter) adjBase = adjBase.Where(a => a.CreatedAt >= dateFrom && a.CreatedAt <= dateTo);
+        var adjustments = await adjBase.SumAsync(a => (decimal?)a.Amount) ?? 0;
+
+        var voidBase = _db.Invoices.Where(i => i.ShopId == shopId && i.Status == InvoiceStatus.Void);
+        if (hasDateFilter) voidBase = voidBase.Where(i => i.CreatedAt >= dateFrom && i.CreatedAt <= dateTo);
+        var voided = await voidBase.CountAsync();
+
+        return Json(new { revenueMtd = revenue, refundsMtd = refunds, adjustmentsMtd = adjustments, voidedMtd = voided });
+    }
+
+    private static (DateTime from, DateTime to, string period) ResolveDateRange(string? period, DateTime? from, DateTime? to)
+    {
+        var today = DateTime.UtcNow.Date;
+        return period switch
+        {
+            "today"   => (today, today.AddDays(1).AddTicks(-1), "today"),
+            "week"    => (today.AddDays(-(int)today.DayOfWeek), today.AddDays(1).AddTicks(-1), "week"),
+            "month"   => (new DateTime(today.Year, today.Month, 1), today.AddDays(1).AddTicks(-1), "month"),
+            "last30"  => (today.AddDays(-30), today.AddDays(1).AddTicks(-1), "last30"),
+            "last3mo" => (today.AddMonths(-3), today.AddDays(1).AddTicks(-1), "last3mo"),
+            "custom" when from.HasValue && to.HasValue =>
+                (from.Value.Date, to.Value.Date.AddDays(1).AddTicks(-1), "custom"),
+            _ => (DateTime.MinValue, DateTime.MaxValue, "all")
+        };
     }
 
     private static string GetTimeAgo(DateTime dt)

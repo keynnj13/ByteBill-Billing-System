@@ -25,6 +25,52 @@
     </div>
 }
 
+@{
+    string PeriodLabel(string baseName) => Model.ActivePeriod switch
+    {
+        "all"     => $"Total {baseName}",
+        "today"   => $"Today's {baseName}",
+        "week"    => $"Weekly {baseName}",
+        "month"   => $"Monthly {baseName}",
+        "last30"  => $"Last 30 Days {baseName}",
+        "last3mo" => $"Last 3 Months {baseName}",
+        "custom"  => Model.FilterFrom.HasValue && Model.FilterTo.HasValue
+                     ? $"{baseName} ({Model.FilterFrom.Value:MMM d} – {Model.FilterTo.Value:MMM d})"
+                     : baseName,
+        _         => baseName
+    };
+
+    string PaidLabel() => Model.ActivePeriod switch
+    {
+        "all"     => "Total Paid",
+        "today"   => "Paid Today",
+        "week"    => "Paid This Week",
+        "month"   => "Paid This Month",
+        "last30"  => "Paid (Last 30 Days)",
+        "last3mo" => "Paid (Last 3 Months)",
+        "custom"  => "Paid (Custom)",
+        _         => "Paid"
+    };
+}
+
+<!-- Date Filter -->
+<div class="dash-filter" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:24px;">
+    <a href="@Url.Action("Index")" class="filter-btn @(Model.ActivePeriod == "all" ? "filter-btn-active" : "")">All Time</a>
+    <a href="@Url.Action("Index", new { period = "today" })" class="filter-btn @(Model.ActivePeriod == "today" ? "filter-btn-active" : "")">Today</a>
+    <a href="@Url.Action("Index", new { period = "week" })" class="filter-btn @(Model.ActivePeriod == "week" ? "filter-btn-active" : "")">This Week</a>
+    <a href="@Url.Action("Index", new { period = "month" })" class="filter-btn @(Model.ActivePeriod == "month" ? "filter-btn-active" : "")">This Month</a>
+    <a href="@Url.Action("Index", new { period = "last30" })" class="filter-btn @(Model.ActivePeriod == "last30" ? "filter-btn-active" : "")">Last 30 Days</a>
+    <a href="@Url.Action("Index", new { period = "last3mo" })" class="filter-btn @(Model.ActivePeriod == "last3mo" ? "filter-btn-active" : "")">Last 3 Months</a>
+    <span style="width:1px;height:24px;background:#e5e7eb;margin:0 4px;"></span>
+    <form method="get" style="display:flex;gap:6px;align-items:center;">
+        <input type="hidden" name="period" value="custom" />
+        <input type="date" name="from" value="@(Model.ActivePeriod == "custom" && Model.FilterFrom.HasValue ? Model.FilterFrom.Value.ToString("yyyy-MM-dd") : "")" class="form-input" style="font-size:13px;padding:6px 10px;width:150px;" />
+        <span style="color:#9ca3af;font-size:13px;">to</span>
+        <input type="date" name="to" value="@(Model.ActivePeriod == "custom" && Model.FilterTo.HasValue ? Model.FilterTo.Value.ToString("yyyy-MM-dd") : "")" class="form-input" style="font-size:13px;padding:6px 10px;width:150px;" />
+        <button type="submit" class="btn btn-outline-primary btn-sm">Apply</button>
+    </form>
+</div>
+
 <!-- Stat Cards -->
 <div class="bd-stats">
     <div class="bd-stat-card">
@@ -32,8 +78,8 @@
             <span style="font-size: 20px; font-weight: 700;">₱</span>
         </div>
         <div>
-            <span class="bd-stat-label">Today's Revenue</span>
-            <span class="bd-stat-value">@Model.TodayRevenue.ToString("C")</span>
+            <span class="bd-stat-label">@PeriodLabel("Revenue")</span>
+            <span class="bd-stat-value">@Model.PeriodRevenue.ToString("C")</span>
         </div>
     </div>
     <div class="bd-stat-card">
@@ -50,7 +96,7 @@
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
         </div>
         <div>
-            <span class="bd-stat-label">Paid Today</span>
+            <span class="bd-stat-label">@PaidLabel()</span>
             <span class="bd-stat-value">@Model.PaidToday</span>
         </div>
     </div>
@@ -214,6 +260,24 @@
 </div>
 
 <style>
+    /* Filter buttons */
+    .filter-btn {
+        display: inline-block;
+        padding: 6px 14px;
+        border-radius: 9999px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #4b5563;
+        background: #f3f4f6;
+        border: 1px solid transparent;
+        text-decoration: none;
+        transition: all 0.15s;
+        cursor: pointer;
+    }
+    .filter-btn:hover { background: #e5e7eb; color: #1f2937; text-decoration: none; }
+    .filter-btn-active { background: #3b82f6; color: #fff !important; border-color: #3b82f6; }
+    .filter-btn-active:hover { background: #2563eb; }
+
     .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
     .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
     .page-subtitle { font-size: 14px; color: #6b7280; }
@@ -260,5 +324,5 @@
     setInterval(function() {
         if (document.querySelector('.modal:not(.hidden)') || document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'SELECT') return;
         location.reload();
-    }, 30000);
+    }, 60000);
 </script>

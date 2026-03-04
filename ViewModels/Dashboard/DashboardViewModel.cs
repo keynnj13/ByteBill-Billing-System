@@ -24,6 +24,7 @@ public class DashboardViewModel
     public decimal MonthRevenue { get; set; }
     public decimal MonthlyRevenue { get; set; }
     public decimal TotalRevenue { get; set; }
+    public decimal PeriodRevenue { get; set; }
     
     // Invoice Stats
     public int PendingInvoices { get; set; }

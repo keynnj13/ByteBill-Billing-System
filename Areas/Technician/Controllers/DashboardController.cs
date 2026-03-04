@@ -26,30 +26,39 @@ public class DashboardController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? period, DateTime? from, DateTime? to)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
         var shopId = User.GetShopId();
         var userId = User.GetUserId();
+        var (dateFrom, dateTo, activePeriod) = ResolveDateRange(period, from, to);
+        var hasDateFilter = dateFrom != DateTime.MinValue;
         var today = DateTime.UtcNow.Date;
 
-        // Get technician's assigned jobs
+        // Get technician's assigned jobs (base query)
         var myJobs = _db.JobOrders
             .Where(j => j.ShopId == shopId && j.AssignedTechUserId == userId && !j.IsArchived);
 
+        // Filtered base for date-dependent KPIs
+        var filteredJobs = hasDateFilter
+            ? myJobs.Where(j => j.CreatedAt >= dateFrom && j.CreatedAt <= dateTo)
+            : myJobs;
+
         // Stats
-        var myJobsToday = await myJobs
-            .CountAsync(j => j.CreatedAt >= today);
+        var myJobsCount = await filteredJobs.CountAsync();
 
-        var completedToday = await myJobs
-            .CountAsync(j => j.Status == JobOrderStatus.Completed && j.UpdatedAt >= today);
+        var completedCount = hasDateFilter
+            ? await myJobs.CountAsync(j => j.Status == JobOrderStatus.Completed && j.UpdatedAt >= dateFrom && j.UpdatedAt <= dateTo)
+            : await myJobs.CountAsync(j => j.Status == JobOrderStatus.Completed && j.UpdatedAt >= today);
 
-        var inProgress = await myJobs
-            .CountAsync(j => j.Status == JobOrderStatus.InProgress || j.Status == JobOrderStatus.Diagnosis);
+        var inProgress = hasDateFilter
+            ? await filteredJobs.CountAsync(j => j.Status == JobOrderStatus.InProgress || j.Status == JobOrderStatus.Diagnosis)
+            : await myJobs.CountAsync(j => j.Status == JobOrderStatus.InProgress || j.Status == JobOrderStatus.Diagnosis);
 
-        var waitingParts = await myJobs
-            .CountAsync(j => j.Status == JobOrderStatus.WaitingForParts);
+        var waitingParts = hasDateFilter
+            ? await filteredJobs.CountAsync(j => j.Status == JobOrderStatus.WaitingForParts)
+            : await myJobs.CountAsync(j => j.Status == JobOrderStatus.WaitingForParts);
 
         // Recent activity from status history
         var recentActivity = await _db.JobOrderStatusHistories
@@ -119,11 +128,14 @@ public class DashboardController : Controller
             PaidToday = 0,
             OutstandingBalance = 0,
             RecentActivity = activityItems,
-            PendingJobOrders = workQueue
+            PendingJobOrders = workQueue,
+            ActivePeriod = activePeriod,
+            FilterFrom = dateFrom == DateTime.MinValue ? null : dateFrom,
+            FilterTo = dateTo == DateTime.MaxValue ? null : dateTo
         };
 
-        ViewBag.MyJobsToday = myJobsToday;
-        ViewBag.CompletedToday = completedToday;
+        ViewBag.MyJobsToday = myJobsCount;
+        ViewBag.CompletedToday = completedCount;
         ViewBag.InProgress = inProgress;
         ViewBag.WaitingParts = waitingParts;
         ViewBag.TotalActive = await myJobs.CountAsync(j =>
@@ -131,6 +143,22 @@ public class DashboardController : Controller
             && j.Status != JobOrderStatus.Cancelled);
 
         return View(viewModel);
+    }
+
+    private static (DateTime from, DateTime to, string period) ResolveDateRange(string? period, DateTime? from, DateTime? to)
+    {
+        var today = DateTime.UtcNow.Date;
+        return period switch
+        {
+            "today"   => (today, today.AddDays(1).AddTicks(-1), "today"),
+            "week"    => (today.AddDays(-(int)today.DayOfWeek), today.AddDays(1).AddTicks(-1), "week"),
+            "month"   => (new DateTime(today.Year, today.Month, 1), today.AddDays(1).AddTicks(-1), "month"),
+            "last30"  => (today.AddDays(-30), today.AddDays(1).AddTicks(-1), "last30"),
+            "last3mo" => (today.AddMonths(-3), today.AddDays(1).AddTicks(-1), "last3mo"),
+            "custom" when from.HasValue && to.HasValue =>
+                (from.Value.Date, to.Value.Date.AddDays(1).AddTicks(-1), "custom"),
+            _ => (DateTime.MinValue, DateTime.MaxValue, "all")
+        };
     }
 
     private static string GetTimeAgo(DateTime dateTime)

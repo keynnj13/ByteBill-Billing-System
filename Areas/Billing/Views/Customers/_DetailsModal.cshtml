@@ -13,7 +13,7 @@
     <!-- Stats -->
     <div class="modal-stats-row">
         <div class="modal-stat">
-            <span class="modal-stat-label">Total Orders</span>
+            <span class="modal-stat-label">Total Job Orders</span>
             <span class="modal-stat-value">@Model.TotalOrders</span>
         </div>
         <div class="modal-stat">
@@ -52,16 +52,16 @@
         </dl>
     </div>
 
-    <!-- Recent Orders -->
+    <!-- Recent Job Orders -->
     <div class="modal-detail-section">
-        <h4 class="modal-section-title">Recent Orders</h4>
+        <h4 class="modal-section-title">Recent Job Orders</h4>
         @if (Model.RecentOrders.Any())
         {
             <div class="table-container">
                 <table class="table table-compact">
                     <thead>
                         <tr>
-                            <th>Order</th>
+                            <th>Job Order</th>
                             <th>Device</th>
                             <th>Status</th>
                             <th class="text-right">Total</th>
@@ -87,7 +87,7 @@
         else
         {
             <div class="empty-box-sm">
-                <p class="text-muted">No orders yet</p>
+                <p class="text-muted">No job orders yet</p>
             </div>
         }
     </div>

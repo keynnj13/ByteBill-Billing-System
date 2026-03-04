@@ -1592,6 +1592,13 @@ a:hover {
     font-size: 13px;
 }
 
+/* Light green header for tables inside modals */
+.modal-detail-body .table th {
+    background: #f0fdf4;
+    color: #166534;
+    border-bottom: 2px solid #bbf7d0;
+}
+
 /* Form section title with icon */
 .form-section-title {
     display: flex;
@@ -3107,6 +3114,12 @@ a:hover {
     background: var(--gray-50);
     color: var(--gray-600);
     border-color: var(--gray-border);
+}
+
+[data-theme="dark"] .modal-detail-body .table th {
+    background: hsl(140, 30%, 14%);
+    color: hsl(140, 50%, 60%);
+    border-color: hsl(140, 25%, 22%);
 }
 
 [data-theme="dark"] .table tfoot td {

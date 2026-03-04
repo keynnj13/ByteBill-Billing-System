@@ -71,53 +71,6 @@
                     <p class="modal-detail-text">@Model.TechnicianNotes</p>
                 </div>
             }
-
-            <!-- Line Items -->
-            @if (Model.LineItems.Any())
-            {
-                <div class="modal-detail-section">
-                    <h4 class="modal-section-title">Services & Parts</h4>
-                    <div class="table-container">
-                        <table class="table table-compact">
-                            <thead>
-                                <tr>
-                                    <th>Description</th>
-                                    <th>Type</th>
-                                    <th class="text-right">Qty</th>
-                                    <th class="text-right">Price</th>
-                                    <th class="text-right">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var item in Model.LineItems)
-                                {
-                                    <tr>
-                                        <td>@item.Description</td>
-                                        <td><span class="status-indicator status-@(item.Type == "Service" ? "primary" : "muted")">@item.Type</span></td>
-                                        <td class="text-right">@item.Quantity</td>
-                                        <td class="text-right">@item.UnitPrice.ToString("C")</td>
-                                        <td class="text-right">@item.Total.ToString("C")</td>
-                                    </tr>
-                                }
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <td colspan="4" class="text-right"><strong>Subtotal</strong></td>
-                                    <td class="text-right">@Model.Subtotal.ToString("C")</td>
-                                </tr>
-                                <tr>
-                                    <td colspan="4" class="text-right">Tax (@Model.TaxRate%)</td>
-                                    <td class="text-right">@Model.TaxAmount.ToString("C")</td>
-                                </tr>
-                                <tr>
-                                    <td colspan="4" class="text-right"><strong>Total</strong></td>
-                                    <td class="text-right"><strong>@Model.Total.ToString("C")</strong></td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                </div>
-            }
         </div>
 
         <div class="modal-detail-sidebar">
@@ -157,6 +110,56 @@
             </div>
         </div>
     </div>
+
+    <!-- Services & Parts (full-width, outside grid) -->
+    @if (Model.LineItems.Any())
+    {
+        <div class="modal-detail-section">
+            <h4 class="modal-section-title">Services & Parts</h4>
+            <div class="table-container">
+                <table class="table table-compact" style="table-layout: auto;">
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>Type</th>
+                            <th class="text-center">Qty</th>
+                            <th class="text-right">Unit Price</th>
+                            <th class="text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.LineItems)
+                        {
+                            <tr>
+                                <td>@item.Description</td>
+                                <td><span class="status-indicator status-@(item.Type == "Service" ? "primary" : "muted")">@item.Type</span></td>
+                                <td class="text-center">@item.Quantity</td>
+                                <td class="text-right">@item.UnitPrice.ToString("C")</td>
+                                <td class="text-right">@item.Total.ToString("C")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="4" class="text-right"><strong>Subtotal</strong></td>
+                            <td class="text-right">@Model.Subtotal.ToString("C")</td>
+                        </tr>
+                        @if (Model.TaxAmount > 0)
+                        {
+                            <tr>
+                                <td colspan="4" class="text-right" style="color: #6b7280;">Tax (@Model.TaxRate%)</td>
+                                <td class="text-right">@Model.TaxAmount.ToString("C")</td>
+                            </tr>
+                        }
+                        <tr style="border-top: 2px solid #e5e7eb;">
+                            <td colspan="4" class="text-right font-bold" style="font-size: 14px;"><strong>Total</strong></td>
+                            <td class="text-right font-bold" style="font-size: 14px;"><strong>@Model.Total.ToString("C")</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    }
 </div>
 
 <div class="modal-form-footer">

@@ -239,6 +239,16 @@ public class IntegrationsController : Controller
         return Json(new { success, message });
     }
 
+    /// <summary>Diagnostic: show available Xero accounts for debugging payment sync.</summary>
+    [HttpGet]
+    public async Task<IActionResult> TestXeroAccounts()
+    {
+        if (!IsAuthorized()) return Forbid();
+        var shopId = User.GetShopId();
+        var result = await _xero.TestXeroAccountsAsync(shopId);
+        return Json(result);
+    }
+
     /// <summary>Returns PayMongo transaction details as JSON for the detail modal.</summary>
     [HttpGet]
     public async Task<IActionResult> PayMongoTxnDetail(long id)

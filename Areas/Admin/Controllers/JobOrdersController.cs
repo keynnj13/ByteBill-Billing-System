@@ -92,6 +92,13 @@ public class JobOrdersController : Controller
             StatusFilter = status?.ToString()
         });
 
+        // KPI counts (across all non-archived job orders)
+        var kpiBase = _db.JobOrders.Where(j => j.ShopId == shopId && !j.IsArchived);
+        var inProgressCount = await kpiBase.CountAsync(j => j.Status == JobOrderStatus.InProgress);
+        var completedCount = await kpiBase.CountAsync(j => j.Status == JobOrderStatus.Completed);
+        var pendingInvoicingCount = await kpiBase.CountAsync(j => j.Status == JobOrderStatus.Completed
+            && !_db.Invoices.Any(i => i.JobOrderId == j.JobOrderId));
+
         var viewModel = new JobOrderListViewModel
         {
             SearchTerm = search,
@@ -99,6 +106,9 @@ public class JobOrdersController : Controller
             CurrentPage = result.Page,
             TotalCount = result.TotalCount,
             PageSize = result.PageSize,
+            InProgressCount = inProgressCount,
+            CompletedCount = completedCount,
+            PendingInvoicingCount = pendingInvoicingCount,
             JobOrders = result.Items.Select(j =>
             {
                 var deviceParts = j.DeviceSummary?.Split(" - ", 2) ?? Array.Empty<string>();
@@ -240,6 +250,14 @@ public class JobOrdersController : Controller
 
         var serviceCost = dto.Services.Sum(s => s.LineTotal);
         var partsCost = dto.Parts.Sum(p => p.LineTotal);
+        var subtotal = serviceCost + partsCost;
+
+        // Get shop tax rate
+        var shop = await _db.Shops.AsNoTracking().FirstOrDefaultAsync(s => s.ShopId == shopId);
+        var taxRate = shop?.TaxRate ?? 0m;
+        var taxAmount = shop?.IsVatRegistered == true && subtotal > 0
+            ? Math.Round(subtotal - (subtotal / (1m + taxRate / 100m)), 2)
+            : 0m;
 
         return new JobOrderDetailViewModel
         {
@@ -279,9 +297,11 @@ public class JobOrdersController : Controller
             InvoiceId = dto.InvoiceId,
             TotalServiceCost = serviceCost,
             TotalPartsCost = partsCost,
-            Subtotal = serviceCost + partsCost,
-            Total = serviceCost + partsCost,
-            EstimatedCost = serviceCost + partsCost,
+            Subtotal = subtotal,
+            TaxRate = taxRate,
+            TaxAmount = taxAmount,
+            Total = subtotal,
+            EstimatedCost = subtotal,
             Services = dto.Services.Select(s => new JobOrderServiceItemViewModel
             {
                 Id = s.JobOrderServiceId,

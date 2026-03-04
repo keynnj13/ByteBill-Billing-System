@@ -31,7 +31,7 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
         </div>
         <div>
-            <p class="stat-label">Total Orders</p>
+            <p class="stat-label">Total Job Orders</p>
             <p class="stat-value">@Model.TotalOrders</p>
         </div>
     </div>
@@ -87,7 +87,7 @@
 
     <div class="card">
         <div class="card-header">
-            <h3 class="card-title">Recent Orders</h3>
+            <h3 class="card-title">Recent Job Orders</h3>
         </div>
         <div class="card-body p-0">
             @if (Model.RecentOrders.Any())
@@ -96,7 +96,7 @@
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>Order</th>
+                                <th>Job Order</th>
                                 <th>Device</th>
                                 <th>Status</th>
                                 <th>Total</th>
@@ -122,7 +122,7 @@
             else
             {
                 <div class="empty-box">
-                    <p class="text-muted">No orders yet</p>
+                    <p class="text-muted">No job orders yet</p>
                 </div>
             }
         </div>

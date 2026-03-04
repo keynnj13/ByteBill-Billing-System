@@ -52,23 +52,35 @@
                         </div>
                     </div>
                 </div>
-                <form asp-action="@(Model.XeroConnected ? "SyncXero" : "ConnectXero")" method="post" style="margin: 0;">
-                    @Html.AntiForgeryToken()
+                <div style="display: flex; gap: 8px; align-items: center;">
                     @if (Model.XeroConnected)
                     {
-                        <button type="submit" class="btn btn-primary btn-sm" onclick="this.disabled=true; this.innerText='Syncing...'; this.form.submit();">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
-                            Sync Now
-                        </button>
+                        <form asp-action="SyncXero" method="post" style="margin: 0;">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-primary btn-sm" onclick="this.disabled=true; this.innerText='Syncing...'; this.form.submit();">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                                Sync Now
+                            </button>
+                        </form>
+                        <form asp-action="DisconnectXero" method="post" style="margin: 0;">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Disconnect from Xero? You will need to re-authorize to sync again.');">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+                                Disconnect
+                            </button>
+                        </form>
                     }
                     else
                     {
-                        <button type="submit" class="btn btn-primary btn-sm" onclick="this.disabled=true; this.innerText='Connecting...'; this.form.submit();">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                            Connect Xero
-                        </button>
+                        <form asp-action="ConnectXero" method="post" style="margin: 0;">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-primary btn-sm" onclick="this.disabled=true; this.innerText='Connecting...'; this.form.submit();">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                                Connect Xero
+                            </button>
+                        </form>
                     }
-                </form>
+                </div>
             </div>
         </div>
     </div>
