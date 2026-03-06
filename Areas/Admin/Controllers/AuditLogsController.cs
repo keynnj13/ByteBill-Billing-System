@@ -35,6 +35,7 @@ public class AuditLogsController : Controller
 
         var query = _db.AuditLogs
             .Where(a => a.ShopId == shopId)
+            .Where(a => a.UserId == null || !a.User!.UserRoles.Any(ur => ur.Role!.RoleName == "SuperAdmin"))
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -64,7 +65,8 @@ public class AuditLogsController : Controller
         var todayStart = now.Date;
         var weekStart = todayStart.AddDays(-7);
 
-        var allShopLogs = _db.AuditLogs.Where(a => a.ShopId == shopId);
+        var allShopLogs = _db.AuditLogs.Where(a => a.ShopId == shopId)
+            .Where(a => a.UserId == null || !a.User!.UserRoles.Any(ur => ur.Role!.RoleName == "SuperAdmin"));
         var todayCount = await allShopLogs.CountAsync(a => a.CreatedAt >= todayStart);
         var weekCount = await allShopLogs.CountAsync(a => a.CreatedAt >= weekStart);
 
@@ -92,6 +94,7 @@ public class AuditLogsController : Controller
         // Get distinct entity names and action types for filter dropdowns
         var entityNames = await _db.AuditLogs
             .Where(a => a.ShopId == shopId)
+            .Where(a => a.UserId == null || !a.User!.UserRoles.Any(ur => ur.Role!.RoleName == "SuperAdmin"))
             .Select(a => a.EntityName)
             .Distinct()
             .OrderBy(e => e)
@@ -99,6 +102,7 @@ public class AuditLogsController : Controller
 
         var actionTypes = await _db.AuditLogs
             .Where(a => a.ShopId == shopId)
+            .Where(a => a.UserId == null || !a.User!.UserRoles.Any(ur => ur.Role!.RoleName == "SuperAdmin"))
             .Select(a => a.Action)
             .Distinct()
             .OrderBy(a => a)
@@ -132,7 +136,9 @@ public class AuditLogsController : Controller
         var shopId = User.GetShopId();
         const int pageSize = 5;
 
-        var query = _db.AuditLogs.Where(a => a.ShopId == shopId).AsQueryable();
+        var query = _db.AuditLogs.Where(a => a.ShopId == shopId)
+            .Where(a => a.UserId == null || !a.User!.UserRoles.Any(ur => ur.Role!.RoleName == "SuperAdmin"))
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
         {

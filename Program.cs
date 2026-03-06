@@ -24,6 +24,17 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
         sql => sql.CommandTimeout(120)));
 
 // Configure authentication
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromHours(1);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() 
+        ? CookieSecurePolicy.SameAsRequest 
+        : CookieSecurePolicy.Always;
+});
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -32,6 +43,10 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.AccessDeniedPath = "/Auth/AccessDenied";
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
         options.SlidingExpiration = true;
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() 
+            ? CookieSecurePolicy.SameAsRequest 
+            : CookieSecurePolicy.Always;
+        options.Cookie.SameSite = SameSiteMode.Lax;
         // Return 401 for API requests instead of redirecting
         options.Events.OnRedirectToLogin = ctx =>
         {
@@ -95,6 +110,9 @@ builder.Services.AddHttpClient<IXeroService, XeroService>();
 builder.Services.Configure<PayMongoSettings>(builder.Configuration.GetSection("PayMongo"));
 builder.Services.AddHttpClient<IPayMongoService, PayMongoService>();
 
+// ── Self-service registration ────────────────────────────────────────
+builder.Services.AddHttpClient<IRegistrationService, RegistrationService>();
+
 // Rate limiting for login endpoint
 builder.Services.AddRateLimiter(options =>
 {
@@ -144,6 +162,7 @@ app.UseHttpsRedirection();
 app.UseRouting();
 
 app.UseAuthentication();
+app.UseSession();
 app.UseAuthorization();
 app.UseRateLimiter();
 
@@ -157,7 +176,8 @@ app.MapControllerRoute(
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Auth}/{action=Login}/{id?}")
+    pattern: "{controller=Landing}/{action=Index}/{id?}")
     .WithStaticAssets();
 
 await app.RunAsync();
+    

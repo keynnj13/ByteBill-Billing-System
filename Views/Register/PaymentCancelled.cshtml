@@ -1,0 +1,124 @@
+@{
+    Layout = null;
+    ViewData["Title"] = "Payment Cancelled — ByteBill";
+    var hasSaved = (bool?)ViewBag.HasSavedData == true;
+    var planName = (string?)ViewBag.PlanName ?? "";
+    var shopName = (string?)ViewBag.ShopName ?? "";
+    var price = ViewBag.Price != null ? ((decimal)ViewBag.Price).ToString("N0") : "0";
+    var cycle = (string?)ViewBag.Cycle ?? "";
+    var cycleLabel = cycle switch { "Yearly" => "per year", "Permanent" => "one-time", _ => "per month" };
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="icon" type="image/png" href="~/img/bytelogo.png" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+        :root { --pc-navy: hsl(213,54%,20%); --pc-emerald: hsl(145,63%,42%); --pc-amber: hsl(38,92%,50%); --pc-red: hsl(4,74%,58%); --pc-text: hsl(213,20%,18%); --pc-muted: hsl(210,11%,45%); --pc-border: hsl(210,14%,89%); }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, hsl(213,54%,97%) 0%, hsl(145,40%,96%) 50%, hsl(213,54%,95%) 100%); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+        .pc-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 40px 24px; }
+        .pc-card { background: white; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.08); max-width: 520px; width: 100%; padding: 48px 36px; }
+        .pc-icon { width: 72px; height: 72px; border-radius: 50%; background: hsl(38,93%,92%); color: hsl(38,93%,47%); display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; }
+        .pc-title { font-size: 24px; font-weight: 800; color: var(--pc-navy); margin-bottom: 12px; text-align: center; }
+        .pc-desc { font-size: 15px; color: var(--pc-muted); line-height: 1.7; margin-bottom: 28px; text-align: center; }
+
+        .pc-saved { background: hsl(210,20%,98%); border: 1px solid var(--pc-border); border-radius: 12px; padding: 20px; margin-bottom: 28px; }
+        .pc-saved-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--pc-muted); margin-bottom: 14px; }
+        .pc-saved-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; padding: 6px 0; }
+        .pc-saved-label { color: var(--pc-muted); }
+        .pc-saved-value { font-weight: 600; color: var(--pc-text); }
+        .pc-saved-amount { font-size: 20px; font-weight: 800; color: var(--pc-navy); }
+        .pc-saved-sep { height: 1px; background: var(--pc-border); margin: 10px 0; }
+
+        .pc-actions { display: flex; flex-direction: column; gap: 12px; }
+        .pc-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 24px; border-radius: 10px; font-family: inherit; font-size: 15px; font-weight: 700; text-decoration: none; cursor: pointer; transition: all 0.15s; border: none; width: 100%; }
+        .pc-btn-primary { background: var(--pc-emerald); color: white; }
+        .pc-btn-primary:hover { background: hsl(145,63%,36%); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(16,185,129,0.25); }
+        .pc-btn-ghost { background: transparent; color: var(--pc-navy); border: 1.5px solid var(--pc-border); }
+        .pc-btn-ghost:hover { background: hsl(210,20%,97%); border-color: hsl(210,14%,80%); }
+        .pc-spin { animation: pc-rotate 1s linear infinite; }
+        @@keyframes pc-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="pc-page">
+        <div class="pc-card">
+            <div class="pc-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            </div>
+            <h1 class="pc-title">Payment Cancelled</h1>
+            <p class="pc-desc">
+                Your payment was not completed. No charges were made.
+                @if (hasSaved)
+                {
+                    <text>Your registration details have been saved — you can retry the payment right away.</text>
+                }
+                else
+                {
+                    <text>You can go back to our pricing page and start a new registration.</text>
+                }
+            </p>
+
+            @if (hasSaved)
+            {
+                <div class="pc-saved">
+                    <div class="pc-saved-title">Your Registration</div>
+                    <div class="pc-saved-row">
+                        <span class="pc-saved-label">Shop</span>
+                        <span class="pc-saved-value">@shopName</span>
+                    </div>
+                    <div class="pc-saved-row">
+                        <span class="pc-saved-label">Plan</span>
+                        <span class="pc-saved-value">@planName</span>
+                    </div>
+                    <div class="pc-saved-sep"></div>
+                    <div class="pc-saved-row">
+                        <span class="pc-saved-label">Amount</span>
+                        <span class="pc-saved-amount">&#8369;@price <small style="font-weight:400;font-size:12px;color:var(--pc-muted);">@cycleLabel</small></span>
+                    </div>
+                </div>
+            }
+
+            <div class="pc-actions">
+                @if (hasSaved)
+                {
+                    <form method="post" asp-action="RetryPayment" asp-controller="Register" id="retryForm">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="pc-btn pc-btn-primary" id="retryBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                            Retry Payment
+                        </button>
+                    </form>
+                    <a href="@Url.Action("Index", "Landing")#pricing" class="pc-btn pc-btn-ghost">
+                        Choose a Different Plan
+                    </a>
+                }
+                else
+                {
+                    <a href="@Url.Action("Index", "Landing")#pricing" class="pc-btn pc-btn-primary">
+                        View Plans
+                    </a>
+                }
+                <a href="@Url.Action("Index", "Landing")" class="pc-btn pc-btn-ghost">
+                    Back to Home
+                </a>
+            </div>
+        </div>
+    </div>
+
+    @if (hasSaved)
+    {
+        <script>
+            document.getElementById('retryForm').addEventListener('submit', function () {
+                var btn = document.getElementById('retryBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="pc-spin"><circle cx="12" cy="12" r="10" stroke-dasharray="31.4" stroke-dashoffset="10"/></svg> Redirecting to payment...';
+            });
+        </script>
+    }
+</body>
+</html>

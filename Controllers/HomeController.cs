@@ -22,8 +22,8 @@ namespace ByteBill_BS.Controllers
                 return RedirectToRoleDashboard();
             }
             
-            // Redirect unauthenticated users to login
-            return RedirectToAction("Login", "Auth");
+            // Redirect unauthenticated users to landing page
+            return RedirectToAction("Index", "Landing");
         }
 
         private IActionResult RedirectToRoleDashboard()

@@ -57,7 +57,7 @@ public class NavigationService : INavigationService
             },
             new NavigationSection
             {
-                Title = "Management",
+                Title = "Oversight",
                 Items = new[]
                 {
                     new NavigationItem { Title = "Shops", Icon = "store", Url = "/SuperAdmin/Shops" },
@@ -70,7 +70,7 @@ public class NavigationService : INavigationService
                 Title = "Finance",
                 Items = new[]
                 {
-                    new NavigationItem { Title = "Payments", Icon = "dollar-sign", Url = "/SuperAdmin/Payments" },
+                    new NavigationItem { Title = "Payments", Icon = "peso-sign", Url = "/SuperAdmin/Payments" },
                     new NavigationItem { Title = "Reports", Icon = "bar-chart-2", Url = "/SuperAdmin/Reports" }
                 }
             },

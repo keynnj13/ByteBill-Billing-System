@@ -35,79 +35,9 @@ public class UsersController : Controller
         return View(viewModel);
     }
 
-    [HttpGet]
-    public async Task<IActionResult> CreateModal()
-    {
-        if (!IsAuthorized()) return Forbid();
-        var model = new GlobalUserFormViewModel
-        {
-            AvailableShops = await _service.GetShopDropdownAsync()
-        };
-        return PartialView("_CreateModal", model);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(GlobalUserFormViewModel model)
-    {
-        if (!IsAuthorized()) return Forbid();
-
-        if (model.Id == 0 && string.IsNullOrEmpty(model.Password))
-            ModelState.AddModelError("Password", "Password is required for new users");
-
-        if (!ModelState.IsValid)
-        {
-            model.AvailableShops = await _service.GetShopDropdownAsync();
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-                return PartialView("_CreateModal", model);
-            return RedirectToAction(nameof(Index));
-        }
-
-        var result = await _service.CreateUserAsync(model, GetUserId(), GetIpAddress());
-
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-            return Json(new { success = result.Success, message = result.Message });
-
-        if (result.Success) TempData["Success"] = result.Message;
-        else TempData["Error"] = result.Message;
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> EditModal(long id)
-    {
-        if (!IsAuthorized()) return Forbid();
-        var model = await _service.GetUserForEditAsync(id);
-        if (model == null) return NotFound();
-        return PartialView("_EditModal", model);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(GlobalUserFormViewModel model)
-    {
-        if (!IsAuthorized()) return Forbid();
-
-        ModelState.Remove("Password");
-        ModelState.Remove("ConfirmPassword");
-
-        if (!ModelState.IsValid)
-        {
-            model.AvailableShops = await _service.GetShopDropdownAsync();
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-                return PartialView("_EditModal", model);
-            return RedirectToAction(nameof(Index));
-        }
-
-        var result = await _service.UpdateUserAsync(model, GetUserId(), GetIpAddress());
-
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-            return Json(new { success = result.Success, message = result.Message });
-
-        if (result.Success) TempData["Success"] = result.Message;
-        else TempData["Error"] = result.Message;
-        return RedirectToAction(nameof(Index));
-    }
+    // NOTE: User creation is now handled by self-service registration (Admin role created during shop signup).
+    // Shop admins manage their own users via the Admin area.
+    // SuperAdmin retains read-only oversight with ToggleStatus and ResetPassword for support.
 
     [HttpGet]
     public async Task<IActionResult> DetailsModal(long id)
@@ -136,6 +66,40 @@ public class UsersController : Controller
         if (!IsAuthorized()) return Forbid();
         var password = newPassword ?? "ByteBill@123";
         var result = await _service.ResetUserPasswordAsync(id, password, GetUserId(), GetIpAddress());
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            return Json(new { success = result.Success, message = result.Message });
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> EditModal(long id)
+    {
+        if (!IsAuthorized()) return Forbid();
+        var model = await _service.GetUserForEditAsync(id);
+        if (model == null) return NotFound();
+        return PartialView("_EditModal", model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(GlobalUserFormViewModel model)
+    {
+        if (!IsAuthorized()) return Forbid();
+
+        if (!ModelState.IsValid)
+        {
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                return Json(new { success = false, message = string.Join(" ", errors) });
+            }
+            // Reload available shops for the dropdown
+            var freshModel = await _service.GetUserForEditAsync(model.Id);
+            if (freshModel != null) model.AvailableShops = freshModel.AvailableShops;
+            return PartialView("_EditModal", model);
+        }
+
+        var result = await _service.UpdateUserAsync(model, GetUserId(), GetIpAddress());
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = result.Success, message = result.Message });
         return RedirectToAction(nameof(Index));

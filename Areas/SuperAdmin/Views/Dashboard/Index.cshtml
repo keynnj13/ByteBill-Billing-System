@@ -80,7 +80,7 @@
 
     <div class="kpi-card">
         <div class="kpi-icon kpi-icon-purple">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"></path></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24"><text x="12" y="18" text-anchor="middle" font-size="18" font-weight="600" fill="currentColor" font-family="Inter, sans-serif">&#8369;</text></svg>
         </div>
         <div class="kpi-body">
             <span class="kpi-label">Subscription Revenue</span>
@@ -137,7 +137,7 @@
             @if (Model.RecentActivity.Any())
             {
                 <ul class="activity-list">
-                    @foreach (var activity in Model.RecentActivity)
+                    @foreach (var activity in Model.RecentActivity.Take(5))
                     {
                         <li class="activity-item">
                             <div class="activity-dot activity-dot-@activity.IconColor"></div>
@@ -163,20 +163,26 @@
         </div>
     </div>
 
-    <div class="card">
+    <div class="card sub-dist-card">
         <div class="card-header">
             <h3 class="card-title">Subscription Distribution</h3>
         </div>
         <div class="card-body">
             @if (subscriptionDist.Any())
             {
-                <canvas id="subDistChart" height="200"></canvas>
-                <div class="sub-dist-legend" style="margin-top: 16px;">
-                    @foreach (var item in subscriptionDist)
+                var distColors = new[] { "#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444" };
+                <div class="sub-dist-chart-wrap">
+                    <canvas id="subDistChart"></canvas>
+                </div>
+                <div class="sub-dist-legend">
+                    @for (int i = 0; i < subscriptionDist.Count; i++)
                     {
                         <div class="sub-dist-item">
-                            <span class="sub-dist-label">@item.Label</span>
-                            <span class="sub-dist-value">@((int)item.Value) shop(s)</span>
+                            <div class="sub-dist-label-group">
+                                <span class="sub-dist-dot" style="background: @distColors[i % distColors.Length]"></span>
+                                <span class="sub-dist-label">@subscriptionDist[i].Label</span>
+                            </div>
+                            <span class="sub-dist-value">@((int)subscriptionDist[i].Value) shop(s)</span>
                         </div>
                     }
                 </div>
@@ -274,7 +280,7 @@
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: true,
                     cutout: '65%',
                     plugins: {
                         legend: { display: false },
@@ -317,7 +323,7 @@
     .card-badge { font-size: 11px; padding: 3px 10px; border-radius: var(--radius-full); background: var(--gray-100, #f1f5f9); color: var(--muted); font-weight: 500; }
     .card-link { font-size: 13px; color: #3b82f6; text-decoration: none; font-weight: 500; }
     .card-link:hover { text-decoration: underline; }
-    .tables-row { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; }
+    .tables-row { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; align-items: start; }
     .activity-list { list-style: none; padding: 0; margin: 0; }
     .activity-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--gray-100, #f1f5f9); }
     .activity-item:last-child { border-bottom: none; }
@@ -331,11 +337,15 @@
     .activity-title { font-weight: 500; font-size: 13px; color: var(--gray-900, #1f2937); margin-bottom: 1px; }
     .activity-description { font-size: 12px; color: var(--muted); }
     .activity-time { font-size: 11px; color: var(--gray-400, #9ca3af); white-space: nowrap; margin-top: 2px; }
-    .sub-dist-legend { display: flex; flex-direction: column; gap: 8px; }
-    .sub-dist-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--gray-100, #f1f5f9); }
+    .sub-dist-card .card-body { display: flex; flex-direction: column; }
+    .sub-dist-chart-wrap { position: relative; width: 180px; height: 180px; margin: 0 auto 20px; }
+    .sub-dist-legend { display: flex; flex-direction: column; gap: 6px; }
+    .sub-dist-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--gray-100, #f1f5f9); }
     .sub-dist-item:last-child { border-bottom: none; }
+    .sub-dist-label-group { display: flex; align-items: center; gap: 8px; }
+    .sub-dist-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .sub-dist-label { font-size: 13px; font-weight: 500; color: var(--gray-700, #374151); }
-    .sub-dist-value { font-size: 12px; color: var(--muted); }
+    .sub-dist-value { font-size: 12px; color: var(--muted); font-weight: 500; }
     @@media (max-width: 1280px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .charts-row { grid-template-columns: 1fr; } .tables-row { grid-template-columns: 1fr; } }
     @@media (max-width: 768px) { .kpi-grid { grid-template-columns: 1fr; } .dash-header { flex-direction: column; gap: 16px; } }
 </style>

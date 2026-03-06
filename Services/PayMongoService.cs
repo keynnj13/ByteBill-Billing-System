@@ -23,6 +23,7 @@ public class PayMongoSettings
     public string Currency { get; set; } = "PHP";
     public string SuccessUrl { get; set; } = string.Empty;
     public string CancelUrl { get; set; } = string.Empty;
+    public string? SiteBaseUrl { get; set; }
 }
 
 // ── Interface ────────────────────────────────────────────────────────────

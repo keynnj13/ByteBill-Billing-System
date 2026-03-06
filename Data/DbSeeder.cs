@@ -46,6 +46,8 @@ public static class DbSeeder
         await SeedPayMongoTxnsAsync(db);
         await SeedNotificationsAsync(db);
         await SeedAuditLogsAsync(db);
+        await SeedSubscriptionPlansAsync(db);
+        await SeedMainShopSubscriptionAsync(db);
 
         // ── Repair any inconsistent invoice balances ──────────────────
         await RepairInvoiceBalancesAsync(db);
@@ -1269,5 +1271,93 @@ public static class DbSeeder
 
         if (changed)
             await db.SaveChangesAsync();
+    }
+
+    // ── Subscription Plans ───────────────────────────────────────────
+    private static async Task SeedSubscriptionPlansAsync(ApplicationDbContext db)
+    {
+        if (await db.SubscriptionPlans.AnyAsync()) return;
+
+        db.SubscriptionPlans.AddRange(
+            new SubscriptionPlan
+            {
+                PlanName = "Basic",
+                Description = "Perfect for small repair shops just getting started.",
+                MonthlyPrice = 999m,
+                YearlyPrice = 9_590m,       // ~₱799/mo — 20% off
+                PermanentPrice = 35_964m,   // 36× monthly
+                MaxUsers = 3,
+                MaxCustomers = 50,
+                MaxJobOrdersPerMonth = 100,
+                HasAdvancedReports = false,
+                HasXeroIntegration = false,
+                HasPrioritySupport = false,
+                SortOrder = 1,
+                IsActive = true
+            },
+            new SubscriptionPlan
+            {
+                PlanName = "Professional",
+                Description = "For growing businesses that need more power and integrations.",
+                MonthlyPrice = 3_499m,
+                YearlyPrice = 33_590m,      // ~₱2,799/mo — 20% off
+                PermanentPrice = 125_964m,  // 36× monthly
+                MaxUsers = 10,
+                MaxCustomers = 200,
+                MaxJobOrdersPerMonth = 500,
+                HasAdvancedReports = true,
+                HasXeroIntegration = true,
+                HasPrioritySupport = false,
+                SortOrder = 2,
+                IsActive = true
+            },
+            new SubscriptionPlan
+            {
+                PlanName = "Enterprise",
+                Description = "Unlimited everything for established multi-branch operations.",
+                MonthlyPrice = 6_999m,
+                YearlyPrice = 67_190m,      // ~₱5,599/mo — 20% off
+                PermanentPrice = 251_964m,  // 36× monthly
+                MaxUsers = 0,               // unlimited
+                MaxCustomers = 0,           // unlimited
+                MaxJobOrdersPerMonth = 0,   // unlimited
+                HasAdvancedReports = true,
+                HasXeroIntegration = true,
+                HasPrioritySupport = true,
+                SortOrder = 3,
+                IsActive = true
+            }
+        );
+
+        await db.SaveChangesAsync();
+    }
+
+    // ── Assign Subscription to ByteBill Main Shop ────────────────────
+    private static async Task SeedMainShopSubscriptionAsync(ApplicationDbContext db)
+    {
+        var mainShop = await db.Shops.FirstOrDefaultAsync(s => s.ShopCode == "MAIN");
+        if (mainShop == null) return;
+
+        // Skip if already has a subscription
+        if (await db.Subscriptions.AnyAsync(s => s.ShopId == mainShop.ShopId)) return;
+
+        var enterprisePlan = await db.SubscriptionPlans.FirstOrDefaultAsync(p => p.PlanName == "Enterprise");
+        if (enterprisePlan == null) return;
+
+        var subscription = new Subscription
+        {
+            ShopId = mainShop.ShopId,
+            PlanId = enterprisePlan.PlanId,
+            BillingCycle = "Permanent",
+            Status = "Active",
+            Price = 0m, // Demo shop — no charge
+            StartDate = DateTime.UtcNow,
+            EndDate = null,
+            NextBillingDate = null,
+            IsDefault = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Subscriptions.Add(subscription);
+        await db.SaveChangesAsync();
     }
 }

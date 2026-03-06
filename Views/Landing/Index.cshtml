@@ -1,0 +1,598 @@
+@model List<ByteBill_BS.Models.SubscriptionPlan>
+@{
+    Layout = null;
+    ViewData["Title"] = "ByteBill — ERP for Service Shops";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="ByteBill is a modern cloud-based ERP platform built for Philippine service shops. Manage billing, job orders, inventory, and more." />
+    <title>@ViewData["Title"]</title>
+    <link rel="icon" type="image/png" href="~/img/bytelogo.png" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/landing.css" asp-append-version="true" />
+</head>
+<body>
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!--  NAVIGATION                                                -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <nav class="lp-nav" id="lpNav">
+        <div class="lp-container lp-nav-inner">
+            <a href="/" class="lp-logo">
+                <img src="~/img/bytelogo.png" alt="ByteBill" class="lp-logo-img" onerror="this.style.display='none'" />
+                <span class="lp-logo-text">Byte<span class="lp-logo-accent">Bill</span></span>
+            </a>
+            <div class="lp-nav-links" id="lpNavLinks">
+                <a href="#features" class="lp-nav-link">Features</a>
+                <a href="#how-it-works" class="lp-nav-link">How It Works</a>
+                <a href="#pricing" class="lp-nav-link">Pricing</a>
+                <a href="#faq" class="lp-nav-link">FAQ</a>
+            </div>
+            <div class="lp-nav-actions">
+                <a href="@Url.Action("Login", "Auth")" class="lp-btn lp-btn-ghost">Log In</a>
+                <a href="#pricing" class="lp-btn lp-btn-primary">Get Started</a>
+                <button class="lp-hamburger" id="lpHamburger" aria-label="Toggle menu">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
+        </div>
+        <div class="lp-mobile-menu" id="lpMobileMenu">
+            <a href="#features" class="lp-mobile-link">Features</a>
+            <a href="#how-it-works" class="lp-mobile-link">How It Works</a>
+            <a href="#pricing" class="lp-mobile-link">Pricing</a>
+            <a href="#faq" class="lp-mobile-link">FAQ</a>
+            <hr class="lp-mobile-divider" />
+            <a href="@Url.Action("Login", "Auth")" class="lp-btn lp-btn-outline lp-mobile-btn">Log In</a>
+            <a href="#pricing" class="lp-btn lp-btn-primary lp-mobile-btn">Get Started</a>
+        </div>
+    </nav>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!--  HERO — Dark Centered                                      -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section class="lp-hero">
+        <!-- Background effects -->
+        <div class="lp-hero-shape lp-hero-shape-1"></div>
+        <div class="lp-hero-shape lp-hero-shape-2"></div>
+        <div class="lp-hero-shape lp-hero-shape-3"></div>
+        <div class="lp-hero-grid"></div>
+        <div class="lp-hero-particle"></div>
+        <div class="lp-hero-particle"></div>
+        <div class="lp-hero-particle"></div>
+        <div class="lp-hero-particle"></div>
+        <div class="lp-hero-particle"></div>
+
+        <div class="lp-hero-content">
+            <div class="lp-hero-badge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                Built for Philippine Service Shops
+            </div>
+            <h1 class="lp-hero-title">
+                The smarter way to<br /><span class="lp-hero-highlight">run your shop</span>
+            </h1>
+            <p class="lp-hero-subtitle">
+                Billing, job orders, inventory, payments, and reports — unified in one
+                cloud platform designed for service businesses in the Philippines.
+            </p>
+            <div class="lp-hero-actions">
+                <a href="#pricing" class="lp-btn lp-btn-primary lp-btn-lg">
+                    Get Started
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+                <a href="#features" class="lp-btn lp-btn-ghost lp-btn-lg">
+                    Explore Features
+                </a>
+            </div>
+            <div class="lp-hero-stats">
+                <div class="lp-hero-stat">
+                    <div class="lp-hero-stat-value"><span class="lp-stat-accent">5</span> min</div>
+                    <div class="lp-hero-stat-label">Setup Time</div>
+                </div>
+                <div class="lp-hero-stat">
+                    <div class="lp-hero-stat-value">&#8369;<span class="lp-stat-accent">0</span></div>
+                    <div class="lp-hero-stat-label">Setup Fees</div>
+                </div>
+                <div class="lp-hero-stat">
+                    <div class="lp-hero-stat-value"><span class="lp-stat-accent">4</span> Payments</div>
+                    <div class="lp-hero-stat-label">GCash · Card · Maya · GrabPay</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!--  FEATURES — Bento Grid                                     -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section class="lp-section" id="features">
+        <div class="lp-container">
+            <div class="lp-section-header sr">
+                <span class="lp-section-badge">Features</span>
+                <h2 class="lp-section-title">Everything your shop needs — nothing it doesn't</h2>
+                <p class="lp-section-subtitle">
+                    From customer intake to final payment, ByteBill covers every step of your service workflow.
+                </p>
+            </div>
+            <div class="lp-bento-grid">
+                <div class="lp-bento-card sr sr-delay-1">
+                    <div class="lp-bento-icon lp-icon-blue">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+                    </div>
+                    <h3 class="lp-bento-title">Invoicing &amp; Billing</h3>
+                    <p class="lp-bento-desc">Generate professional invoices with automatic VAT computation, discounts, and BIR-compliant formatting. Print or send digitally.</p>
+                </div>
+                <div class="lp-bento-card sr sr-delay-2">
+                    <div class="lp-bento-icon lp-icon-emerald">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><path d="M9 14l2 2 4-4"/></svg>
+                    </div>
+                    <h3 class="lp-bento-title">Job Orders</h3>
+                    <p class="lp-bento-desc">Track repairs from intake to completion with priority levels, status history, and technician assignment.</p>
+                </div>
+                <div class="lp-bento-card sr sr-delay-3">
+                    <div class="lp-bento-icon lp-icon-purple">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+                    </div>
+                    <h3 class="lp-bento-title">Inventory</h3>
+                    <p class="lp-bento-desc">Monitor parts and supplies with categorized inventory, stock levels, and automated markup calculations.</p>
+                </div>
+                <div class="lp-bento-card sr sr-delay-1">
+                    <div class="lp-bento-icon lp-icon-amber">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><path d="M1 10h22"/></svg>
+                    </div>
+                    <h3 class="lp-bento-title">Online Payments</h3>
+                    <p class="lp-bento-desc">Accept GCash, credit cards, GrabPay, and Maya via PayMongo integration.</p>
+                </div>
+                <div class="lp-bento-card sr sr-delay-2">
+                    <div class="lp-bento-icon lp-icon-red">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                    <h3 class="lp-bento-title">Customers</h3>
+                    <p class="lp-bento-desc">Complete customer database with device history, contact info, and service records.</p>
+                </div>
+                <div class="lp-bento-card sr sr-delay-3">
+                    <div class="lp-bento-icon lp-icon-navy">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                    </div>
+                    <h3 class="lp-bento-title">Reports &amp; Analytics</h3>
+                    <p class="lp-bento-desc">Revenue reports, job order analytics, payment summaries, and exportable CSV data to power your decisions.</p>
+                </div>
+                <div class="lp-bento-card sr sr-delay-4">
+                    <div class="lp-bento-icon lp-icon-teal">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <h3 class="lp-bento-title">Role-Based Access</h3>
+                    <p class="lp-bento-desc">Admin, Billing, Technician, and Auditor roles with fine-grained permissions.</p>
+                </div>
+                <div class="lp-bento-card sr sr-delay-5">
+                    <div class="lp-bento-icon lp-icon-emerald">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                    </div>
+                    <h3 class="lp-bento-title">Xero Accounting</h3>
+                    <p class="lp-bento-desc">Seamlessly sync invoices and payments to Xero with built-in OAuth2 integration.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!--  HOW IT WORKS — Vertical Timeline                          -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section class="lp-section lp-section-alt" id="how-it-works">
+        <div class="lp-container">
+            <div class="lp-section-header sr">
+                <span class="lp-section-badge">How It Works</span>
+                <h2 class="lp-section-title">Up and running in minutes</h2>
+                <p class="lp-section-subtitle">Three simple steps to transform your shop operations.</p>
+            </div>
+            <div class="lp-timeline">
+                <div class="lp-timeline-step sr sr-delay-1">
+                    <div class="lp-timeline-marker">1</div>
+                    <div class="lp-timeline-body">
+                        <h3 class="lp-timeline-title">Choose a Plan</h3>
+                        <p class="lp-timeline-desc">Select the subscription tier that fits your shop size and needs. Pay securely with GCash, card, or Maya — no commitments required.</p>
+                    </div>
+                </div>
+                <div class="lp-timeline-step sr sr-delay-2">
+                    <div class="lp-timeline-marker">2</div>
+                    <div class="lp-timeline-body">
+                        <h3 class="lp-timeline-title">Set Up Your Shop</h3>
+                        <p class="lp-timeline-desc">Create your shop profile and admin account. Your workspace is provisioned instantly — no technical setup needed.</p>
+                    </div>
+                </div>
+                <div class="lp-timeline-step sr sr-delay-3">
+                    <div class="lp-timeline-marker">3</div>
+                    <div class="lp-timeline-body">
+                        <h3 class="lp-timeline-title">Start Managing</h3>
+                        <p class="lp-timeline-desc">Add customers, create job orders, send invoices, and accept online payments — everything from one dashboard.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!--  PRICING                                                   -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section class="lp-section" id="pricing">
+        <div class="lp-container">
+            <div class="lp-section-header sr">
+                <span class="lp-section-badge">Pricing</span>
+                <h2 class="lp-section-title">Pick the plan that fits your shop</h2>
+                <p class="lp-section-subtitle">Transparent pricing, no hidden fees. Scale as you grow.</p>
+            </div>
+
+            <div class="lp-billing-toggle sr">
+                <button class="lp-toggle-btn active" data-cycle="Monthly" onclick="switchBillingCycle('Monthly')">Monthly</button>
+                <button class="lp-toggle-btn" data-cycle="Yearly" onclick="switchBillingCycle('Yearly')">
+                    Yearly
+                    <span class="lp-toggle-save">Save 20%</span>
+                </button>
+                <button class="lp-toggle-btn" data-cycle="Permanent" onclick="switchBillingCycle('Permanent')">Lifetime</button>
+            </div>
+
+            <div class="lp-pricing-grid">
+                @if (Model.Any())
+                {
+                    int cardIndex = 0;
+                    @foreach (var plan in Model)
+                    {
+                        var isPro = plan.PlanName.Contains("Professional", StringComparison.OrdinalIgnoreCase);
+                        <div class="lp-pricing-card @(isPro ? "lp-pricing-featured" : "") sr sr-scale sr-delay-@(cardIndex + 1)">
+                            @if (isPro)
+                            {
+                                <div class="lp-pricing-badge">Most Popular</div>
+                            }
+                            <div class="lp-pricing-header">
+                                <h3 class="lp-pricing-name">@plan.PlanName</h3>
+                                <p class="lp-pricing-desc">@plan.Description</p>
+                            </div>
+                            <div class="lp-pricing-price">
+                                <span class="lp-price-amount" data-monthly="@plan.MonthlyPrice" data-yearly="@plan.YearlyPrice" data-permanent="@plan.PermanentPrice">
+                                    &#8369;@plan.MonthlyPrice.ToString("N0")
+                                </span>
+                                <span class="lp-price-period" data-monthly="/month" data-yearly="/year" data-permanent=" one-time">/month</span>
+                            </div>
+                            <ul class="lp-pricing-features">
+                                <li>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+                                    @(plan.MaxUsers == 0 ? "Unlimited" : plan.MaxUsers.ToString()) users
+                                </li>
+                                <li>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+                                    @(plan.MaxCustomers == 0 ? "Unlimited" : plan.MaxCustomers.ToString()) customers
+                                </li>
+                                <li>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+                                    @(plan.MaxJobOrdersPerMonth == 0 ? "Unlimited" : plan.MaxJobOrdersPerMonth.ToString()) job orders/month
+                                </li>
+                                <li class="@(!plan.HasAdvancedReports ? "lp-feature-disabled" : "")">
+                                    @if (plan.HasAdvancedReports)
+                                    {
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+                                    }
+                                    else
+                                    {
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                    }
+                                    Advanced reports
+                                </li>
+                                <li class="@(!plan.HasXeroIntegration ? "lp-feature-disabled" : "")">
+                                    @if (plan.HasXeroIntegration)
+                                    {
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+                                    }
+                                    else
+                                    {
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                    }
+                                    Xero integration
+                                </li>
+                                <li class="@(!plan.HasPrioritySupport ? "lp-feature-disabled" : "")">
+                                    @if (plan.HasPrioritySupport)
+                                    {
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+                                    }
+                                    else
+                                    {
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                    }
+                                    Priority support
+                                </li>
+                            </ul>
+                            <a href="@Url.Action("CreateAccount", "Register", new { planId = plan.PlanId, cycle = "Monthly" })"
+                               class="lp-btn @(isPro ? "lp-btn-primary" : "lp-btn-outline") lp-btn-full lp-plan-cta"
+                               data-plan-id="@plan.PlanId">
+                                Get Started
+                            </a>
+                        </div>
+                        cardIndex++;
+                    }
+                }
+                else
+                {
+                    <div class="lp-pricing-empty">
+                        <p>Pricing plans will be available soon. Contact us for early access.</p>
+                    </div>
+                }
+            </div>
+
+            <!-- Interactive Pricing Calculator -->
+            <div class="lp-calculator sr">
+                <h3 class="lp-calc-title">Not sure which plan? Use our calculator</h3>
+                <p class="lp-calc-subtitle">Adjust the sliders to match your shop and we'll recommend the best fit.</p>
+                <div class="lp-calc-sliders">
+                    <div class="lp-calc-group">
+                        <label>Team Members <span id="calcUsersLabel">3</span></label>
+                        <input type="range" min="1" max="20" value="3" class="lp-calc-slider" id="calcUsers" oninput="updateCalculator()" />
+                    </div>
+                    <div class="lp-calc-group">
+                        <label>Customers <span id="calcCustomersLabel">50</span></label>
+                        <input type="range" min="10" max="500" value="50" step="10" class="lp-calc-slider" id="calcCustomers" oninput="updateCalculator()" />
+                    </div>
+                    <div class="lp-calc-group">
+                        <label>Job Orders / Month <span id="calcJobsLabel">30</span></label>
+                        <input type="range" min="5" max="300" value="30" step="5" class="lp-calc-slider" id="calcJobs" oninput="updateCalculator()" />
+                    </div>
+                </div>
+                <div class="lp-calc-result">
+                    <div class="lp-calc-result-label">Recommended Plan</div>
+                    <div class="lp-calc-result-plan" id="calcPlanName">Basic</div>
+                    <div class="lp-calc-result-price">
+                        <span class="lp-price-emerald" id="calcPlanPrice">&#8369;999</span><span id="calcPeriodLabel"> /month</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!--  FAQ                                                       -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section class="lp-section lp-section-alt" id="faq">
+        <div class="lp-container">
+            <div class="lp-section-header sr">
+                <span class="lp-section-badge">FAQ</span>
+                <h2 class="lp-section-title">Got questions? We've got answers</h2>
+            </div>
+            <div class="lp-faq-list">
+                <div class="lp-faq-item sr sr-delay-1">
+                    <button class="lp-faq-question" onclick="toggleFaq(this)">
+                        <span>What types of businesses is ByteBill designed for?</span>
+                        <svg class="lp-faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div class="lp-faq-answer">
+                        <p>ByteBill is built specifically for Philippine service shops — computer repair, phone repair, electronics servicing, appliance repair centers, and similar businesses that manage job orders, invoices, and customer payments.</p>
+                    </div>
+                </div>
+                <div class="lp-faq-item sr sr-delay-2">
+                    <button class="lp-faq-question" onclick="toggleFaq(this)">
+                        <span>What payment methods do my customers get?</span>
+                        <svg class="lp-faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div class="lp-faq-answer">
+                        <p>Through our PayMongo integration, your customers can pay via GCash, credit/debit card, GrabPay, and Maya. You can send payment links directly or generate QR checkout pages for in-shop payments.</p>
+                    </div>
+                </div>
+                <div class="lp-faq-item sr sr-delay-3">
+                    <button class="lp-faq-question" onclick="toggleFaq(this)">
+                        <span>Is my shop data secure and private?</span>
+                        <svg class="lp-faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div class="lp-faq-answer">
+                        <p>Absolutely. ByteBill uses multi-tenant architecture where every shop's data is completely isolated. We use BCrypt password hashing, HTTPS encryption, and role-based access control to keep everything secure.</p>
+                    </div>
+                </div>
+                <div class="lp-faq-item sr sr-delay-4">
+                    <button class="lp-faq-question" onclick="toggleFaq(this)">
+                        <span>Can I upgrade or change my plan later?</span>
+                        <svg class="lp-faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div class="lp-faq-answer">
+                        <p>Yes! You can upgrade your subscription plan at any time from your Admin dashboard. When you upgrade, you get instant access to the higher tier's features and limits.</p>
+                    </div>
+                </div>
+                <div class="lp-faq-item sr sr-delay-5">
+                    <button class="lp-faq-question" onclick="toggleFaq(this)">
+                        <span>Does ByteBill handle BIR-compliant tax computations?</span>
+                        <svg class="lp-faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div class="lp-faq-answer">
+                        <p>Yes. ByteBill supports both VAT-registered (12%) and Non-VAT (3% Percentage Tax) businesses. Invoices automatically compute the correct tax based on your shop's registration settings.</p>
+                    </div>
+                </div>
+                <div class="lp-faq-item sr sr-delay-6">
+                    <button class="lp-faq-question" onclick="toggleFaq(this)">
+                        <span>How many team members can use ByteBill?</span>
+                        <svg class="lp-faq-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div class="lp-faq-answer">
+                        <p>Each plan has a different user limit. The Basic plan allows up to 3 users, the Professional plan up to 10 users, and the Enterprise plan offers unlimited users. Assign Admin, Billing, Technician, and Auditor roles to each team member.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!--  CTA                                                       -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section class="lp-section lp-cta">
+        <div class="lp-cta-glow"></div>
+        <div class="lp-container">
+            <div class="lp-cta-inner sr">
+                <h2 class="lp-cta-title">Ready to streamline your shop?</h2>
+                <p class="lp-cta-subtitle">Join shop owners who are saving hours every week with ByteBill.</p>
+                <a href="#pricing" class="lp-btn lp-btn-primary lp-btn-lg">
+                    Get Started Today
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!--  FOOTER                                                    -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <footer class="lp-footer">
+        <div class="lp-container">
+            <div class="lp-footer-inner">
+                <div class="lp-footer-brand">
+                    <div class="lp-logo">
+                        <img src="~/img/bytelogo.png" alt="ByteBill" class="lp-logo-img" onerror="this.style.display='none'" />
+                        <span class="lp-logo-text">Byte<span class="lp-logo-accent">Bill</span></span>
+                    </div>
+                    <p class="lp-footer-tagline">Cloud-based ERP for Philippine service shops. Billing, job orders, inventory — all in one.</p>
+                </div>
+                <div class="lp-footer-links">
+                    <div class="lp-footer-col">
+                        <h4>Product</h4>
+                        <a href="#features">Features</a>
+                        <a href="#pricing">Pricing</a>
+                        <a href="#faq">FAQ</a>
+                    </div>
+                    <div class="lp-footer-col">
+                        <h4>Account</h4>
+                        <a href="@Url.Action("Login", "Auth")">Log In</a>
+                        <a href="#pricing">Sign Up</a>
+                    </div>
+                </div>
+            </div>
+            <div class="lp-footer-bottom">
+                <p>&copy; @DateTime.Now.Year ByteBill. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!--  SCRIPTS                                                   -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <script>
+        // ── Plan data for calculator ─────────────────────────────
+        var planData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(p => new {
+            p.PlanName,
+            p.MonthlyPrice,
+            p.YearlyPrice,
+            p.PermanentPrice,
+            p.MaxUsers,
+            p.MaxCustomers,
+            p.MaxJobOrdersPerMonth
+        })));
+        var activeCycle = 'Monthly';
+
+        // ── Billing Cycle Toggle ─────────────────────────────────
+        function switchBillingCycle(cycle) {
+            document.querySelectorAll('.lp-toggle-btn').forEach(function(btn) {
+                btn.classList.toggle('active', btn.dataset.cycle === cycle);
+            });
+            document.querySelectorAll('.lp-price-amount').forEach(function(el) {
+                var price = parseFloat(el.dataset[cycle.toLowerCase()]);
+                el.textContent = '\u20B1' + price.toLocaleString('en-PH', { maximumFractionDigits: 0 });
+            });
+            document.querySelectorAll('.lp-price-period').forEach(function(el) {
+                el.textContent = el.dataset[cycle.toLowerCase()];
+            });
+            document.querySelectorAll('.lp-plan-cta').forEach(function(link) {
+                var planId = link.dataset.planId;
+                link.href = '@Url.Action("CreateAccount", "Register")' + '?planId=' + planId + '&cycle=' + cycle;
+            });
+            activeCycle = cycle;
+            updateCalculator();
+        }
+
+        // ── FAQ Accordion ────────────────────────────────────────
+        function toggleFaq(btn) {
+            var item = btn.parentElement;
+            var isOpen = item.classList.contains('open');
+            document.querySelectorAll('.lp-faq-item').forEach(function(i) { i.classList.remove('open'); });
+            if (!isOpen) item.classList.add('open');
+        }
+
+        // ── Pricing Calculator ───────────────────────────────────
+        function updateCalculator() {
+            var users = parseInt(document.getElementById('calcUsers').value);
+            var customers = parseInt(document.getElementById('calcCustomers').value);
+            var jobs = parseInt(document.getElementById('calcJobs').value);
+
+            document.getElementById('calcUsersLabel').textContent = users;
+            document.getElementById('calcCustomersLabel').textContent = customers;
+            document.getElementById('calcJobsLabel').textContent = jobs;
+
+            // Find the cheapest plan that can accommodate the requirements
+            var recommended = null;
+            for (var i = 0; i < planData.length; i++) {
+                var p = planData[i];
+                var usersOk = p.maxUsers === 0 || p.maxUsers >= users;
+                var custOk = p.maxCustomers === 0 || p.maxCustomers >= customers;
+                var jobsOk = p.maxJobOrdersPerMonth === 0 || p.maxJobOrdersPerMonth >= jobs;
+                if (usersOk && custOk && jobsOk) {
+                    recommended = p;
+                    break;
+                }
+            }
+            if (!recommended && planData.length > 0) {
+                recommended = planData[planData.length - 1]; // Highest tier
+            }
+            if (recommended) {
+                var priceKey = activeCycle === 'Yearly' ? 'yearlyPrice'
+                             : activeCycle === 'Permanent' ? 'permanentPrice'
+                             : 'monthlyPrice';
+                var periodLabel = activeCycle === 'Yearly' ? '/year'
+                                : activeCycle === 'Permanent' ? ' one-time'
+                                : '/month';
+                var price = recommended[priceKey];
+                document.getElementById('calcPlanName').textContent = recommended.planName;
+                document.getElementById('calcPlanPrice').textContent = '\u20B1' + price.toLocaleString('en-PH', { maximumFractionDigits: 0 });
+                document.getElementById('calcPeriodLabel').textContent = periodLabel;
+            }
+        }
+
+        // ── Nav scroll effect ────────────────────────────────────
+        window.addEventListener('scroll', function() {
+            document.getElementById('lpNav').classList.toggle('scrolled', window.scrollY > 20);
+        });
+
+        // ── Mobile hamburger ─────────────────────────────────────
+        document.getElementById('lpHamburger').addEventListener('click', function() {
+            document.getElementById('lpMobileMenu').classList.toggle('open');
+            this.classList.toggle('open');
+        });
+        document.querySelectorAll('.lp-mobile-link').forEach(function(link) {
+            link.addEventListener('click', function() {
+                document.getElementById('lpMobileMenu').classList.remove('open');
+                document.getElementById('lpHamburger').classList.remove('open');
+            });
+        });
+
+        // ── Smooth scroll ────────────────────────────────────────
+        document.querySelectorAll('a[href^="#"]').forEach(function(anchor) {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                var target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    var top = target.getBoundingClientRect().top + window.pageYOffset - 80;
+                    window.scrollTo({ top: top, behavior: 'smooth' });
+                }
+            });
+        });
+
+        // ── Scroll Reveal (IntersectionObserver) ─────────────────
+        (function() {
+            var observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+            document.querySelectorAll('.sr, .sr-scale').forEach(function(el) {
+                observer.observe(el);
+            });
+        })();
+
+        // ── Init calculator ──────────────────────────────────────
+        updateCalculator();
+    </script>
+</body>
+</html>

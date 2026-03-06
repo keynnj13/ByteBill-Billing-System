@@ -35,67 +35,8 @@ public class ShopsController : Controller
         return View(viewModel);
     }
 
-    [HttpGet]
-    public IActionResult CreateModal()
-    {
-        if (!IsAuthorized()) return Forbid();
-        return PartialView("_CreateModal", new ShopCreateViewModel());
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(ShopCreateViewModel model)
-    {
-        if (!IsAuthorized()) return Forbid();
-
-        if (!ModelState.IsValid)
-        {
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-                return PartialView("_CreateModal", model);
-            return RedirectToAction(nameof(Index));
-        }
-
-        var result = await _service.CreateShopAsync(model, GetUserId(), GetIpAddress());
-
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-            return Json(new { success = result.Success, message = result.Message });
-
-        if (result.Success) TempData["Success"] = result.Message;
-        else TempData["Error"] = result.Message;
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> EditModal(long id)
-    {
-        if (!IsAuthorized()) return Forbid();
-        var model = await _service.GetShopForEditAsync(id);
-        if (model == null) return NotFound();
-        return PartialView("_EditModal", model);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(ShopFormViewModel model)
-    {
-        if (!IsAuthorized()) return Forbid();
-
-        if (!ModelState.IsValid)
-        {
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-                return PartialView("_EditModal", model);
-            return RedirectToAction(nameof(Index));
-        }
-
-        var result = await _service.UpdateShopAsync(model, GetUserId(), GetIpAddress());
-
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-            return Json(new { success = result.Success, message = result.Message });
-
-        if (result.Success) TempData["Success"] = result.Message;
-        else TempData["Error"] = result.Message;
-        return RedirectToAction(nameof(Index));
-    }
+    // NOTE: Shop creation is now handled by self-service registration.
+    // SuperAdmin retains read-only oversight with ToggleStatus for moderation.
 
     [HttpGet]
     public async Task<IActionResult> DetailsModal(long id)
@@ -117,16 +58,35 @@ public class ShopsController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Delete(long id)
+    [HttpGet]
+    public async Task<IActionResult> EditModal(long id)
     {
         if (!IsAuthorized()) return Forbid();
-        var result = await _service.DeleteShopAsync(id, GetUserId(), GetIpAddress());
+        var model = await _service.GetShopForEditAsync(id);
+        if (model == null) return NotFound();
+        return PartialView("_EditModal", model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(ShopFormViewModel model)
+    {
+        if (!IsAuthorized()) return Forbid();
+
+        if (!ModelState.IsValid)
+        {
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                return Json(new { success = false, message = string.Join(" ", errors) });
+            }
+            return PartialView("_EditModal", model);
+        }
+
+        var result = await _service.UpdateShopAsync(model, GetUserId(), GetIpAddress());
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = result.Success, message = result.Message });
-        if (result.Success) TempData["Success"] = result.Message;
-        else TempData["Error"] = result.Message;
         return RedirectToAction(nameof(Index));
     }
+
 }

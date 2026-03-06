@@ -78,7 +78,8 @@ public class UserFormViewModel
     [Display(Name = "Email")]
     public string Email { get; set; } = string.Empty;
 
-    [StringLength(30)]
+    [StringLength(11)]
+    [RegularExpression(@"^09\d{9}$", ErrorMessage = "Phone must be 11 digits starting with 09")]
     [Display(Name = "Phone")]
     public string? Phone { get; set; }
 

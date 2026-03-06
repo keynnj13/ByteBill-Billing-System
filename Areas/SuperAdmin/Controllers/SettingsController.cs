@@ -1,4 +1,4 @@
-using ByteBill_BS.Models.Enums;
+﻿using ByteBill_BS.Models.Enums;
 using ByteBill_BS.Services;
 using ByteBill_BS.ViewModels.SuperAdmin;
 using Microsoft.AspNetCore.Authorization;
@@ -85,7 +85,7 @@ public class SettingsController : Controller
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = result.Success, message = result.Message });
 
-        TempData["SuccessMessage"] = result.Message;
+        TempData["Success"] = result.Message;
         return RedirectToAction("Index", new { tab = "general" });
     }
 
@@ -111,7 +111,7 @@ public class SettingsController : Controller
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = result.Success, message = result.Message });
 
-        TempData["SuccessMessage"] = result.Message;
+        TempData["Success"] = result.Message;
         return RedirectToAction("Index", new { tab = "security" });
     }
 
@@ -138,7 +138,7 @@ public class SettingsController : Controller
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = result.Success, message = result.Message });
 
-        TempData["SuccessMessage"] = result.Message;
+        TempData["Success"] = result.Message;
         return RedirectToAction("Index", new { tab = "email" });
     }
 
@@ -159,7 +159,7 @@ public class SettingsController : Controller
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = result.Success, message = result.Message });
 
-        TempData["SuccessMessage"] = result.Message;
+        TempData["Success"] = result.Message;
         return RedirectToAction("Index", new { tab = "subscription" });
     }
 
@@ -172,7 +172,7 @@ public class SettingsController : Controller
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = true, message = $"Test email sent to {testEmailAddress}." });
 
-        TempData["SuccessMessage"] = $"Test email sent to {testEmailAddress}.";
+        TempData["Success"] = $"Test email sent to {testEmailAddress}.";
         return RedirectToAction("Index", new { tab = "email" });
     }
 }

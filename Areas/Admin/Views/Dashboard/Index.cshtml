@@ -3,7 +3,39 @@
     ViewData["Title"] = "Admin Dashboard";
 }
 
+@using ByteBill_BS.Models
 <partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", IsActive = true } } })" />
+
+@{
+    var announcements = ViewBag.Announcements as List<Announcement> ?? new List<Announcement>();
+}
+@if (announcements.Any())
+{
+    <div class="dash-announcements" id="dash-announcements">
+        @foreach (var a in announcements)
+        {
+            var typeClass = a.Type switch { "Warning" => "ann-warn", "Critical" => "ann-crit", "Maintenance" => "ann-maint", _ => "ann-info" };
+            var icon = a.Type switch {
+                "Warning"     => "<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z'/>",
+                "Critical"    => "<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'/>",
+                "Maintenance" => "<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z'/><circle cx='12' cy='12' r='3'/>",
+                _             => "<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z'/>"
+            };
+            <div class="ann-banner @typeClass" data-ann-id="@a.AnnouncementId">
+                <div class="ann-icon">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">@Html.Raw(icon)</svg>
+                </div>
+                <div class="ann-body">
+                    <strong class="ann-title">@a.Title</strong>
+                    <span class="ann-content">@a.Content</span>
+                </div>
+                <button type="button" class="ann-dismiss" onclick="this.closest('.ann-banner').remove(); if(!document.querySelector('.ann-banner')) document.getElementById('dash-announcements')?.remove();" aria-label="Dismiss">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+        }
+    </div>
+}
 
 <!-- ═══ Page Header ═══ -->
 <div class="dash-header">
@@ -488,6 +520,26 @@
 
 <!-- ═══ Dashboard Styles ═══ -->
 <style>
+    /* Announcements Banner */
+    .dash-announcements { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+    .ann-banner { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 10px; border: 1px solid; animation: annSlideIn 0.3s ease-out; }
+    .ann-info   { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+    .ann-warn   { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+    .ann-crit   { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    .ann-maint  { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+    [data-theme="dark"] .ann-info  { background: hsl(217, 40%, 14%); border-color: hsl(217, 40%, 24%); color: hsl(217, 70%, 75%); }
+    [data-theme="dark"] .ann-warn  { background: hsl(38, 40%, 14%);  border-color: hsl(38, 40%, 24%);  color: hsl(38, 70%, 75%); }
+    [data-theme="dark"] .ann-crit  { background: hsl(4, 40%, 14%);   border-color: hsl(4, 40%, 24%);   color: hsl(4, 60%, 70%); }
+    [data-theme="dark"] .ann-maint { background: hsl(145, 40%, 12%); border-color: hsl(145, 40%, 22%); color: hsl(145, 50%, 65%); }
+    .ann-icon { flex-shrink: 0; margin-top: 1px; }
+    .ann-body { flex: 1; font-size: 14px; line-height: 1.5; }
+    .ann-title { display: block; font-weight: 600; margin-bottom: 2px; }
+    .ann-content { opacity: 0.85; }
+    .ann-dismiss { background: none; border: none; cursor: pointer; opacity: 0.5; padding: 2px; border-radius: 4px; color: inherit; flex-shrink: 0; }
+    .ann-dismiss:hover { opacity: 1; background: rgba(0,0,0,0.08); }
+    [data-theme="dark"] .ann-dismiss:hover { background: rgba(255,255,255,0.1); }
+    @@keyframes annSlideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
     /* Header */
     .dash-header {
         display: flex;

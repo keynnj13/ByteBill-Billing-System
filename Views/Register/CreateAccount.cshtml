@@ -1,0 +1,573 @@
+﻿@model ByteBill_BS.ViewModels.Register.CreateAccountViewModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Create Your Account â€” ByteBill";
+    var cycleLabel = Model.BillingCycle switch { "Yearly" => "per year", "Permanent" => "one-time", _ => "per month" };
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="icon" type="image/png" href="@Url.Content("~/img/bytelogo.png")" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+        :root {
+            --rg-navy: hsl(213, 54%, 20%);
+            --rg-navy-mid: hsl(213, 54%, 28%);
+            --rg-navy-light: hsl(213, 40%, 96%);
+            --rg-emerald: hsl(145, 63%, 42%);
+            --rg-emerald-hover: hsl(145, 63%, 36%);
+            --rg-emerald-bg: hsl(145, 50%, 95%);
+            --rg-emerald-border: hsl(145, 50%, 82%);
+            --rg-red: hsl(4, 74%, 58%);
+            --rg-amber: hsl(38, 92%, 50%);
+            --rg-text: hsl(213, 20%, 18%);
+            --rg-text-muted: hsl(213, 10%, 55%);
+            --rg-border: hsl(210, 14%, 89%);
+            --rg-bg: hsl(210, 20%, 98%);
+            --rg-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--rg-font); background: var(--rg-bg); color: var(--rg-text); -webkit-font-smoothing: antialiased; }
+
+        /* â”€â”€ Split Layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+        .rg-split { display: flex; min-height: 100vh; }
+
+        /* â”€â”€ Left Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+        .rg-left {
+            width: 400px; min-width: 400px;
+            background: var(--rg-navy);
+            background-image: radial-gradient(ellipse at 20% 80%, hsla(145, 63%, 42%, 0.12) 0%, transparent 50%),
+                              radial-gradient(ellipse at 80% 20%, hsla(213, 54%, 40%, 0.15) 0%, transparent 50%);
+            color: white; padding: 32px 28px;
+            display: flex; flex-direction: column;
+            position: sticky; top: 0; height: 100vh; overflow-y: auto;
+        }
+
+        .rg-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 40px; text-decoration: none; }
+        .rg-logo img { width: 30px; height: 30px; border-radius: 7px; filter: brightness(0) invert(1); }
+        .rg-logo span { font-size: 18px; font-weight: 800; color: white; letter-spacing: -0.3px; }
+        .rg-logo-green { color: var(--rg-emerald); }
+
+        .rg-left-content { flex: 1; }
+        .rg-left-title { font-size: 24px; font-weight: 800; line-height: 1.25; margin-bottom: 6px; letter-spacing: -0.5px; }
+        .rg-left-subtitle { font-size: 14px; opacity: 0.5; line-height: 1.5; margin-bottom: 32px; }
+
+        /* Payment card */
+        .rg-pcard {
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px; padding: 20px; margin-bottom: 24px;
+        }
+        .rg-pcard-status { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+        .rg-pcard-dot {
+            width: 24px; height: 24px; border-radius: 50%;
+            background: var(--rg-emerald); display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .rg-pcard-label { font-size: 13px; font-weight: 600; color: hsl(145, 63%, 65%); }
+        .rg-pcard-amount { font-size: 28px; font-weight: 900; letter-spacing: -0.5px; margin-bottom: 2px; }
+        .rg-pcard-cycle { font-size: 13px; opacity: 0.4; margin-bottom: 14px; }
+        .rg-pcard-sep { height: 1px; background: rgba(255,255,255,0.08); margin-bottom: 12px; }
+        .rg-pcard-row { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 0; }
+        .rg-pcard-row-label { opacity: 0.4; }
+        .rg-pcard-row-value { font-weight: 600; }
+        .rg-pcard-row-paid { color: hsl(145, 63%, 60%); }
+
+        /* Plan badge */
+        .rg-plan-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.2);
+            padding: 5px 12px; border-radius: 8px;
+            font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+            color: hsl(145, 63%, 65%); margin-bottom: 20px;
+        }
+
+        /* Features */
+        .rg-feat-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; opacity: 0.3; margin-bottom: 14px; }
+        .rg-feat-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+        .rg-feat-list li { display: flex; align-items: center; gap: 10px; font-size: 13px; opacity: 0.75; line-height: 1.4; }
+        .rg-feat-check {
+            width: 20px; height: 20px; border-radius: 5px;
+            background: rgba(16,185,129,0.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+
+        .rg-left-foot { font-size: 11px; opacity: 0.2; margin-top: 28px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06); }
+
+        /* Steps indicator */
+        .rg-steps { display: flex; flex-direction: column; gap: 0; margin-bottom: 28px; }
+        .rg-step { display: flex; align-items: center; gap: 12px; position: relative; padding: 8px 0; }
+        .rg-step-dot {
+            width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 700; flex-shrink: 0; z-index: 1;
+        }
+        .rg-step-done .rg-step-dot { background: var(--rg-emerald); color: white; }
+        .rg-step-active .rg-step-dot { background: white; color: var(--rg-navy); }
+        .rg-step-text { font-size: 13px; font-weight: 500; }
+        .rg-step-done .rg-step-text { opacity: 0.5; }
+        .rg-step-active .rg-step-text { font-weight: 700; }
+        .rg-step-line { position: absolute; left: 13.5px; top: 36px; width: 1px; height: 16px; background: rgba(255,255,255,0.12); }
+
+        /* â”€â”€ Right Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+        .rg-right { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+        .rg-topbar {
+            padding: 14px 40px; display: flex; justify-content: flex-end; align-items: center; gap: 12px;
+            border-bottom: 1px solid hsl(210,14%,93%); background: white; flex-shrink: 0;
+        }
+        .rg-topbar-text { font-size: 13px; color: var(--rg-text-muted); }
+        .rg-topbar-link { font-size: 13px; font-weight: 700; color: var(--rg-navy); text-decoration: none; padding: 6px 14px; border-radius: 8px; border: 1.5px solid var(--rg-border); transition: all 0.15s; }
+        .rg-topbar-link:hover { background: var(--rg-navy); color: white; border-color: var(--rg-navy); }
+
+        .rg-form-wrap { flex: 1; overflow-y: auto; display: flex; justify-content: center; }
+        .rg-form-area { padding: 36px 44px 48px; max-width: 680px; width: 100%; }
+
+        .rg-form-title { font-size: 24px; font-weight: 800; color: var(--rg-navy); margin-bottom: 4px; letter-spacing: -0.3px; }
+        .rg-form-subtitle { font-size: 14px; color: var(--rg-text-muted); margin-bottom: 28px; line-height: 1.5; }
+
+        /* Error summary */
+        .rg-error-box {
+            background: hsl(4, 74%, 97%); border: 1px solid hsl(4, 74%, 88%); border-left: 4px solid var(--rg-red);
+            color: hsl(4, 74%, 38%); padding: 14px 18px; border-radius: 8px;
+            font-size: 13px; margin-bottom: 24px;
+        }
+        .rg-error-box strong { display: block; margin-bottom: 6px; font-size: 14px; }
+        .rg-error-box ul { margin: 0 0 0 16px; }
+        .rg-error-box li { margin-bottom: 2px; }
+
+        /* Sections */
+        .rg-section { margin-bottom: 28px; }
+        .rg-section-head {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 18px; padding-bottom: 10px; border-bottom: 1px solid var(--rg-border);
+        }
+        .rg-section-ico {
+            width: 28px; height: 28px; border-radius: 7px;
+            background: var(--rg-emerald-bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .rg-section-ico svg { color: var(--rg-emerald); }
+        .rg-section-label { font-size: 14px; font-weight: 700; color: var(--rg-navy); }
+
+        /* Form grid */
+        .rg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .rg-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .rg-full { grid-column: 1 / -1; }
+
+        .rg-field { display: flex; flex-direction: column; gap: 4px; }
+        .rg-field label { font-size: 12px; font-weight: 600; color: var(--rg-text); text-transform: uppercase; letter-spacing: 0.3px; }
+        .rg-field label .req { color: var(--rg-red); margin-left: 1px; }
+        .rg-field input, .rg-field select {
+            padding: 10px 12px; border: 1.5px solid var(--rg-border); border-radius: 8px;
+            font-family: var(--rg-font); font-size: 14px; color: var(--rg-text);
+            transition: all 0.15s; background: white; width: 100%;
+        }
+        .rg-field input:focus, .rg-field select:focus {
+            outline: none; border-color: var(--rg-emerald);
+            box-shadow: 0 0 0 3px rgba(16,185,129,0.08);
+        }
+        .rg-field input::placeholder { color: hsl(210,10%,75%); }
+        .rg-field .field-error { font-size: 11px; color: var(--rg-red); font-weight: 500; }
+
+        .rg-checkbox { display: flex; align-items: center; gap: 8px; }
+        .rg-checkbox input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--rg-emerald); cursor: pointer; border-radius: 4px; }
+        .rg-checkbox label { font-size: 13px; color: var(--rg-text); cursor: pointer; font-weight: 500; text-transform: none; letter-spacing: 0; }
+
+        /* Email domain suffix */
+        .rg-email-wrap { position: relative; }
+        .rg-email-wrap input { padding-right: 10px; }
+        .rg-email-hint { font-size: 11px; color: var(--rg-text-muted); margin-top: 2px; font-style: italic; }
+
+        /* Password */
+        .rg-pw-wrap { position: relative; }
+        .rg-pw-wrap input { width: 100%; padding-right: 40px; }
+        .rg-pw-toggle {
+            position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; color: var(--rg-text-muted); cursor: pointer; padding: 2px;
+            display: flex; align-items: center;
+        }
+        .rg-pw-toggle:hover { color: var(--rg-text); }
+
+        .rg-strength-bar { height: 3px; border-radius: 2px; margin-top: 5px; transition: all 0.25s; background: hsl(210,14%,92%); overflow: hidden; }
+        .rg-str-fill { height: 100%; border-radius: 2px; transition: all 0.25s; }
+        .rg-str-weak .rg-str-fill { background: var(--rg-red); width: 33%; }
+        .rg-str-med .rg-str-fill { background: var(--rg-amber); width: 66%; }
+        .rg-str-strong .rg-str-fill { background: var(--rg-emerald); width: 100%; }
+        .rg-str-label { font-size: 11px; margin-top: 3px; font-weight: 500; }
+        .rg-str-label.weak { color: var(--rg-red); }
+        .rg-str-label.med { color: var(--rg-amber); }
+        .rg-str-label.strong { color: var(--rg-emerald); }
+
+        /* Submit */
+        .rg-submit-area { margin-top: 4px; padding-top: 20px; border-top: 1px solid var(--rg-border); }
+        .rg-submit {
+            width: 100%; padding: 13px 24px;
+            background: var(--rg-emerald); color: white; border: none; border-radius: 10px;
+            font-family: var(--rg-font); font-size: 15px; font-weight: 700;
+            cursor: pointer; transition: all 0.15s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .rg-submit:hover { background: var(--rg-emerald-hover); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(16,185,129,0.25); }
+        .rg-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+        .rg-terms { font-size: 11px; color: var(--rg-text-muted); text-align: center; margin-top: 12px; line-height: 1.5; }
+        .rg-terms a { color: var(--rg-navy); font-weight: 600; text-decoration: none; }
+        .rg-terms a:hover { text-decoration: underline; }
+
+        /* Spinner animation */
+        .rg-spin { animation: rg-rotate 1s linear infinite; }
+        @@keyframes rg-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* â”€â”€ Responsive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+        @@media (max-width: 1024px) {
+            .rg-left { width: 340px; min-width: 340px; padding: 28px 22px; }
+            .rg-form-area { padding: 28px 32px 40px; }
+        }
+        @@media (max-width: 768px) {
+            .rg-split { flex-direction: column; }
+            .rg-left {
+                width: 100%; min-width: unset; position: relative;
+                height: auto; padding: 24px 20px 20px;
+            }
+            .rg-left-title { font-size: 20px; }
+            .rg-pcard-amount { font-size: 24px; }
+            .rg-feat-list { display: none; }
+            .rg-left-foot { display: none; }
+            .rg-steps { flex-direction: row; gap: 0; justify-content: center; }
+            .rg-step-line { display: none; }
+            .rg-form-area { padding: 24px 16px 36px; }
+            .rg-grid { grid-template-columns: 1fr; }
+            .rg-grid-3 { grid-template-columns: 1fr; }
+            .rg-topbar { padding: 12px 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="rg-split">
+        <!-- â•â•â• LEFT PANEL â•â•â• -->
+        <aside class="rg-left">
+            <div class="rg-left-content">
+                <a href="@Url.Action("Index", "Landing")" class="rg-logo">
+                    <img src="@Url.Content("~/img/bytelogo.png")" alt="ByteBill" />
+                    <span>Byte<span class="rg-logo-green">Bill</span></span>
+                </a>
+
+                <!-- Steps -->
+                <div class="rg-steps">
+                    <div class="rg-step rg-step-done">
+                        <div class="rg-step-dot">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>
+                        </div>
+                        <span class="rg-step-text">Choose a plan</span>
+                        <div class="rg-step-line"></div>
+                    </div>
+                    <div class="rg-step rg-step-active">
+                        <div class="rg-step-dot">2</div>
+                        <span class="rg-step-text">Set up your shop</span>
+                        <div class="rg-step-line"></div>
+                    </div>
+                    <div class="rg-step">
+                        <div class="rg-step-dot" style="background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.35);">3</div>
+                        <span class="rg-step-text" style="opacity:0.35;">Complete payment</span>
+                    </div>
+                </div>
+
+                <!-- Selected Plan Card -->
+                <div class="rg-pcard">
+                    <div class="rg-pcard-status">
+                        <div class="rg-pcard-dot" style="background:rgba(255,255,255,0.15);">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>
+                        </div>
+                        <span class="rg-pcard-label" style="color:rgba(255,255,255,0.7);">Selected Plan</span>
+                    </div>
+                    <div class="rg-pcard-amount">&#8369;@Model.Price.ToString("N0")</div>
+                    <div class="rg-pcard-cycle">@cycleLabel</div>
+                    <div class="rg-pcard-sep"></div>
+                    <div class="rg-pcard-row">
+                        <span class="rg-pcard-row-label">Plan</span>
+                        <span class="rg-pcard-row-value">@Model.PlanName</span>
+                    </div>
+                    <div class="rg-pcard-row">
+                        <span class="rg-pcard-row-label">Billing</span>
+                        <span class="rg-pcard-row-value">@Model.BillingCycle</span>
+                    </div>
+                    <div class="rg-pcard-row">
+                        <span class="rg-pcard-row-label">Payment</span>
+                        <span class="rg-pcard-row-value" style="color:var(--rg-amber);">Pending</span>
+                    </div>
+                </div>
+
+                <!-- Plan Badge + Features -->
+                <div class="rg-plan-badge">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>
+                    @Model.PlanName Plan
+                </div>
+                <div class="rg-feat-title">What's included</div>
+                <ul class="rg-feat-list">
+                    <li>
+                        <span class="rg-feat-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="hsl(145,63%,42%)" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></span>
+                        Invoicing with BIR-compliant tax
+                    </li>
+                    <li>
+                        <span class="rg-feat-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="hsl(145,63%,42%)" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></span>
+                        Job order tracking & management
+                    </li>
+                    <li>
+                        <span class="rg-feat-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="hsl(145,63%,42%)" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></span>
+                        Inventory control & parts catalog
+                    </li>
+                    <li>
+                        <span class="rg-feat-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="hsl(145,63%,42%)" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></span>
+                        GCash, Card, GrabPay & Maya
+                    </li>
+                    <li>
+                        <span class="rg-feat-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="hsl(145,63%,42%)" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></span>
+                        Role-based team access
+                    </li>
+                </ul>
+            </div>
+
+            <div class="rg-left-foot">&copy; @DateTime.Now.Year ByteBill. All rights reserved.</div>
+        </aside>
+
+        <!-- â•â•â• RIGHT PANEL â•â•â• -->
+        <main class="rg-right">
+            <div class="rg-topbar">
+                <span class="rg-topbar-text">Already have an account?</span>
+                <a href="@Url.Action("Login", "Auth")" class="rg-topbar-link">Log In</a>
+            </div>
+
+            <div class="rg-form-wrap">
+                <div class="rg-form-area">
+                    <h2 class="rg-form-title">Set up your shop</h2>
+                    <p class="rg-form-subtitle">Create your shop workspace and admin credentials to get started.</p>
+
+                    @if (!ViewData.ModelState.IsValid && ViewData.ModelState.Values.Any(v => v.Errors.Any()))
+                    {
+                        <div class="rg-error-box">
+                            <strong>Please fix the following:</strong>
+                            <ul>
+                                @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                                {
+                                    <li>@error.ErrorMessage</li>
+                                }
+                            </ul>
+                        </div>
+                    }
+
+                    <form method="post" asp-action="CreateAccount" id="regForm" novalidate>
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="SessionId" />
+                        <input type="hidden" asp-for="PlanId" />
+                        <input type="hidden" asp-for="BillingCycle" />
+                        <input type="hidden" asp-for="PlanName" />
+                        <input type="hidden" asp-for="Price" />
+
+                        <!-- â”€â”€ Shop Details â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+                        <div class="rg-section">
+                            <div class="rg-section-head">
+                                <div class="rg-section-ico">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                </div>
+                                <span class="rg-section-label">Shop Details</span>
+                            </div>
+
+                            <div class="rg-grid">
+                                <div class="rg-field rg-full">
+                                    <label>Shop Name <span class="req">*</span></label>
+                                    <input asp-for="ShopName" placeholder="e.g., TechFix Solutions" id="shopNameInput" />
+                                    <span asp-validation-for="ShopName" class="field-error"></span>
+                                </div>
+                            </div>
+                            <div class="rg-grid">
+                                <div class="rg-field">
+                                    <label>Shop Email <span class="req">*</span></label>
+                                    <input asp-for="ShopEmail" type="email" placeholder="shop&#64;example.com" />
+                                    <span asp-validation-for="ShopEmail" class="field-error"></span>
+                                </div>
+                                <div class="rg-field">
+                                    <label>Phone Number</label>
+                                    <input asp-for="ShopPhone" type="tel" placeholder="09XXXXXXXXX" maxlength="11" pattern="09\d{9}" inputmode="numeric" />
+                                    <span asp-validation-for="ShopPhone" class="field-error"></span>
+                                </div>
+                            </div>
+                            <div class="rg-grid">
+                                <div class="rg-field rg-full">
+                                    <label>Address</label>
+                                    <input asp-for="ShopAddress" placeholder="Full business address" />
+                                </div>
+                            </div>
+                            <div class="rg-grid">
+                                <div class="rg-field">
+                                    <label>TIN (Tax Identification Number)</label>
+                                    <input asp-for="TIN" placeholder="XXX-XXX-XXX-XXX" maxlength="15" id="tinInput" />
+                                </div>
+                                <div class="rg-field" style="display: flex; justify-content: flex-end; flex-direction: row; align-items: center;">
+                                    <div class="rg-checkbox">
+                                        <input asp-for="IsVatRegistered" type="checkbox" id="vatCheck" />
+                                        <label for="vatCheck">VAT Registered (12%)</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- â”€â”€ Admin Account â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+                        <div class="rg-section">
+                            <div class="rg-section-head">
+                                <div class="rg-section-ico">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                </div>
+                                <span class="rg-section-label">Admin Account</span>
+                            </div>
+
+                            <div class="rg-grid rg-grid-3">
+                                <div class="rg-field">
+                                    <label>First Name <span class="req">*</span></label>
+                                    <input asp-for="FirstName" placeholder="Juan" id="fnInput" />
+                                    <span asp-validation-for="FirstName" class="field-error"></span>
+                                </div>
+                                <div class="rg-field">
+                                    <label>Middle Name</label>
+                                    <input asp-for="MiddleName" placeholder="Optional" />
+                                </div>
+                                <div class="rg-field">
+                                    <label>Last Name <span class="req">*</span></label>
+                                    <input asp-for="LastName" placeholder="Dela Cruz" id="lnInput" />
+                                    <span asp-validation-for="LastName" class="field-error"></span>
+                                </div>
+                            </div>
+                            <div class="rg-grid">
+                                <div class="rg-field">
+                                    <label>Username <span class="req">*</span></label>
+                                    <input asp-for="UserName" placeholder="Choose a username" autocomplete="username" id="unInput" />
+                                    <span asp-validation-for="UserName" class="field-error"></span>
+                                </div>
+                                <div class="rg-field">
+                                    <label>Email <span class="req">*</span></label>
+                                    <div class="rg-email-wrap">
+                                        <input asp-for="Email" type="email" autocomplete="email" id="emailInput" placeholder="admin&#64;shopname.com" />
+                                    </div>
+                                    <span class="rg-email-hint" id="emailHint">Auto-generated from shop name</span>
+                                    <span asp-validation-for="Email" class="field-error"></span>
+                                </div>
+                            </div>
+                            <div class="rg-grid">
+                                <div class="rg-field">
+                                    <label>Password <span class="req">*</span></label>
+                                    <div class="rg-pw-wrap">
+                                        <input asp-for="Password" type="password" placeholder="Min. 8 characters" autocomplete="new-password" id="pwInput" />
+                                        <button type="button" class="rg-pw-toggle" onclick="togglePw('pwInput', this)" aria-label="Toggle password">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                        </button>
+                                    </div>
+                                    <div class="rg-strength-bar" id="pwBar"><div class="rg-str-fill"></div></div>
+                                    <span class="rg-str-label" id="pwLabel"></span>
+                                    <span asp-validation-for="Password" class="field-error"></span>
+                                </div>
+                                <div class="rg-field">
+                                    <label>Confirm Password <span class="req">*</span></label>
+                                    <div class="rg-pw-wrap">
+                                        <input asp-for="ConfirmPassword" type="password" placeholder="Re-enter password" autocomplete="new-password" id="cpInput" />
+                                        <button type="button" class="rg-pw-toggle" onclick="togglePw('cpInput', this)" aria-label="Toggle password">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                        </button>
+                                    </div>
+                                    <span asp-validation-for="ConfirmPassword" class="field-error"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="rg-submit-area">
+                            <button type="submit" class="rg-submit" id="regSubmit">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                                Proceed to Payment →
+                            </button>
+                            <p class="rg-terms">
+                                By creating an account you agree to our
+                                <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+                            </p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // â”€â”€ Auto-generate email from shop name â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        var emailInput = document.getElementById('emailInput');
+        var emailManual = false;
+
+        emailInput.addEventListener('input', function () { emailManual = true; });
+
+        document.getElementById('shopNameInput').addEventListener('input', function () {
+            if (emailManual && emailInput.value.trim() !== '') return;
+            var name = this.value.trim();
+            if (!name) { emailInput.value = ''; emailInput.placeholder = 'admin@@shopname.com'; return; }
+            var word = name.split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (!word) return;
+            emailInput.value = 'admin@@' + word + '.com';
+            emailInput.placeholder = 'admin@@' + word + '.com';
+            emailManual = false;
+        });
+
+        // â”€â”€ Auto-generate username from first + last name â”€â”€â”€â”€â”€â”€â”€
+        var unInput = document.getElementById('unInput');
+        var unManual = false;
+        unInput.addEventListener('input', function () { unManual = true; });
+
+        function updateUsername() {
+            if (unManual && unInput.value.trim() !== '') return;
+            var fn = (document.getElementById('fnInput').value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+            var ln = (document.getElementById('lnInput').value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (fn && ln) { unInput.value = fn + '.' + ln; unManual = false; }
+            else if (fn) { unInput.value = fn; unManual = false; }
+        }
+        document.getElementById('fnInput').addEventListener('input', updateUsername);
+        document.getElementById('lnInput').addEventListener('input', updateUsername);
+
+        // â”€â”€ TIN auto-format (XXX-XXX-XXX-XXX) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        document.getElementById('tinInput').addEventListener('input', function (e) {
+            var v = this.value.replace(/\D/g, '').slice(0, 12);
+            var parts = [];
+            for (var i = 0; i < v.length; i += 3) parts.push(v.slice(i, i + 3));
+            this.value = parts.join('-');
+        });
+
+        // â”€â”€ Phone: digits only, max 11 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        document.querySelector('[name="ShopPhone"]').addEventListener('input', function () {
+            this.value = this.value.replace(/\D/g, '').slice(0, 11);
+        });
+
+        // â”€â”€ Password toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        function togglePw(id, btn) {
+            var el = document.getElementById(id);
+            var show = el.type === 'password';
+            el.type = show ? 'text' : 'password';
+            btn.innerHTML = show
+                ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+                : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+        }
+
+        // â”€â”€ Password strength â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        document.getElementById('pwInput').addEventListener('input', function () {
+            var v = this.value, bar = document.getElementById('pwBar'), lbl = document.getElementById('pwLabel');
+            if (!v.length) { bar.className = 'rg-strength-bar'; lbl.className = 'rg-str-label'; lbl.textContent = ''; return; }
+            var s = 0;
+            if (v.length >= 8) s++;
+            if (/[A-Z]/.test(v) && /[a-z]/.test(v)) s++;
+            if (/\d/.test(v) && /[^a-zA-Z\d]/.test(v)) s++;
+            if (s <= 1) { bar.className = 'rg-strength-bar rg-str-weak'; lbl.className = 'rg-str-label weak'; lbl.textContent = 'Weak'; }
+            else if (s === 2) { bar.className = 'rg-strength-bar rg-str-med'; lbl.className = 'rg-str-label med'; lbl.textContent = 'Medium'; }
+            else { bar.className = 'rg-strength-bar rg-str-strong'; lbl.className = 'rg-str-label strong'; lbl.textContent = 'Strong'; }
+        });
+
+        // â”€â”€ Prevent double submit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        document.getElementById('regForm').addEventListener('submit', function () {
+            var btn = document.getElementById('regSubmit');
+            btn.disabled = true;
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="rg-spin"><circle cx="12" cy="12" r="10" stroke-dasharray="31.4" stroke-dashoffset="10"/></svg> Redirecting to payment...';
+        });
+    </script>
+</body>
+</html>

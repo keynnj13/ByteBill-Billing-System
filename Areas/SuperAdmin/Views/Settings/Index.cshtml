@@ -339,14 +339,6 @@
     <span id="stgToastMessage"></span>
 </div>
 
-@if (TempData["SuccessMessage"] != null)
-{
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            showToast('@TempData["SuccessMessage"]');
-        });
-    </script>
-}
 
 <script>
     function switchTab(tab) {

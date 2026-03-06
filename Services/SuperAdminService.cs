@@ -167,18 +167,21 @@ public class SuperAdminService : ISuperAdminService
         }
 
         // Subscription distribution
-        var planDist = await _db.Subscriptions
+        var activeSubs = await _db.Subscriptions
+            .Include(s => s.Plan)
             .Where(s => s.Status == "Active")
+            .ToListAsync();
+        data.SubscriptionDistribution = activeSubs
+            .Where(s => s.Plan != null)
             .GroupBy(s => s.Plan!.PlanName)
             .Select(g => new ChartDataPoint { Label = g.Key, Value = g.Count() })
-            .ToListAsync();
-        data.SubscriptionDistribution = planDist;
+            .ToList();
 
         // Recent activity from audit log
         var recentLogs = await _db.SuperAdminAuditLogs
             .Include(l => l.User)
             .OrderByDescending(l => l.Timestamp)
-            .Take(8)
+            .Take(5)
             .ToListAsync();
 
         data.RecentActivity = recentLogs.Select(l => new RecentActivityItem
@@ -228,7 +231,7 @@ public class SuperAdminService : ISuperAdminService
                     TimeAgo = GetTimeAgo(u.CreatedAt)
                 });
             }
-            data.RecentActivity = data.RecentActivity.OrderByDescending(a => a.TimeAgo).Take(8).ToList();
+            data.RecentActivity = data.RecentActivity.OrderByDescending(a => a.TimeAgo).Take(5).ToList();
         }
 
         return data;
@@ -439,6 +442,12 @@ public class SuperAdminService : ISuperAdminService
         if (shop == null) return (false, "Shop not found.");
         if (shop.IsDefault && model.Status != "Active")
             return (false, "The default system shop cannot be suspended.");
+
+        // Check for duplicate shop name
+        var duplicateName = await _db.Shops
+            .AnyAsync(s => s.ShopId != model.Id && s.ShopName.ToLower() == model.Name.ToLower().Trim());
+        if (duplicateName)
+            return (false, "A shop with this name already exists.");
 
         shop.ShopName = model.Name;
         shop.Email = model.Email;
@@ -722,6 +731,16 @@ public class SuperAdminService : ISuperAdminService
         user.FirstName = model.FirstName;
         user.MiddleName = model.MiddleName;
         user.LastName = model.LastName;
+
+        // Check for duplicate email
+        if (!string.IsNullOrEmpty(model.Email))
+        {
+            var emailTaken = await _db.Users
+                .AnyAsync(u => u.UserId != model.Id && u.Email != null && u.Email.ToLower() == model.Email.ToLower().Trim());
+            if (emailTaken)
+                return (false, "Email is already used by another user.");
+        }
+
         user.Email = model.Email;
         user.Phone = model.Phone;
         user.ShopId = model.ShopId;
@@ -1309,8 +1328,8 @@ public class SuperAdminService : ISuperAdminService
     private async Task BuildRevenueReport(ReportsIndexViewModel vm, DateTime from, DateTime to)
     {
         var payments = await _db.SubscriptionPayments
-            .Include(p => p.Subscription).ThenInclude(s => s.Shop)
-            .Include(p => p.Subscription).ThenInclude(s => s.Plan)
+            .Include(p => p.Subscription!).ThenInclude(s => s.Shop)
+            .Include(p => p.Subscription!).ThenInclude(s => s.Plan)
             .Where(p => p.Status == "Paid" && p.PaidAt >= from && p.PaidAt <= to)
             .OrderByDescending(p => p.PaidAt)
             .ToListAsync();
@@ -1320,7 +1339,7 @@ public class SuperAdminService : ISuperAdminService
 
         vm.SummaryCards = new()
         {
-            new() { Label = "Total Revenue", Value = total.ToString("C"), Color = "#10b981", Icon = "dollar-sign" },
+            new() { Label = "Total Revenue", Value = total.ToString("C"), Color = "#10b981", Icon = "peso-sign" },
             new() { Label = "Transactions", Value = payments.Count.ToString(), Color = "#6366f1", Icon = "activity" },
             new() { Label = "Paying Shops", Value = shopCount.ToString(), Color = "#3b82f6", Icon = "store" },
             new() { Label = "Avg / Shop", Value = (shopCount > 0 ? total / shopCount : 0).ToString("C"), Color = "#f59e0b", Icon = "trending-up" }
@@ -1380,7 +1399,7 @@ public class SuperAdminService : ISuperAdminService
         var totalUsers = await _db.Users.CountAsync();
         var activeUsers = await _db.Users.CountAsync(u => u.IsActive);
         var roleBreakdown = await _db.UserRoles.Include(ur => ur.Role)
-            .GroupBy(ur => ur.Role.RoleName)
+            .GroupBy(ur => ur.Role!.RoleName)
             .Select(g => new { Role = g.Key, Count = g.Count() })
             .ToListAsync();
 
@@ -1416,7 +1435,7 @@ public class SuperAdminService : ISuperAdminService
             new() { Label = "New Subscriptions", Value = subs.Count.ToString(), Color = "#6366f1", Icon = "credit-card" },
             new() { Label = "Active", Value = activeSubs.ToString(), Color = "#10b981", Icon = "check-circle" },
             new() { Label = "MRR", Value = totalMRR.ToString("C"), Color = "#3b82f6", Icon = "trending-up" },
-            new() { Label = "Avg Price", Value = (subs.Count > 0 ? subs.Average(s => s.Price) : 0).ToString("C"), Color = "#f59e0b", Icon = "dollar-sign" }
+            new() { Label = "Avg Price", Value = (subs.Count > 0 ? subs.Average(s => s.Price) : 0).ToString("C"), Color = "#f59e0b", Icon = "peso-sign" }
         };
 
         vm.ChartData = subs
@@ -1433,7 +1452,7 @@ public class SuperAdminService : ISuperAdminService
     private async Task BuildPaymentReport(ReportsIndexViewModel vm, DateTime from, DateTime to)
     {
         var payments = await _db.SubscriptionPayments
-            .Include(p => p.Subscription).ThenInclude(s => s.Shop)
+            .Include(p => p.Subscription!).ThenInclude(s => s.Shop)
             .Where(p => p.CreatedAt >= from && p.CreatedAt <= to)
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
@@ -1491,7 +1510,7 @@ public class SuperAdminService : ISuperAdminService
             new() { Label = "Total Shops", Value = currentShops.ToString(), Color = "#6366f1", Icon = "store" },
             new() { Label = "Total Users", Value = currentUsers.ToString(), Color = "#3b82f6", Icon = "users" },
             new() { Label = "Active Subs", Value = currentSubs.ToString(), Color = "#10b981", Icon = "trending-up" },
-            new() { Label = "Lifetime Revenue", Value = totalRevenue.ToString("C"), Color = "#f59e0b", Icon = "dollar-sign" }
+            new() { Label = "Lifetime Revenue", Value = totalRevenue.ToString("C"), Color = "#f59e0b", Icon = "peso-sign" }
         };
 
         vm.ChartData = shopCounts;

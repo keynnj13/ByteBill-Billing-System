@@ -544,6 +544,13 @@ function bindAjaxForms(container) {
                     }
                     // Reload page to reflect changes
                     setTimeout(() => window.location.reload(), 500);
+                } else if (result.type === 'json' && !result.data.success) {
+                    // Server returned an error message
+                    Toast.error(result.data.message || 'An error occurred.');
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    }
                 } else if (result.type === 'html') {
                     // Validation errors - replace form content
                     const contentEl = document.getElementById('ajax-modal-content');

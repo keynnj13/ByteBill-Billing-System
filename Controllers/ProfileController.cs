@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Text.Json;
 
@@ -37,9 +38,6 @@ public class ProfileController : Controller
         if (user is null) return RedirectToAction("Login", "Auth");
 
         var role = user.UserRoles.FirstOrDefault()?.Role?.RoleName ?? "Unknown";
-
-        ViewBag.SuccessMessage = TempData["SuccessMessage"];
-        ViewBag.ErrorMessage = TempData["ErrorMessage"];
 
         return View(new ProfileViewModel
         {
@@ -82,13 +80,13 @@ public class ProfileController : Controller
         // Validate
         if (string.IsNullOrWhiteSpace(model.FirstName) || string.IsNullOrWhiteSpace(model.LastName))
         {
-            TempData["ErrorMessage"] = "First name and last name are required.";
+            TempData["Error"] = "First name and last name are required.";
             return RedirectToAction(nameof(Index));
         }
 
         if (!string.IsNullOrWhiteSpace(model.Phone) && !System.Text.RegularExpressions.Regex.IsMatch(model.Phone, @"^09\d{9}$"))
         {
-            TempData["ErrorMessage"] = "Phone must be 11 digits starting with 09.";
+            TempData["Error"] = "Phone must be 11 digits starting with 09.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -117,7 +115,7 @@ public class ProfileController : Controller
         // Re-sign in so navbar reflects updated name/initials
         await RefreshAuthCookieAsync(user);
 
-        TempData["SuccessMessage"] = "Profile updated successfully.";
+        TempData["Success"] = "Profile updated successfully.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -134,25 +132,25 @@ public class ProfileController : Controller
 
         if (string.IsNullOrWhiteSpace(model.CurrentPassword) || string.IsNullOrWhiteSpace(model.NewPassword))
         {
-            TempData["ErrorMessage"] = "Both current and new password are required.";
+            TempData["Error"] = "Both current and new password are required.";
             return RedirectToAction(nameof(Index));
         }
 
         if (!BCrypt.Net.BCrypt.Verify(model.CurrentPassword, user.PasswordHash))
         {
-            TempData["ErrorMessage"] = "Current password is incorrect.";
+            TempData["Error"] = "Current password is incorrect.";
             return RedirectToAction(nameof(Index));
         }
 
         if (model.NewPassword.Length < 6)
         {
-            TempData["ErrorMessage"] = "New password must be at least 6 characters.";
+            TempData["Error"] = "New password must be at least 6 characters.";
             return RedirectToAction(nameof(Index));
         }
 
         if (model.NewPassword != model.ConfirmNewPassword)
         {
-            TempData["ErrorMessage"] = "New password and confirmation do not match.";
+            TempData["Error"] = "New password and confirmation do not match.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -164,7 +162,7 @@ public class ProfileController : Controller
         await _audit.LogAsync(shopId, userId, "Update", "User", userId,
             "User changed their password.", ip);
 
-        TempData["SuccessMessage"] = "Password changed successfully.";
+        TempData["Success"] = "Password changed successfully.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -175,8 +173,6 @@ public class ProfileController : Controller
         var userId = User.GetUserId();
         var user = await _db.Users.FindAsync(userId);
         if (user is null) return RedirectToAction("Login", "Auth");
-
-        ViewBag.SuccessMessage = TempData["SuccessMessage"];
 
         return View(new PreferencesViewModel
         {
@@ -216,7 +212,7 @@ public class ProfileController : Controller
         await _audit.LogAsync(shopId, userId, "Update", "User", userId,
             $"Updated preferences: theme={theme}, email={model.EmailNotifications}, inApp={model.InAppNotifications}", ip);
 
-        TempData["SuccessMessage"] = "Preferences saved successfully.";
+        TempData["Success"] = "Preferences saved successfully.";
         return RedirectToAction(nameof(Preferences));
     }
 
@@ -270,6 +266,9 @@ public class ProfileUpdateRequest
     public string? MiddleName { get; set; }
     public string LastName { get; set; } = string.Empty;
     public string? Email { get; set; }
+
+    [RegularExpression(@"^09\d{9}$", ErrorMessage = "Phone must be 11 digits starting with 09")]
+    [StringLength(11)]
     public string? Phone { get; set; }
 }
 

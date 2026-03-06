@@ -9,6 +9,7 @@ public interface INotificationService
     Task<List<NotificationDto>> GetByUserAsync(long userId, int take = 20);
     Task<int> GetUnreadCountAsync(long userId);
     Task CreateAsync(long userId, long shopId, string title, string message, string type, string? url = null);
+    Task NotifySuperAdminsAsync(long shopId, string title, string message, string type, string? url = null);
     Task MarkAsReadAsync(long notificationId, long userId);
     Task MarkAllReadAsync(long userId);
 }
@@ -79,6 +80,33 @@ public class NotificationService : INotificationService
             CreatedAt = DateTime.UtcNow
         });
         await _db.SaveChangesAsync();
+    }
+
+    public async Task NotifySuperAdminsAsync(long shopId, string title, string message, string type, string? url = null)
+    {
+        var superAdminUserIds = await _db.UserRoles
+            .Where(ur => ur.Role!.RoleName == "SuperAdmin")
+            .Select(ur => ur.UserId)
+            .Distinct()
+            .ToListAsync();
+
+        foreach (var userId in superAdminUserIds)
+        {
+            _db.Notifications.Add(new Notification
+            {
+                UserId = userId,
+                ShopId = shopId,
+                Title = title,
+                Message = message,
+                Type = type,
+                Url = url,
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        if (superAdminUserIds.Count > 0)
+            await _db.SaveChangesAsync();
     }
 
     public async Task MarkAsReadAsync(long notificationId, long userId)

@@ -31,7 +31,7 @@
                 </div>
                 <div class="form-group" style="flex: 1;">
                     <label asp-for="Phone" class="form-label">Phone Number</label>
-                    <input asp-for="Phone" type="tel" class="form-input" placeholder="09XX-XXX-XXXX" />
+                    <input asp-for="Phone" type="tel" class="form-input" maxlength="11" inputmode="numeric" pattern="09[0-9]{9}" placeholder="09XXXXXXXXX" />
                     <span asp-validation-for="Phone" class="field-validation-error"></span>
                 </div>
             </div>

@@ -65,7 +65,8 @@ public class ShopCreateViewModel
     [Display(Name = "Shop Email")]
     public string Email { get; set; } = string.Empty;
 
-    [StringLength(30)]
+    [StringLength(11)]
+    [RegularExpression(@"^09\d{9}$", ErrorMessage = "Phone must be 11 digits starting with 09")]
     [Display(Name = "Phone")]
     public string? Phone { get; set; }
 
@@ -94,7 +95,8 @@ public class ShopCreateViewModel
     [Display(Name = "Admin Email")]
     public string AdminEmail { get; set; } = string.Empty;
 
-    [StringLength(30)]
+    [StringLength(11)]
+    [RegularExpression(@"^09\d{9}$", ErrorMessage = "Phone must be 11 digits starting with 09")]
     [Display(Name = "Admin Phone")]
     public string? AdminPhone { get; set; }
 
@@ -128,7 +130,8 @@ public class ShopFormViewModel
     [Display(Name = "Email")]
     public string Email { get; set; } = string.Empty;
 
-    [StringLength(30)]
+    [StringLength(11)]
+    [RegularExpression(@"^09\d{9}$", ErrorMessage = "Phone must be 11 digits starting with 09")]
     [Display(Name = "Phone")]
     public string? Phone { get; set; }
 
@@ -246,7 +249,8 @@ public class GlobalUserFormViewModel
     [Display(Name = "Email")]
     public string Email { get; set; } = string.Empty;
 
-    [StringLength(30)]
+    [StringLength(11)]
+    [RegularExpression(@"^09\d{9}$", ErrorMessage = "Phone must be 11 digits starting with 09")]
     [Display(Name = "Phone")]
     public string? Phone { get; set; }
 

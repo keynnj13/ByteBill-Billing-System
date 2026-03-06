@@ -32,6 +32,14 @@ public class DashboardController : Controller
         vm.ActivePeriod = activePeriod;
         vm.FilterFrom = dateFrom;
         vm.FilterTo = dateTo;
+
+        var now = DateTime.UtcNow;
+        ViewBag.Announcements = await _db.Announcements
+            .Where(a => a.Status == "Published" && (a.ExpiresAt == null || a.ExpiresAt > now))
+            .OrderByDescending(a => a.PublishedAt)
+            .Take(5)
+            .ToListAsync();
+
         return View(vm);
     }
 

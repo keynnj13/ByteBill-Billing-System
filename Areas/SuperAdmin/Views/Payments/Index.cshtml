@@ -11,6 +11,10 @@
         <p class="page-subtitle">@Model.TotalCount payment records</p>
     </div>
     <div class="page-actions">
+        <button type="button" class="btn btn-outline-primary" onclick="window.print()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            Print
+        </button>
         <a href="@Url.Action("ExportCsv", "Payments", new { area = "SuperAdmin", status = Model.StatusFilter, method = Model.MethodFilter, from = Model.DateFrom?.ToString("yyyy-MM-dd"), to = Model.DateTo?.ToString("yyyy-MM-dd") })" class="btn btn-outline-primary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
             Export CSV
@@ -22,7 +26,7 @@
 <div class="shp-stats" style="grid-template-columns: repeat(3, 1fr);">
     <div class="shp-stat-card">
         <div class="shp-stat-icon" style="background: rgba(16,185,129,0.1); color: #10b981;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"></path></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24"><text x="12" y="18" text-anchor="middle" font-size="18" font-weight="600" fill="currentColor" font-family="Inter, sans-serif">&#8369;</text></svg>
         </div>
         <div class="shp-stat-content">
             <span class="shp-stat-value">@Model.TotalPaid.ToString("C")</span>
@@ -99,7 +103,28 @@
                                 <td>@p.PlanName</td>
                                 <td class="text-right fw-600">@p.Amount.ToString("C")</td>
                                 <td class="text-center"><span class="status-indicator @p.StatusClass">@p.Status</span></td>
-                                <td>@p.PaymentMethod</td>
+                                <td>
+                                    @{
+                                        var methodLower = (p.PaymentMethod ?? "").ToLower();
+                                        var methodClass = methodLower switch
+                                        {
+                                            "gcash" => "method-gcash",
+                                            "card" => "method-card",
+                                            "grab_pay" => "method-grab",
+                                            "paymaya" => "method-maya",
+                                            _ => "method-default"
+                                        };
+                                        var methodLabel = methodLower switch
+                                        {
+                                            "gcash" => "GCash",
+                                            "card" => "Card",
+                                            "grab_pay" => "GrabPay",
+                                            "paymaya" => "Maya",
+                                            _ => p.PaymentMethod ?? "—"
+                                        };
+                                    }
+                                    <span class="method-badge @methodClass">@methodLabel</span>
+                                </td>
                                 <td><span class="text-sm">@p.PeriodStart.ToString("MMM dd") – @p.PeriodEnd.ToString("MMM dd, yyyy")</span></td>
                                 <td>@(p.PaidAt?.ToString("MMM dd, yyyy") ?? "<span class='text-muted'>—</span>")</td>
                             </tr>
@@ -108,7 +133,7 @@
                 </table>
             </div>
 
-            <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel { CurrentPage = Model.CurrentPage, TotalPages = Model.TotalPages, TotalItems = Model.TotalCount, PageSize = Model.PageSize, BaseUrl = Url.Action("Index") })" />
+            <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel { CurrentPage = Model.CurrentPage, TotalPages = Model.TotalPages, TotalItems = Model.TotalCount, PageSize = Model.PageSize, BaseUrl = Url.Action("Index") ?? "" })" />
         }
         else
         {
@@ -140,5 +165,15 @@
     .text-sm { font-size: 13px; }
     .clickable-row { cursor: pointer; transition: background-color 0.15s ease; }
     .clickable-row:hover { background-color: #f0f7ff; }
+    .method-badge { display: inline-flex; align-items: center; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap; }
+    .method-gcash { color: #0077ff; }
+    .method-card { color: #7c3aed; }
+    .method-grab { color: #00b140; }
+    .method-maya { color: #00a86b; }
+    .method-default { color: #6b7280; }
+    @@media print {
+        .page-actions, .shp-filter-form, .btn, nav, .sidebar, .shp-search-wrapper { display: none !important; }
+        .card { border: none !important; box-shadow: none !important; }
+    }
     @@media (max-width: 640px) { .shp-stats { grid-template-columns: 1fr !important; } .page-header { flex-direction: column; gap: 12px; } }
 </style>
