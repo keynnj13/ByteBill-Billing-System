@@ -87,9 +87,13 @@ public class AdjustmentDto
 public class InvoicePaymentDto
 {
     public long PaymentId { get; set; }
+    public string PaymentNo { get; set; } = string.Empty;
     public decimal AmountApplied { get; set; }
     public DateTime PaymentDate { get; set; }
     public string Method { get; set; } = string.Empty;
+    public string? ReferenceNo { get; set; }
+    public string? ReceivedBy { get; set; }
+    public bool IsVoid { get; set; }
 }
 
 public class InvoiceDiscountDto

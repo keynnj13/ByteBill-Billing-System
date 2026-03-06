@@ -88,6 +88,7 @@ public class InvoicesController : Controller
         var shopId = User.GetShopId();
 
         var inv = await _db.Invoices
+            .AsNoTracking()
             .Where(i => i.InvoiceId == id && i.ShopId == shopId)
             .Include(i => i.Customer)
             .Include(i => i.JobOrder)

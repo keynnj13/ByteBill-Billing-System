@@ -339,7 +339,10 @@ public class InventoryService : IInventoryService
                 entity.QtyOnHand += req.Quantity;
                 break;
             case InventoryTxnType.OUT:
-                entity.QtyOnHand = Math.Max(0, entity.QtyOnHand - req.Quantity);
+                if (entity.QtyOnHand < req.Quantity)
+                    throw new InvalidOperationException(
+                        $"Insufficient stock for '{entity.ItemName}'. Available: {entity.QtyOnHand}, Requested: {req.Quantity}.");
+                entity.QtyOnHand -= req.Quantity;
                 break;
             case InventoryTxnType.ADJUST:
                 entity.QtyOnHand = req.Quantity;

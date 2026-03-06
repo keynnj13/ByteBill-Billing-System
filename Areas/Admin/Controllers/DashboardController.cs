@@ -35,6 +35,7 @@ public class DashboardController : Controller
 
         var now = DateTime.UtcNow;
         ViewBag.Announcements = await _db.Announcements
+            .AsNoTracking()
             .Where(a => a.Status == "Published" && (a.ExpiresAt == null || a.ExpiresAt > now))
             .OrderByDescending(a => a.PublishedAt)
             .Take(5)

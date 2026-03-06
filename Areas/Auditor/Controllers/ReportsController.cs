@@ -77,6 +77,7 @@ public class ReportsController : Controller
         var dateToExcl = dateTo.AddDays(1);
 
         var invoices = await _db.Invoices
+            .AsNoTracking()
             .Where(i => i.ShopId == shopId && !i.IsArchived && i.CreatedAt >= dateFrom && i.CreatedAt < dateToExcl)
             .ToListAsync();
 
@@ -123,6 +124,7 @@ public class ReportsController : Controller
         var dateToExcl = dateTo.AddDays(1);
 
         var payments = await _db.Payments
+            .AsNoTracking()
             .Where(p => p.ShopId == shopId && p.Status == PaymentStatus.Confirmed && p.PaymentDate >= dateFrom && p.PaymentDate < dateToExcl)
             .ToListAsync();
 
@@ -182,6 +184,7 @@ public class ReportsController : Controller
         var dateToExcl = dateTo.AddDays(1);
 
         var jobs = await _db.JobOrders
+            .AsNoTracking()
             .Where(j => j.ShopId == shopId && !j.IsArchived && j.CreatedAt >= dateFrom && j.CreatedAt < dateToExcl)
             .Include(j => j.AssignedTechUser)
             .Include(j => j.JobOrderServices)
@@ -247,17 +250,20 @@ public class ReportsController : Controller
         var dateToExcl = dateTo.AddDays(1);
 
         var adjustments = await _db.CreditDebitAdjustments
+            .AsNoTracking()
             .Where(a => a.ShopId == shopId && a.CreatedAt >= dateFrom && a.CreatedAt < dateToExcl)
             .Include(a => a.Invoice).ThenInclude(i => i!.Customer)
             .Include(a => a.CreatedByUser)
             .ToListAsync();
 
         var voidedInvoices = await _db.Invoices
+            .AsNoTracking()
             .Where(i => i.ShopId == shopId && i.Status == InvoiceStatus.Void && i.CreatedAt >= dateFrom && i.CreatedAt < dateToExcl)
             .Include(i => i.Customer)
             .ToListAsync();
 
         var voidedPayments = await _db.Payments
+            .AsNoTracking()
             .Where(p => p.ShopId == shopId && (p.Status == PaymentStatus.Refunded || p.Status == PaymentStatus.Failed) && p.PaymentDate >= dateFrom && p.PaymentDate < dateToExcl)
             .Include(p => p.Customer)
             .ToListAsync();
@@ -322,12 +328,14 @@ public class ReportsController : Controller
         var dateToExcl = dateTo.AddDays(1);
 
         var syncs = await _db.XeroSyncLogs
+            .AsNoTracking()
             .Where(x => x.ShopId == shopId && x.SyncedAt >= dateFrom && x.SyncedAt < dateToExcl)
             .Include(x => x.SyncedByUser)
             .OrderByDescending(x => x.SyncedAt)
             .ToListAsync();
 
         var payMongoTxns = await _db.PayMongoTxns
+            .AsNoTracking()
             .Where(t => t.ShopId == shopId && t.CreatedAt >= dateFrom && t.CreatedAt < dateToExcl)
             .ToListAsync();
 
@@ -382,6 +390,7 @@ public class ReportsController : Controller
         var dateToExcl = dateTo.AddDays(1);
 
         var logs = await _db.AuditLogs
+            .AsNoTracking()
             .Where(a => a.ShopId == shopId && a.CreatedAt >= dateFrom && a.CreatedAt < dateToExcl)
             .Include(a => a.User).ThenInclude(u => u!.UserRoles).ThenInclude(ur => ur.Role)
             .ToListAsync();

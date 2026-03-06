@@ -93,6 +93,7 @@ public class PaymentsController : Controller
         var shopId = User.GetShopId();
 
         var p = await _db.Payments
+            .AsNoTracking()
             .Where(p => p.PaymentId == id && p.ShopId == shopId)
             .Include(p => p.Customer)
             .Include(p => p.ReceivedByUser)

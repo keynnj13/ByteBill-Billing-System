@@ -67,7 +67,7 @@ public class UsersController : Controller
 
         var totalCount = await query.CountAsync();
 
-        // Stats from full dataset (unfiltered but excluding own account + SuperAdmin)
+        // Stats from full dataset — single query with conditional counts
         var allUsersQuery = _db.Users
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .Where(u => u.ShopId == shopId)
@@ -75,10 +75,21 @@ public class UsersController : Controller
             .Where(u => !u.UserRoles.Any(ur => ur.Role!.RoleName == "SuperAdmin"))
             .AsNoTracking();
 
-        var activeCount = await allUsersQuery.CountAsync(u => u.IsActive);
-        var adminCount = await allUsersQuery.CountAsync(u => u.UserRoles.Any(ur => ur.Role!.RoleName == "Admin"));
-        var billingCount = await allUsersQuery.CountAsync(u => u.UserRoles.Any(ur => ur.Role!.RoleName == "Billing"));
-        var technicianCount = await allUsersQuery.CountAsync(u => u.UserRoles.Any(ur => ur.Role!.RoleName == "Technician"));
+        var stats = await allUsersQuery
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                ActiveCount = g.Count(u => u.IsActive),
+                AdminCount = g.Count(u => u.UserRoles.Any(ur => ur.Role!.RoleName == "Admin")),
+                BillingCount = g.Count(u => u.UserRoles.Any(ur => ur.Role!.RoleName == "Billing")),
+                TechnicianCount = g.Count(u => u.UserRoles.Any(ur => ur.Role!.RoleName == "Technician"))
+            })
+            .FirstOrDefaultAsync();
+
+        var activeCount = stats?.ActiveCount ?? 0;
+        var adminCount = stats?.AdminCount ?? 0;
+        var billingCount = stats?.BillingCount ?? 0;
+        var technicianCount = stats?.TechnicianCount ?? 0;
 
         var users = await query
             .OrderBy(u => u.FirstName).ThenBy(u => u.LastName)

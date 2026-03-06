@@ -172,9 +172,15 @@ public class InvoiceService : IInvoiceService
                 Payments = i.PaymentAllocations.Select(pa => new InvoicePaymentDto
                 {
                     PaymentId = pa.PaymentId,
+                    PaymentNo = pa.Payment!.PaymentNo,
                     AmountApplied = pa.AmountApplied,
-                    PaymentDate = pa.Payment!.PaymentDate,
-                    Method = pa.Payment.Method.ToString()
+                    PaymentDate = pa.Payment.PaymentDate,
+                    Method = pa.Payment.Method.ToString(),
+                    ReferenceNo = pa.Payment.ReferenceNo,
+                    ReceivedBy = pa.Payment.ReceivedByUser != null
+                        ? pa.Payment.ReceivedByUser.FirstName + " " + pa.Payment.ReceivedByUser.LastName
+                        : null,
+                    IsVoid = pa.Payment.Status == PaymentStatus.Refunded
                 }).ToList()
             })
             .FirstOrDefaultAsync();

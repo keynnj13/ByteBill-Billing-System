@@ -28,6 +28,7 @@ public class LandingController : Controller
 
         // Load active subscription plans for pricing section
         var plans = await _db.SubscriptionPlans
+            .AsNoTracking()
             .Where(p => p.IsActive)
             .OrderBy(p => p.SortOrder)
             .ToListAsync();

@@ -31,6 +31,7 @@ public class ProfileController : Controller
     {
         var userId = User.GetUserId();
         var user = await _db.Users
+            .AsNoTracking()
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .Include(u => u.Shop)
             .FirstOrDefaultAsync(u => u.UserId == userId);
@@ -203,6 +204,7 @@ public class ProfileController : Controller
         Response.Cookies.Append("ByteBillTheme", theme, new CookieOptions
         {
             HttpOnly = false,
+            Secure = true,
             Expires = DateTimeOffset.UtcNow.AddDays(365),
             SameSite = SameSiteMode.Lax,
             Path = "/"

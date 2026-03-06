@@ -140,8 +140,11 @@
                         <table class="table">
                             <thead>
                                 <tr>
+                                    <th>Payment #</th>
                                     <th>Date</th>
                                     <th>Method</th>
+                                    <th>Reference</th>
+                                    <th>Received By</th>
                                     <th class="text-right">Amount</th>
                                 </tr>
                             </thead>
@@ -149,8 +152,11 @@
                                 @foreach (var pay in Model.Payments)
                                 {
                                     <tr class="clickable-row" onclick="window.location.href='@Url.Action("Details", "Payments", new { area = "Billing", id = pay.Id })'">
+                                        <td>@(string.IsNullOrEmpty(pay.PaymentNumber) ? "—" : pay.PaymentNumber)</td>
                                         <td>@pay.PaidAt.ToString("MMM dd, yyyy")</td>
                                         <td><span class="status-indicator @(pay.Method switch { PaymentMethod.Cash => "status-success", PaymentMethod.GCash => "status-primary", PaymentMethod.Card => "status-info", _ => "status-muted" })">@pay.Method</span></td>
+                                        <td>@(string.IsNullOrEmpty(pay.Reference) ? "—" : pay.Reference)</td>
+                                        <td>@(string.IsNullOrEmpty(pay.ReceivedBy) ? "—" : pay.ReceivedBy)</td>
                                         <td class="text-right font-medium">@pay.Amount.ToString("N2")</td>
                                     </tr>
                                 }

@@ -1,4 +1,5 @@
 using ByteBill_BS.Models.Enums;
+using System.ComponentModel.DataAnnotations;
 
 namespace ByteBill_BS.Models;
 
@@ -28,6 +29,10 @@ public class Invoice
     public DateTime? DueDate { get; set; }
     public bool IsArchived { get; set; } = false;
     public DateTime? ArchivedDate { get; set; }
+
+    // ── Concurrency ──────────────────────────────────────────────────
+    [Timestamp]
+    public byte[]? RowVersion { get; set; }
 
     // Navigation properties
     public Shop? Shop { get; set; }

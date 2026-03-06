@@ -51,8 +51,17 @@ public class JobOrdersController : Controller
             StatusFilter = status?.ToString()
         });
 
-        // KPI counts (across all non-archived job orders)
+        // KPI counts — single query with GroupBy
         var kpiBase = _db.JobOrders.Where(j => j.ShopId == shopId && !j.IsArchived);
+        var statusCounts = await kpiBase
+            .GroupBy(j => j.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.Status, g => g.Count);
+
+        var completedIds = await kpiBase
+            .Where(j => j.Status == JobOrderStatus.Completed
+                && !_db.Invoices.Any(i => i.JobOrderId == j.JobOrderId))
+            .CountAsync();
 
         var viewModel = new JobOrderListViewModel
         {
@@ -61,10 +70,9 @@ public class JobOrdersController : Controller
             CurrentPage = result.Page,
             TotalCount = result.TotalCount,
             PageSize = result.PageSize,
-            InProgressCount = await kpiBase.CountAsync(j => j.Status == JobOrderStatus.InProgress),
-            CompletedCount = await kpiBase.CountAsync(j => j.Status == JobOrderStatus.Completed),
-            PendingInvoicingCount = await kpiBase.CountAsync(j => j.Status == JobOrderStatus.Completed
-                && !_db.Invoices.Any(i => i.JobOrderId == j.JobOrderId)),
+            InProgressCount = statusCounts.GetValueOrDefault(JobOrderStatus.InProgress),
+            CompletedCount = statusCounts.GetValueOrDefault(JobOrderStatus.Completed),
+            PendingInvoicingCount = completedIds,
             JobOrders = result.Items.Select(j =>
             {
                 var deviceParts = j.DeviceSummary?.Split(" - ", 2) ?? Array.Empty<string>();
@@ -118,6 +126,16 @@ public class JobOrdersController : Controller
             })
             .ToListAsync();
 
+        // Pre-load active JO counts per technician in a single query
+        var techActiveJoCounts = await _db.JobOrders
+            .Where(j => j.ShopId == shopId
+                && j.AssignedTechUserId != null
+                && j.Status != JobOrderStatus.Completed
+                && j.Status != JobOrderStatus.Cancelled)
+            .GroupBy(j => j.AssignedTechUserId!.Value)
+            .Select(g => new { TechId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.TechId, g => g.Count);
+
         var technicians = await _db.Users
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .Where(u => u.ShopId == shopId && u.IsActive &&
@@ -127,12 +145,12 @@ public class JobOrdersController : Controller
                 Id = u.UserId,
                 FullName = u.FirstName + " " + u.LastName,
                 Name = u.FirstName + " " + u.LastName,
-                ActiveJobOrders = _db.JobOrders.Count(j =>
-                    j.AssignedTechUserId == u.UserId &&
-                    j.Status != JobOrderStatus.Completed &&
-                    j.Status != JobOrderStatus.Cancelled)
+                ActiveJobOrders = 0
             })
             .ToListAsync();
+
+        foreach (var tech in technicians)
+            tech.ActiveJobOrders = techActiveJoCounts.GetValueOrDefault(tech.Id);
 
         model.AvailableCustomers = customers;
         model.Customers = customers;

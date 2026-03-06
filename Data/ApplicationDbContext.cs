@@ -501,6 +501,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.DueDate).HasColumnType("datetime2(0)");
             entity.Property(e => e.IsArchived).HasDefaultValue(false);
             entity.Property(e => e.ArchivedDate).HasColumnType("datetime2(0)");
+            entity.Property(e => e.RowVersion).IsRowVersion();
             entity.HasIndex(e => new { e.ShopId, e.InvoiceNo }).IsUnique();
             entity.HasIndex(e => e.JobOrderId).IsUnique(); // 1:1 with JOB_ORDERS
             entity.HasIndex(e => e.ShopId);

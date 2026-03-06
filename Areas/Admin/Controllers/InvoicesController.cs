@@ -344,10 +344,13 @@ public class InvoicesController : Controller
                 return new PaymentSummaryViewModel
                 {
                     Id = p.PaymentId,
+                    PaymentNumber = p.PaymentNo,
                     Amount = p.AmountApplied,
                     Method = pm,
                     PaidAt = p.PaymentDate,
-                    IsVoid = false
+                    IsVoid = p.IsVoid,
+                    Reference = p.ReferenceNo,
+                    ReceivedBy = p.ReceivedBy
                 };
             }).ToList()
         };

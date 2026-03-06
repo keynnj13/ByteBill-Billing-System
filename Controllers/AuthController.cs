@@ -110,6 +110,7 @@ public class AuthController : Controller
             Response.Cookies.Append("ByteBillTheme", dbUser.ThemePreference ?? "light", new CookieOptions
             {
                 HttpOnly = false,   // JS needs to read it
+                Secure = true,
                 Expires = DateTimeOffset.UtcNow.AddDays(365),
                 SameSite = SameSiteMode.Lax,
                 Path = "/"

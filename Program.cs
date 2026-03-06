@@ -104,14 +104,23 @@ builder.Services.AddScoped<ISuperAdminService, SuperAdminService>();
 
 // ── Xero Accounting integration ──────────────────────────────────────
 builder.Services.Configure<XeroSettings>(builder.Configuration.GetSection("Xero"));
-builder.Services.AddHttpClient<IXeroService, XeroService>();
+builder.Services.AddHttpClient<IXeroService, XeroService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 
 // ── PayMongo integration ─────────────────────────────────────────────
 builder.Services.Configure<PayMongoSettings>(builder.Configuration.GetSection("PayMongo"));
-builder.Services.AddHttpClient<IPayMongoService, PayMongoService>();
+builder.Services.AddHttpClient<IPayMongoService, PayMongoService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 
 // ── Self-service registration ────────────────────────────────────────
-builder.Services.AddHttpClient<IRegistrationService, RegistrationService>();
+builder.Services.AddHttpClient<IRegistrationService, RegistrationService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 
 // Rate limiting for login endpoint
 builder.Services.AddRateLimiter(options =>

@@ -680,6 +680,11 @@ public class JobOrderService : IJobOrderService
             OverrideReason = overrideReason
         };
 
+        // Guard against negative stock
+        if (item.QtyOnHand < dto.QtyUsed)
+            return ApiResponse<JobOrderPartLineDto>.Fail(
+                $"Insufficient stock for '{item.ItemName}'. Available: {item.QtyOnHand}, Requested: {dto.QtyUsed}.");
+
         _db.JobOrderParts.Add(line);
 
         // Deduct inventory

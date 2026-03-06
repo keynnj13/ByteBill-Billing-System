@@ -8,6 +8,9 @@ public class PaginationViewModel
     public int PageSize { get; set; } = 10;
     public string BaseUrl { get; set; } = string.Empty;
     public string? SearchTerm { get; set; }
+
+    /// <summary>Extra query-string parameters to preserve across pages (e.g. filters).</summary>
+    public Dictionary<string, string> ExtraParams { get; set; } = new();
     
     public bool HasPreviousPage => CurrentPage > 1;
     public bool HasNextPage => CurrentPage < TotalPages;

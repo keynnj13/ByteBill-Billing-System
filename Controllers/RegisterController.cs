@@ -195,6 +195,7 @@ public class RegisterController : Controller
         Response.Cookies.Append("ByteBillTheme", "light", new CookieOptions
         {
             HttpOnly = false,
+            Secure = true,
             Expires = DateTimeOffset.UtcNow.AddDays(365),
             SameSite = SameSiteMode.Lax,
             Path = "/"

@@ -109,6 +109,8 @@ public class BillingCalculationService : IBillingCalculationService
 
     public async Task RecalculateInvoiceAsync(long invoiceId)
     {
+        await using var txn = await _db.Database.BeginTransactionAsync();
+
         var invoice = await _db.Invoices
             .Include(i => i.InvoiceLines)
             .FirstOrDefaultAsync(i => i.InvoiceId == invoiceId);
@@ -165,6 +167,7 @@ public class BillingCalculationService : IBillingCalculationService
         }
 
         await _db.SaveChangesAsync();
+        await txn.CommitAsync();
     }
 
     // ═════════════════════════════════════════════════════════════════

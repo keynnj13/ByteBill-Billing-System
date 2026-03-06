@@ -45,6 +45,7 @@ public class ReportsController : Controller
 
         // Gross revenue this month (Subtotal = pre-discount/pre-adjustment amount)
         var thisMonthInvoices = await _db.Invoices
+            .AsNoTracking()
             .Where(i => i.ShopId == shopId && !i.IsArchived && i.InvoiceDate >= thisMonth)
             .ToListAsync();
         var thisMonthGross = thisMonthInvoices.Sum(i => i.Subtotal);
@@ -57,6 +58,7 @@ public class ReportsController : Controller
 
         // Payments this month
         var thisMonthPayments = await _db.Payments
+            .AsNoTracking()
             .Where(p => p.ShopId == shopId && p.PaymentDate >= thisMonth && p.Status == PaymentStatus.Confirmed)
             .ToListAsync();
         var payTotal = thisMonthPayments.Sum(p => p.Amount);
@@ -73,7 +75,7 @@ public class ReportsController : Controller
         var svcTypeCount = await _db.ServiceCatalogs.Where(s => s.ShopId == shopId && s.IsActive).CountAsync();
 
         // Inventory
-        var inventoryItems = await _db.InventoryItems.Where(i => i.ShopId == shopId && i.IsActive).ToListAsync();
+        var inventoryItems = await _db.InventoryItems.AsNoTracking().Where(i => i.ShopId == shopId && i.IsActive).ToListAsync();
         var stockValue = inventoryItems.Sum(i => i.UnitCost * i.QtyOnHand);
         var lowStockCount = inventoryItems.Count(i => i.IsLowStock);
 
@@ -192,6 +194,7 @@ public class ReportsController : Controller
         var dateTo = (to ?? DateTime.Today).AddDays(1); // inclusive end
 
         var invoices = await _db.Invoices
+            .AsNoTracking()
             .Where(i => i.ShopId == shopId && !i.IsArchived && i.InvoiceDate >= dateFrom && i.InvoiceDate < dateTo)
             .Include(i => i.JobOrder).ThenInclude(j => j!.JobOrderServices).ThenInclude(js => js.Service).ThenInclude(s => s!.ServiceCategory)
             .ToListAsync();
@@ -206,6 +209,7 @@ public class ReportsController : Controller
 
         // Adjustments in the date range
         var rangeAdjustments = await _db.CreditDebitAdjustments
+            .AsNoTracking()
             .Where(a => a.ShopId == shopId && a.Status == AdjustmentStatus.Approved
                 && a.CreatedAt >= dateFrom && a.CreatedAt < dateTo)
             .ToListAsync();
@@ -275,6 +279,7 @@ public class ReportsController : Controller
         var dateTo = (to ?? DateTime.Today).AddDays(1);
 
         var payments = await _db.Payments
+            .AsNoTracking()
             .Where(p => p.ShopId == shopId && p.Status == PaymentStatus.Confirmed
                         && p.PaymentDate >= dateFrom && p.PaymentDate < dateTo)
             .ToListAsync();
@@ -334,6 +339,7 @@ public class ReportsController : Controller
 
         // All job orders in range
         var jobOrders = await _db.JobOrders
+            .AsNoTracking()
             .Where(j => j.ShopId == shopId && !j.IsArchived && j.CreatedAt >= dateFrom && j.CreatedAt < dateTo)
             .Include(j => j.JobOrderServices).ThenInclude(js => js.Service).ThenInclude(s => s!.ServiceCategory)
             .ToListAsync();
@@ -405,6 +411,7 @@ public class ReportsController : Controller
         var shopId = User.GetShopId();
 
         var items = await _db.InventoryItems
+            .AsNoTracking()
             .Where(i => i.ShopId == shopId && i.IsActive)
             .Include(i => i.InventoryCategory)
             .OrderBy(i => i.ItemName)

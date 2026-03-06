@@ -273,6 +273,7 @@ const Forms = {
         this.initFloatingLabels();
         this.initDeleteConfirmation();
         this.initFormValidation();
+        this.initSubmitProtection();
     },
 
     initFloatingLabels() {
@@ -313,6 +314,21 @@ const Forms = {
                     e.stopPropagation();
                 }
                 form.classList.add('was-validated');
+            });
+        });
+    },
+
+    initSubmitProtection() {
+        document.querySelectorAll('form:not([data-no-protect])').forEach(form => {
+            form.addEventListener('submit', () => {
+                const btns = form.querySelectorAll('button[type="submit"], input[type="submit"]');
+                btns.forEach(btn => {
+                    if (btn.disabled) return;
+                    btn.disabled = true;
+                    btn.dataset.originalText = btn.innerHTML;
+                    const spinnerHtml = '<svg class="btn-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="31.4" stroke-dashoffset="10"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite"/></circle></svg> ';
+                    btn.innerHTML = spinnerHtml + 'Processing...';
+                });
             });
         });
     }
