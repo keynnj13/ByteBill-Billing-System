@@ -67,7 +67,7 @@ public class PaymentsController : Controller
                 ReferenceNo = p.ReferenceNo,
                 ReceivedByName = p.ReceivedByUser != null ? p.ReceivedByUser.FirstName + " " + p.ReceivedByUser.LastName : null,
                 Status = p.Status,
-                IsVoid = p.Status == PaymentStatus.Refunded || p.Status == PaymentStatus.Failed
+                IsVoid = p.Status == PaymentStatus.Refunded ? true : p.Status == PaymentStatus.Failed ? true : false
             })
             .ToListAsync();
 

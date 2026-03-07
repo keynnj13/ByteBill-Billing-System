@@ -12,8 +12,12 @@
 
 <div class="prefs-page">
 
-    <form method="post" asp-action="UpdatePreferences" asp-controller="Profile">
-        @Html.AntiForgeryToken()
+    <div id="prefs-toast" class="prefs-toast" style="display:none;">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        <span>Saved</span>
+    </div>
+
+    @Html.AntiForgeryToken()
 
         <!-- Appearance -->
         <div class="card prefs-section">
@@ -96,15 +100,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Save -->
-        <div style="display: flex; justify-content: flex-end; margin-top: 8px;">
-            <button type="submit" class="btn btn-primary">
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                Save Preferences
-            </button>
-        </div>
-    </form>
 </div>
 
 <style>
@@ -115,6 +110,18 @@
 
     .alert { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
     .alert-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+
+    /* ── Auto-save Toast ── */
+    .prefs-toast {
+        position: fixed; bottom: 24px; right: 24px; z-index: 1000;
+        background: var(--emerald); color: white;
+        padding: 10px 20px; border-radius: 8px;
+        font-size: 13px; font-weight: 600;
+        display: flex; align-items: center; gap: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        opacity: 0; transition: opacity 0.3s ease;
+    }
+    .prefs-toast.show { display: flex !important; opacity: 1; }
 
     /* ── Theme Picker ── */
     .theme-picker { display: flex; gap: 16px; }
@@ -212,7 +219,37 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Toggle active class on theme options + instant preview
+        var token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+        function savePreferences() {
+            var theme = document.querySelector('input[name="ThemePreference"]:checked')?.value || 'light';
+            var email = document.querySelector('input[name="EmailNotifications"]').checked;
+            var inApp = document.querySelector('input[name="InAppNotifications"]').checked;
+
+            var formData = new FormData();
+            formData.append('ThemePreference', theme);
+            formData.append('EmailNotifications', email);
+            formData.append('InAppNotifications', inApp);
+            formData.append('__RequestVerificationToken', token);
+
+            fetch('/Profile/UpdatePreferences', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) {
+                    var toast = document.getElementById('prefs-toast');
+                    toast.classList.add('show');
+                    toast.style.display = 'flex';
+                    setTimeout(function() {
+                        toast.classList.remove('show');
+                        setTimeout(function() { toast.style.display = 'none'; }, 300);
+                    }, 1500);
+                }
+            });
+        }
+
+        // Theme options — instant preview + auto-save
         var themeOptions = document.querySelectorAll('.theme-option');
         themeOptions.forEach(function(opt) {
             opt.addEventListener('click', function() {
@@ -221,11 +258,16 @@
                 var radio = this.querySelector('input[type="radio"]');
                 if (radio) {
                     radio.checked = true;
-                    // Instant theme preview
                     document.documentElement.setAttribute('data-theme', radio.value);
                     document.cookie = 'ByteBillTheme=' + radio.value + ';path=/;max-age=31536000;SameSite=Lax';
+                    savePreferences();
                 }
             });
+        });
+
+        // Toggle switches — auto-save on change
+        document.querySelectorAll('.toggle-switch input[type="checkbox"]').forEach(function(cb) {
+            cb.addEventListener('change', function() { savePreferences(); });
         });
     });
 </script>

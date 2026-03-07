@@ -297,4 +297,49 @@ public class InventoryController : Controller
         TempData["Success"] = "Item archived.";
         return RedirectToAction(nameof(Index));
     }
+
+    // ─── WRITE OFF ──────────────────────────────────────────
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WriteOff(long id, string reason, string? notes)
+    {
+        if (!IsAuthorized()) return Forbid();
+        var shopId = User.GetShopId();
+        var item = await _db.InventoryItems.FirstOrDefaultAsync(i => i.ShopId == shopId && i.ItemId == id && i.IsActive);
+        if (item == null) return NotFound();
+
+        var validReasons = new[] { "Damaged", "Defective", "Expired", "Lost", "Other" };
+        if (string.IsNullOrWhiteSpace(reason) || !validReasons.Contains(reason))
+            return Json(new { success = false, message = "Please select a valid reason." });
+
+        // Record write-off transaction for the remaining stock
+        if (item.QtyOnHand > 0)
+        {
+            _db.InventoryTxns.Add(new Models.InventoryTxn
+            {
+                ItemId = item.ItemId,
+                TxnType = Models.Enums.InventoryTxnType.WRITEOFF,
+                Quantity = item.QtyOnHand,
+                ReferenceType = "WriteOff",
+                ReferenceId = item.ItemId,
+                Remarks = $"{reason}{(string.IsNullOrWhiteSpace(notes) ? "" : ": " + notes.Trim())}",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        item.IsActive = false;
+        item.WriteOffReason = reason;
+        item.WriteOffNotes = notes?.Trim();
+        item.QtyOnHand = 0;
+        await _db.SaveChangesAsync();
+
+        await _audit.LogAsync(shopId, User.GetUserId(), "WriteOff", "InventoryItem", item.ItemId,
+            $"Written off inventory item '{item.ItemName}' — Reason: {reason}",
+            HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            return Json(new { success = true, message = "Item written off successfully." });
+        TempData["Success"] = $"Item '{item.ItemName}' written off.";
+        return RedirectToAction(nameof(Index));
+    }
 }

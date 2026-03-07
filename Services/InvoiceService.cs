@@ -26,10 +26,11 @@ public class InvoiceService : IInvoiceService
     private readonly IXeroService _xero;
     private readonly ITaxCalculationService _tax;
     private readonly INotificationService _notif;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public InvoiceService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx,
         IBillingCalculationService billing, IXeroService xero, ITaxCalculationService tax,
-        INotificationService notif)
+        INotificationService notif, IServiceScopeFactory scopeFactory)
     {
         _db = db;
         _audit = audit;
@@ -38,6 +39,7 @@ public class InvoiceService : IInvoiceService
         _xero = xero;
         _tax = tax;
         _notif = notif;
+        _scopeFactory = scopeFactory;
     }
 
     private string? ClientIp => _httpCtx.HttpContext?.Connection.RemoteIpAddress?.ToString();
@@ -178,9 +180,9 @@ public class InvoiceService : IInvoiceService
                     Method = pa.Payment.Method.ToString(),
                     ReferenceNo = pa.Payment.ReferenceNo,
                     ReceivedBy = pa.Payment.ReceivedByUser != null
-                        ? pa.Payment.ReceivedByUser.FirstName + " " + pa.Payment.ReceivedByUser.LastName
+                        ? string.Concat(pa.Payment.ReceivedByUser.FirstName, " ", pa.Payment.ReceivedByUser.LastName)
                         : null,
-                    IsVoid = pa.Payment.Status == PaymentStatus.Refunded
+                    IsVoid = pa.Payment.Status == PaymentStatus.Refunded ? true : false
                 }).ToList()
             })
             .FirstOrDefaultAsync();
@@ -325,8 +327,25 @@ public class InvoiceService : IInvoiceService
                 $"/Admin/Invoices/DetailsModal/{invoice.InvoiceId}");
         }
 
-        // Auto-sync to Xero (fire-and-forget, errors logged internally)
-        try { await _xero.SyncInvoiceAsync(invoice.InvoiceId, userId); } catch { /* logged in XeroService */ }
+        // Auto-sync to Xero (errors logged internally in XeroService)
+        try { await _xero.SyncInvoiceAsync(invoice.InvoiceId, userId); }
+        catch { /* logged in XeroService */ }
+
+        // Send invoice email to customer (fire-and-forget with logging)
+        var invoiceIdForEmail = invoice.InvoiceId;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                await scope.ServiceProvider.GetRequiredService<IEmailService>()
+                    .SendInvoiceAsync(invoiceIdForEmail);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[EMAIL ERROR] Invoice email failed for InvoiceId {invoiceIdForEmail}: {ex}");
+            }
+        });
 
         var detail = await GetDetailAsync(shopId, invoice.InvoiceId);
         return ApiResponse<InvoiceDetailDto>.Ok(detail!);

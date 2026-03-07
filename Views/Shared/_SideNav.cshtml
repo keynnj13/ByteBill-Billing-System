@@ -56,7 +56,7 @@
 <aside class="side-nav" id="side-nav">
     <div class="sidebar-brand">
         <div class="sidebar-brand-container">
-            <img src="/img/logo-bytebill.png" alt="ByteBill" class="sidebar-brand-logo" onerror="this.style.display='none'" />
+            <img src="/img/bytelogo.png" alt="ByteBill" class="sidebar-brand-logo" onerror="this.style.display='none'" />
         </div>
     </div>
     <nav class="sidebar-nav">
@@ -67,14 +67,47 @@
                 @foreach (var item in navSection.Items)
                 {
                     var isActive = IsDashboardActive(item.Url);
-                    <a href="@item.Url" class="nav-item @(isActive ? "active" : "")">
-                        @await Html.PartialAsync("_NavIcon", item.Icon)
-                        <span>@item.Title</span>
-                        @if (!string.IsNullOrEmpty(item.Badge))
-                        {
-                            <span class="nav-item-badge">@item.Badge</span>
-                        }
-                    </a>
+                    var hasChildren = item.Children != null && item.Children.Any();
+                    var isChildActive = hasChildren && item.Children!.Any(c => IsDashboardActive(c.Url));
+                    var isExpanded = isActive || isChildActive;
+
+                    @if (hasChildren)
+                    {
+                        <div class="nav-item-group @(isExpanded ? "expanded" : "")">
+                            <a href="@item.Url" class="nav-item @(isActive ? "active" : "")">
+                                @await Html.PartialAsync("_NavIcon", item.Icon)
+                                <span>@item.Title</span>
+                                @if (!string.IsNullOrEmpty(item.Badge))
+                                {
+                                    <span class="nav-item-badge">@item.Badge</span>
+                                }
+                                <button type="button" class="nav-expand-btn" onclick="event.preventDefault(); event.stopPropagation(); this.closest('.nav-item-group').classList.toggle('expanded');" aria-label="Expand">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </button>
+                            </a>
+                            <div class="nav-children">
+                                @foreach (var child in item.Children!)
+                                {
+                                    var childActive = IsDashboardActive(child.Url);
+                                    <a href="@child.Url" class="nav-item nav-child-item @(childActive ? "active" : "")">
+                                        @await Html.PartialAsync("_NavIcon", child.Icon)
+                                        <span>@child.Title</span>
+                                    </a>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <a href="@item.Url" class="nav-item @(isActive ? "active" : "")">
+                            @await Html.PartialAsync("_NavIcon", item.Icon)
+                            <span>@item.Title</span>
+                            @if (!string.IsNullOrEmpty(item.Badge))
+                            {
+                                <span class="nav-item-badge">@item.Badge</span>
+                            }
+                        </a>
+                    }
                 }
             </div>
         }

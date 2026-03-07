@@ -45,17 +45,20 @@ public class RegistrationService : IRegistrationService
     private readonly HttpClient _http;
     private readonly PayMongoSettings _payMongoSettings;
     private readonly ILogger<RegistrationService> _logger;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public RegistrationService(
         ApplicationDbContext db,
         HttpClient http,
         IOptions<PayMongoSettings> payMongoSettings,
-        ILogger<RegistrationService> logger)
+        ILogger<RegistrationService> logger,
+        IServiceScopeFactory scopeFactory)
     {
         _db = db;
         _http = http;
         _payMongoSettings = payMongoSettings.Value;
         _logger = logger;
+        _scopeFactory = scopeFactory;
 
         // Configure HTTP client for PayMongo
         var authBytes = Encoding.UTF8.GetBytes($"{_payMongoSettings.SecretKey}:");
@@ -398,6 +401,22 @@ public class RegistrationService : IRegistrationService
             };
             _db.SubscriptionPayments.Add(subPayment);
             await _db.SaveChangesAsync();
+
+            // Fire-and-forget: send subscription confirmation email to shop owner
+            var subPayId = subPayment.SubscriptionPaymentId;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var scope = _scopeFactory.CreateScope();
+                    await scope.ServiceProvider.GetRequiredService<IEmailService>()
+                        .SendSubscriptionConfirmationAsync(subPayId);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[EMAIL ERROR] Subscription email failed for SubscriptionPaymentId {subPayId}: {ex.Message}");
+                }
+            });
 
             // ── 6. Create Audit Log ──────────────────────────────────
             _db.AuditLogs.Add(new AuditLog

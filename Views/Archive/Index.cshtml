@@ -62,8 +62,8 @@
         <span class="arc-tab-badge">@custTotal</span>
     </button>
     <button class="arc-tab @(tab == "services" ? "arc-tab-active" : "")" data-tab="services" onclick="switchArchiveTab('services')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"></path></svg>
-        Services
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+        Discontinued
         <span class="arc-tab-badge">@svcTotal</span>
     </button>
     <button class="arc-tab @(tab == "inventory" ? "arc-tab-active" : "")" data-tab="inventory" onclick="switchArchiveTab('inventory')">
@@ -470,7 +470,7 @@
                 <input type="hidden" name="tab" value="services" />
                 <div class="search-input-wrapper">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    <input type="text" name="search" value="@(tab == "services" ? ViewBag.Search : "")" placeholder="Search archived services..." class="form-input search-input" />
+                    <input type="text" name="search" value="@(tab == "services" ? ViewBag.Search : "")" placeholder="Search discontinued services..." class="form-input search-input" />
                 </div>
                 <button type="submit" class="btn btn-outline-primary">Filter</button>
             </form>
@@ -517,9 +517,9 @@
             else
             {
                 <div class="empty-state" style="padding: 60px 20px; text-align: center;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
-                    <h3 style="color: #6b7280; font-size: 16px; margin-bottom: 4px;">No archived services</h3>
-                    <p style="color: #9ca3af; font-size: 14px;">Archived services will appear here.</p>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                    <h3 style="color: #6b7280; font-size: 16px; margin-bottom: 4px;">No discontinued services</h3>
+                    <p style="color: #9ca3af; font-size: 14px;">Discontinued services will appear here.</p>
                 </div>
             }
         </div>
@@ -545,14 +545,15 @@
                 <div class="table-container">
                     <table class="table" style="table-layout: fixed;">
                         <colgroup>
-                            <col style="width: 12%;" /><col style="width: 22%;" /><col style="width: 15%;" /><col style="width: 12%;" /><col style="width: 12%;" /><col style="width: 15%;" /><col style="width: 12%;" />
+                            <col style="width: 10%;" /><col style="width: 18%;" /><col style="width: 12%;" /><col style="width: 8%;" /><col style="width: 10%;" /><col style="width: 10%;" /><col style="width: 20%;" /><col style="width: 12%;" />
                         </colgroup>
                         <thead>
-                            <tr><th>SKU</th><th>Item</th><th>Category</th><th class="text-center">Stock</th><th class="text-right">Cost</th><th class="text-right">Price</th><th class="text-right">Actions</th></tr>
+                            <tr><th>SKU</th><th>Item</th><th>Category</th><th class="text-center">Stock</th><th class="text-right">Cost</th><th class="text-right">Price</th><th>Status</th><th class="text-right">Actions</th></tr>
                         </thead>
                         <tbody>
                             @foreach (var i in archivedInventory)
                             {
+                                var isWrittenOff = !string.IsNullOrEmpty(i.WriteOffReason);
                                 <tr>
                                     <td><span style="font-family:monospace;font-size:12px;color:#6b7280;background:#f9fafb;padding:3px 8px;border-radius:4px;">@i.SKU</span></td>
                                     <td style="font-size:13px;font-weight:500;color:#1f2937;">@i.ItemName</td>
@@ -561,13 +562,26 @@
                                     <td class="text-right" style="font-size:13px;">@i.UnitCost.ToString("C")</td>
                                     <td class="text-right" style="font-size:13px;font-weight:500;">@i.UnitPrice.ToString("C")</td>
                                     <td>
+                                        @if (isWrittenOff)
+                                        {
+                                            <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:100px;background:#fef2f2;color:#dc2626;">Written Off — @i.WriteOffReason</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:100px;background:#f3f4f6;color:#6b7280;">Archived</span>
+                                        }
+                                    </td>
+                                    <td>
                                         <div class="action-buttons">
-                                            <form asp-action="RestoreInventory" asp-controller="Archive" asp-route-id="@i.ItemId" method="post" style="display:inline;">
-                                                @Html.AntiForgeryToken()
-                                                <button type="submit" class="btn-action restore-btn" title="Restore" onclick="return confirm('Restore this item?');">
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
-                                                </button>
-                                            </form>
+                                            @if (!isWrittenOff)
+                                            {
+                                                <form asp-action="RestoreInventory" asp-controller="Archive" asp-route-id="@i.ItemId" method="post" style="display:inline;">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn-action restore-btn" title="Restore" onclick="return confirm('Restore this item?');">
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                                                    </button>
+                                                </form>
+                                            }
                                         </div>
                                     </td>
                                 </tr>

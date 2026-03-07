@@ -102,6 +102,10 @@ builder.Services.AddScoped<IBillingCalculationService, BillingCalculationService
 builder.Services.AddScoped<ITaxCalculationService, TaxCalculationService>();
 builder.Services.AddScoped<ISuperAdminService, SuperAdminService>();
 
+// ── Email notifications (SendGrid) ───────────────────────────────────
+builder.Services.Configure<SendGridSettings>(builder.Configuration.GetSection("SendGrid"));
+builder.Services.AddScoped<IEmailService, EmailService>();
+
 // ── Xero Accounting integration ──────────────────────────────────────
 builder.Services.Configure<XeroSettings>(builder.Configuration.GetSection("Xero"));
 builder.Services.AddHttpClient<IXeroService, XeroService>(client =>

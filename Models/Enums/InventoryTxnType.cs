@@ -4,5 +4,6 @@ public enum InventoryTxnType
 {
     IN,
     OUT,
-    ADJUST
+    ADJUST,
+    WRITEOFF
 }

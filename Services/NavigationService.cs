@@ -15,6 +15,7 @@ public class NavigationItem
     public string Url { get; set; } = string.Empty;
     public string? Badge { get; set; }
     public bool IsActive { get; set; }
+    public List<NavigationItem>? Children { get; set; }
 }
 
 public class NavigationSection
@@ -116,8 +117,22 @@ public class NavigationService : INavigationService
                 Title = "Catalog",
                 Items = new[]
                 {
-                    new NavigationItem { Title = "Services", Icon = "wrench", Url = "/Admin/Services" },
-                    new NavigationItem { Title = "Inventory", Icon = "package", Url = "/Admin/Inventory" }
+                    new NavigationItem
+                    {
+                        Title = "Services", Icon = "wrench", Url = "/Admin/Services",
+                        Children = new List<NavigationItem>
+                        {
+                            new NavigationItem { Title = "Categories", Icon = "tag", Url = "/Admin/ServiceCategories" }
+                        }
+                    },
+                    new NavigationItem
+                    {
+                        Title = "Inventory", Icon = "package", Url = "/Admin/Inventory",
+                        Children = new List<NavigationItem>
+                        {
+                            new NavigationItem { Title = "Categories", Icon = "tag", Url = "/Admin/InventoryCategories" }
+                        }
+                    }
                 }
             },
             new NavigationSection

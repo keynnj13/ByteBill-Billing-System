@@ -294,6 +294,34 @@ a:hover {
     width: 36px;
 }
 
+/* ── Action Buttons (table row actions) ── */
+.action-buttons {
+    display: flex;
+    gap: 4px;
+    justify-content: flex-end;
+}
+
+.btn-action {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    color: var(--gray-400);
+    transition: all 0.15s;
+    border: none;
+    background: none;
+    cursor: pointer;
+    text-decoration: none;
+    padding: 0;
+}
+
+.btn-action:hover {
+    background: var(--gray-light);
+    color: var(--primary);
+}
+
 /* =========================================================
    Cards
    ========================================================= */
@@ -1006,6 +1034,46 @@ a:hover {
     font-weight: 600;
     min-width: 20px;
     text-align: center;
+}
+
+/* ── Nav Expand / Collapse (children) ── */
+.nav-item-group { position: relative; }
+
+.nav-expand-btn {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--gray-400);
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+.nav-item-group.expanded .nav-expand-btn {
+    transform: rotate(180deg);
+}
+
+.nav-children {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease;
+}
+
+.nav-item-group.expanded .nav-children {
+    max-height: 200px;
+}
+
+.nav-child-item {
+    padding-left: 40px !important;
+    font-size: 13px !important;
+}
+
+.nav-child-item .nav-item-icon {
+    width: 14px;
+    height: 14px;
 }
 
 /* Mobile menu toggle */
@@ -3239,6 +3307,61 @@ a:hover {
 [data-theme="dark"] .notif-item:hover { background: rgba(255,255,255,0.04); }
 [data-theme="dark"] .notif-empty-title { color: var(--gray-500); }
 [data-theme="dark"] .notif-empty-desc { color: var(--gray-400); }
+
+/* =========================================================
+   DARK THEME — Stat Card Icon Backgrounds
+   ========================================================= */
+[data-theme="dark"] .bg-primary-light { background: rgba(59,130,246,0.12); }
+[data-theme="dark"] .bg-warning-light { background: rgba(245,158,11,0.12); }
+[data-theme="dark"] .bg-success-light { background: rgba(16,185,129,0.12); }
+[data-theme="dark"] .bg-orange-light { background: rgba(249,115,22,0.12); }
+
+/* ── Inventory-specific ── */
+[data-theme="dark"] .sku-text { background: var(--gray-100); color: var(--gray-500); }
+[data-theme="dark"] .restock-btn { color: #fbbf24; }
+[data-theme="dark"] .restock-btn:hover { background: rgba(245,158,11,0.12); }
+[data-theme="dark"] .writeoff-btn { color: #f87171; }
+[data-theme="dark"] .writeoff-btn:hover { background: rgba(239,68,68,0.12); }
+[data-theme="dark"] .stock-low { color: #f87171; }
+[data-theme="dark"] .low-stock-text { color: #fbbf24; }
+[data-theme="dark"] .inv-stat-warn { color: #fbbf24; }
+[data-theme="dark"] .inv-date { color: var(--gray-500); }
+[data-theme="dark"] .job-link { color: #60a5fa; }
+
+/* ── Stat Card Icon Rings (rgba) ── */
+[data-theme="dark"] .inv-stat-blue,
+[data-theme="dark"] .pay-stat-blue { background: rgba(59,130,246,0.12); }
+[data-theme="dark"] .inv-stat-amber,
+[data-theme="dark"] .pay-stat-amber { background: rgba(245,158,11,0.12); }
+[data-theme="dark"] .inv-stat-red { background: rgba(239,68,68,0.12); }
+[data-theme="dark"] .svc-stat-blue { background: rgba(59,130,246,0.12); }
+[data-theme="dark"] .svc-stat-emerald,
+[data-theme="dark"] .pay-stat-emerald { background: rgba(16,185,129,0.12); }
+[data-theme="dark"] .svc-stat-purple,
+[data-theme="dark"] .pay-stat-purple { background: rgba(139,92,246,0.12); }
+
+/* ── Archive Page Tabs ── */
+[data-theme="dark"] .arc-tab:hover { background: var(--gray-100); }
+[data-theme="dark"] .arc-tab-active { background: rgba(59,130,246,0.1); color: #60a5fa; border-color: rgba(59,130,246,0.3); }
+[data-theme="dark"] .arc-tab-active .arc-tab-badge { background: rgba(59,130,246,0.15); color: #60a5fa; }
+[data-theme="dark"] .arc-stat-value { color: #e2e8f0; }
+[data-theme="dark"] .arc-stat-label { color: var(--gray-500); }
+[data-theme="dark"] .restore-btn { color: var(--emerald); }
+[data-theme="dark"] .restore-btn:hover { background: rgba(16,185,129,0.12); }
+
+/* ── Categories Page ── */
+[data-theme="dark"] .cat-stat-value { color: #e2e8f0; }
+[data-theme="dark"] .cat-stat-label { color: var(--gray-500); }
+[data-theme="dark"] .cat-count { color: var(--gray-500); }
+[data-theme="dark"] .category-badge { background: rgba(59,130,246,0.1); color: #60a5fa; }
+
+/* ── Nav Children (dark) ── */
+[data-theme="dark"] .nav-expand-btn { color: var(--gray-500); }
+[data-theme="dark"] .nav-children { background: rgba(0,0,0,0.1); }
+
+/* ── Preferences Toggle (dark) ── */
+[data-theme="dark"] .toggle-slider { background: var(--gray-300); }
+[data-theme="dark"] .prefs-toast { background: var(--emerald); }
 
 /* =========================================================
    Mobile Responsive Enhancements

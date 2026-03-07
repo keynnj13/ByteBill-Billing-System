@@ -30,6 +30,12 @@ public class InventoryItem
     public int ReorderLevel { get; set; }
     public bool IsActive { get; set; } = true;
 
+    [MaxLength(50)]
+    public string? WriteOffReason { get; set; }
+
+    [MaxLength(500)]
+    public string? WriteOffNotes { get; set; }
+
     // Navigation properties
     public Shop? Shop { get; set; }
     public InventoryCategory? InventoryCategory { get; set; }

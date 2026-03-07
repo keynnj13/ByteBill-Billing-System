@@ -144,7 +144,7 @@
                                         <form asp-action="ArchiveJobOrder" asp-controller="JobOrders" asp-area="Admin" method="post" style="display: inline;" onclick="event.stopPropagation();">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="id" value="@order.Id" />
-                                            <button type="submit" class="btn-action" title="Archive" onclick="return confirm('Archive this job order?');">
+                                            <button type="submit" class="btn-action" title="Archive" onclick="return confirm('Archive this job order?');" style="color:#f59e0b;">
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
                                             </button>
                                         </form>
@@ -155,7 +155,10 @@
                     </tbody>
                 </table>
             </div>
-        }
+            @if (Model.TotalPages > 1)
+            {
+                <partial name="~/Views/Shared/_Pagination.cshtml" model="@(new PaginationViewModel { CurrentPage = Model.CurrentPage, TotalPages = Model.TotalPages, TotalItems = Model.TotalCount, PageSize = Model.PageSize, BaseUrl = Url.Action("Index") })" />
+            }        }
         else
         {
             <partial name="~/Views/Shared/_EmptyState.cshtml" model="@(new { Icon = "clipboard", Title = "No job orders found", Description = "Create your first job order to get started" })" />
@@ -192,9 +195,7 @@
     .tech-name { font-size: 13px; color: #374151; }
     .unassigned { font-size: 13px; color: #d1d5db; font-style: italic; }
     .date-text { font-size: 13px; color: #6b7280; }
-    .action-buttons { display: flex; gap: 4px; justify-content: flex-end; }
-    .btn-action { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: #6b7280; transition: all 0.15s; border: none; background: none; cursor: pointer; text-decoration: none; }
-    .btn-action:hover { background: #f3f4f6; color: #3b82f6; }
+
     .clickable-row { cursor: pointer; transition: background-color 0.15s ease; }
     .clickable-row:hover { background-color: #f0f7ff; }
     .order-link { font-weight: 600; color: #3b82f6; font-size: 13px; }

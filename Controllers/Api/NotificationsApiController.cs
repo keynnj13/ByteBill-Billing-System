@@ -27,6 +27,18 @@ public class NotificationsApiController : ControllerBase
         return Ok(new { notifications, unreadCount });
     }
 
+    [HttpGet("paged")]
+    public async Task<IActionResult> GetPaged(int page = 1, int pageSize = 20, string? filter = null, string? search = null)
+    {
+        var userId = User.GetUserId();
+        if (userId == 0) return Unauthorized();
+
+        var (items, total) = await _notificationService.GetPagedAsync(userId, page, pageSize, filter, search);
+        var unreadCount = await _notificationService.GetUnreadCountAsync(userId);
+
+        return Ok(new { items, total, unreadCount, page, pageSize, totalPages = (int)Math.Ceiling(total / (double)pageSize) });
+    }
+
     [HttpPost("read/{id}")]
     public async Task<IActionResult> MarkRead(long id)
     {

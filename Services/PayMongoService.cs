@@ -71,6 +71,7 @@ public class PayMongoService : IPayMongoService
     private readonly IHttpContextAccessor _httpCtx;
     private readonly INotificationService _notif;
     private readonly IBillingCalculationService _billing;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public PayMongoService(
         ApplicationDbContext db,
@@ -80,7 +81,8 @@ public class PayMongoService : IPayMongoService
         ILogger<PayMongoService> logger,
         IHttpContextAccessor httpCtx,
         INotificationService notif,
-        IBillingCalculationService billing)
+        IBillingCalculationService billing,
+        IServiceScopeFactory scopeFactory)
     {
         _db = db;
         _audit = audit;
@@ -90,6 +92,7 @@ public class PayMongoService : IPayMongoService
         _httpCtx = httpCtx;
         _notif = notif;
         _billing = billing;
+        _scopeFactory = scopeFactory;
 
         // Configure HTTP client for PayMongo Basic Auth (secret key as username, blank password)
         var authBytes = Encoding.UTF8.GetBytes($"{_settings.SecretKey}:");
@@ -590,6 +593,22 @@ public class PayMongoService : IPayMongoService
             _logger.LogWarning(ex, "Failed to send payment confirmation notification");
         }
 
+        // Fire-and-forget: send payment receipt email to customer
+        var paymentIdForEmail = payment.PaymentId;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                await scope.ServiceProvider.GetRequiredService<IEmailService>()
+                    .SendReceiptAsync(paymentIdForEmail);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[EMAIL ERROR] Receipt email failed for PaymentId {paymentIdForEmail}: {ex.Message}");
+            }
+        });
+
         _logger.LogInformation("PayMongo payment confirmed. PaymentId: {PaymentId}, Amount: {Amount}, Method: {Method}",
             payment.PaymentId, payment.Amount, paymentMethodType);
 
@@ -830,6 +849,22 @@ public class PayMongoService : IPayMongoService
         {
             _logger.LogWarning(ex, "Failed to send payment verification notification");
         }
+
+        // Fire-and-forget: send payment receipt email to customer
+        var paymentIdForReceipt = payment.PaymentId;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                await scope.ServiceProvider.GetRequiredService<IEmailService>()
+                    .SendReceiptAsync(paymentIdForReceipt);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[EMAIL ERROR] Receipt email failed for PaymentId {paymentIdForReceipt}: {ex.Message}");
+            }
+        });
 
         _logger.LogInformation("VerifyAndRecord: Payment recorded. PaymentId: {PaymentId}, Amount: {Amount}",
             payment.PaymentId, payment.Amount);

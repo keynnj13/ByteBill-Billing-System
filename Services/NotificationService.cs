@@ -7,6 +7,7 @@ namespace ByteBill_BS.Services;
 public interface INotificationService
 {
     Task<List<NotificationDto>> GetByUserAsync(long userId, int take = 20);
+    Task<(List<NotificationDto> Items, int Total)> GetPagedAsync(long userId, int page, int pageSize, string? filter = null, string? search = null);
     Task<int> GetUnreadCountAsync(long userId);
     Task CreateAsync(long userId, long shopId, string title, string message, string type, string? url = null);
     Task NotifySuperAdminsAsync(long shopId, string title, string message, string type, string? url = null);
@@ -59,6 +60,39 @@ public class NotificationService : INotificationService
                 CreatedAt = n.CreatedAt
             })
             .ToListAsync();
+    }
+
+    public async Task<(List<NotificationDto> Items, int Total)> GetPagedAsync(long userId, int page, int pageSize, string? filter = null, string? search = null)
+    {
+        var query = _db.Notifications.Where(n => n.UserId == userId);
+
+        if (filter == "unread") query = query.Where(n => !n.IsRead);
+        else if (filter == "read") query = query.Where(n => n.IsRead);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(n => n.Title.ToLower().Contains(term) || n.Message.ToLower().Contains(term));
+        }
+
+        var total = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(n => n.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(n => new NotificationDto
+            {
+                Id = n.NotificationId,
+                Title = n.Title,
+                Message = n.Message,
+                Type = n.Type,
+                Url = n.Url,
+                IsRead = n.IsRead,
+                CreatedAt = n.CreatedAt
+            })
+            .ToListAsync();
+
+        return (items, total);
     }
 
     public async Task<int> GetUnreadCountAsync(long userId)

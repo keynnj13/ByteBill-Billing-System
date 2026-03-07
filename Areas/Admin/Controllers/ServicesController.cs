@@ -236,10 +236,10 @@ public class ServicesController : Controller
         };
     }
 
-    // ─── ARCHIVE ────────────────────────────────────────────
+    // ─── DISCONTINUE ────────────────────────────────────────
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Archive(long id)
+    public async Task<IActionResult> Discontinue(long id)
     {
         if (!IsAuthorized()) return Forbid();
         var shopId = User.GetShopId();
@@ -249,13 +249,13 @@ public class ServicesController : Controller
         svc.IsActive = false;
         await _db.SaveChangesAsync();
 
-        await _audit.LogAsync(shopId, User.GetUserId(), "Archive", "Service", svc.ServiceId,
-            $"Archived service '{svc.ServiceName}'",
+        await _audit.LogAsync(shopId, User.GetUserId(), "Discontinue", "Service", svc.ServiceId,
+            $"Discontinued service '{svc.ServiceName}'",
             HttpContext.Connection.RemoteIpAddress?.ToString());
 
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-            return Json(new { success = true, message = "Service archived successfully!" });
-        TempData["Success"] = "Service archived.";
+            return Json(new { success = true, message = "Service discontinued successfully!" });
+        TempData["Success"] = "Service discontinued.";
         return RedirectToAction(nameof(Index));
     }
 }

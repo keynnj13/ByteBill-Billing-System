@@ -190,7 +190,12 @@ public class ProfileController : Controller
         var userId = User.GetUserId();
         var shopId = User.GetShopId();
         var user = await _db.Users.FindAsync(userId);
-        if (user is null) return RedirectToAction("Login", "Auth");
+        if (user is null)
+        {
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return Json(new { success = false, message = "Session expired." });
+            return RedirectToAction("Login", "Auth");
+        }
 
         var theme = model.ThemePreference == "dark" ? "dark" : "light";
         user.ThemePreference = theme;
@@ -213,6 +218,9 @@ public class ProfileController : Controller
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
         await _audit.LogAsync(shopId, userId, "Update", "User", userId,
             $"Updated preferences: theme={theme}, email={model.EmailNotifications}, inApp={model.InAppNotifications}", ip);
+
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            return Json(new { success = true });
 
         TempData["Success"] = "Preferences saved successfully.";
         return RedirectToAction(nameof(Preferences));

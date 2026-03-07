@@ -369,7 +369,7 @@ public class ArchiveController : Controller
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(shopId, User.GetUserId(), "Restore", "Service", svc.ServiceId,
-            $"Restored service '{svc.ServiceName}' from archive",
+            $"Restored discontinued service '{svc.ServiceName}'",
             HttpContext.Connection.RemoteIpAddress?.ToString());
 
         TempData["Success"] = $"Service {svc.ServiceName} restored.";

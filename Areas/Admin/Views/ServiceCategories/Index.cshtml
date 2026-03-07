@@ -1,0 +1,168 @@
+@using ByteBill_BS.ViewModels.Common
+@{
+    ViewData["Title"] = "Service Categories";
+    var categories = (IEnumerable<dynamic>)Model;
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Services", Url = Url.Action("Index", "Services", new { area = "Admin" }) }, new() { Label = "Categories", IsActive = true } } })" />
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-right:6px;"><path d="M4 7V4h16v3"></path><path d="M9 20h6"></path><path d="M12 4v16"></path></svg>
+            Service Categories
+        </h1>
+        <p class="page-subtitle">Manage categories for your service offerings</p>
+    </div>
+    <div class="page-actions">
+        <button type="button" class="btn btn-primary" onclick="openCatModal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Add Category
+        </button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        @if (categories.Any())
+        {
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width:30%;">Category Name</th>
+                            <th style="width:40%;">Description</th>
+                            <th class="text-center" style="width:15%;">Active Services</th>
+                            <th class="text-right" style="width:15%;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var cat in categories)
+                        {
+                            <tr>
+                                <td><span style="font-size:14px; font-weight:600; color:#1f2937;">@cat.CategoryName</span></td>
+                                <td><span style="font-size:13px; color:#6b7280;">@(cat.Description ?? "—")</span></td>
+                                <td class="text-center">
+                                    <span class="category-badge">@cat.ServiceCount</span>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button type="button" class="btn-action" title="Edit" onclick='openCatModal(@cat.ServiceCategoryId, "@cat.CategoryName", "@(cat.Description ?? "")")'>
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                        </button>
+                                        <button type="button" class="btn-action" title="Delete" style="color:#ef4444;" onclick="deleteCategory(@cat.ServiceCategoryId, '@cat.CategoryName')">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="empty-state" style="padding:60px 20px; text-align:center;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:16px;"><path d="M4 7V4h16v3"></path><path d="M9 20h6"></path><path d="M12 4v16"></path></svg>
+                <h3 style="color:#6b7280; font-size:16px; margin-bottom:4px;">No categories yet</h3>
+                <p style="color:#9ca3af; font-size:14px;">Create your first service category to get started.</p>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Category Modal -->
+<div id="catModal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:12px; width:420px; max-width:95vw; box-shadow:0 20px 60px rgba(0,0,0,0.15);">
+        <div style="padding:20px 24px 0; border-bottom:1px solid #e5e7eb; padding-bottom:16px;">
+            <h3 id="catModalTitle" style="font-size:16px; font-weight:600; color:#1f2937; margin:0;">Add Category</h3>
+        </div>
+        <form id="catForm" method="post" style="padding:20px 24px;">
+            @Html.AntiForgeryToken()
+            <input type="hidden" id="catId" name="id" />
+            <div style="margin-bottom:16px;">
+                <label style="display:block; font-size:13px; font-weight:500; color:#374151; margin-bottom:6px;">Category Name <span style="color:#ef4444;">*</span></label>
+                <input type="text" id="catName" name="categoryName" required class="form-input" placeholder="e.g., Electrical, Plumbing..." style="width:100%;" maxlength="100" />
+            </div>
+            <div style="margin-bottom:20px;">
+                <label style="display:block; font-size:13px; font-weight:500; color:#374151; margin-bottom:6px;">Description</label>
+                <textarea id="catDesc" name="description" class="form-input" rows="3" placeholder="Brief description of this category..." style="width:100%; resize:vertical;" maxlength="500"></textarea>
+            </div>
+            <div style="display:flex; gap:8px; justify-content:flex-end;">
+                <button type="button" class="btn btn-ghost" onclick="closeCatModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="catSubmitBtn">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+    .page-title { font-size: 22px; font-weight: 700; color: var(--foreground); margin: 0; }
+    .page-subtitle { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .action-buttons { display: flex; gap: 4px; justify-content: flex-end; }
+    .btn-action { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: #6b7280; transition: all 0.15s; border: none; background: none; cursor: pointer; }
+    .btn-action:hover { background: #f3f4f6; color: #3b82f6; }
+    .category-badge { font-size: 13px; font-weight: 600; padding: 3px 12px; border-radius: 100px; background: rgba(59,130,246,0.08); color: #3b82f6; }
+</style>
+
+<script>
+var isEditing = false;
+
+function openCatModal(id, name, desc) {
+    isEditing = !!id;
+    document.getElementById('catModalTitle').textContent = isEditing ? 'Edit Category' : 'Add Category';
+    document.getElementById('catId').value = id || '';
+    document.getElementById('catName').value = name || '';
+    document.getElementById('catDesc').value = desc || '';
+    document.getElementById('catSubmitBtn').textContent = isEditing ? 'Update' : 'Save';
+    document.getElementById('catModal').style.display = 'flex';
+}
+
+function closeCatModal() { document.getElementById('catModal').style.display = 'none'; }
+
+document.getElementById('catModal').addEventListener('click', function(e) { if (e.target === this) closeCatModal(); });
+
+document.getElementById('catForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var id = document.getElementById('catId').value;
+    var name = document.getElementById('catName').value;
+    var desc = document.getElementById('catDesc').value;
+    var token = this.querySelector('input[name="__RequestVerificationToken"]').value;
+    var url = isEditing
+        ? '@Url.Action("Edit", "ServiceCategories", new { area = "Admin" })'
+        : '@Url.Action("Create", "ServiceCategories", new { area = "Admin" })';
+    var params = new URLSearchParams();
+    if (isEditing) params.set('id', id);
+    params.set('categoryName', name);
+    params.set('description', desc);
+
+    fetch(url + '?' + params.toString(), {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'RequestVerificationToken': token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        closeCatModal();
+        if (data.success) location.reload();
+        else alert(data.message || 'Operation failed.');
+    })
+    .catch(() => { closeCatModal(); alert('An error occurred.'); });
+});
+
+function deleteCategory(id, name) {
+    if (!confirm('Delete category "' + name + '"?\nThis cannot be undone.')) return;
+    var token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+    fetch('@Url.Action("Delete", "ServiceCategories", new { area = "Admin" })?id=' + id, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'RequestVerificationToken': token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) location.reload();
+        else alert(data.message || 'Delete failed.');
+    })
+    .catch(() => alert('An error occurred.'));
+}
+</script>

@@ -238,6 +238,24 @@ public class XeroService : IXeroService
                 log.Status = "Success";
                 log.Message = "Invoice synced successfully";
             }
+            else if (result.Error?.Contains("must be unique", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                // Invoice with same number already exists in Xero — look it up and treat as success
+                var existingId = await LookupXeroInvoiceByNumberAsync(connection, invoice.InvoiceNo);
+                if (existingId is not null)
+                {
+                    log.XeroRecordId = existingId;
+                    log.Status = "Success";
+                    log.Message = "Invoice synced (existing in Xero)";
+                    _logger.LogInformation("Xero invoice '{InvoiceNo}' already exists (InvoiceID: {Id}), reusing",
+                        invoice.InvoiceNo, existingId);
+                }
+                else
+                {
+                    log.Status = "Failed";
+                    log.Message = TruncateMessage(result.Error);
+                }
+            }
             else
             {
                 log.Status = "Failed";
@@ -509,6 +527,24 @@ public class XeroService : IXeroService
                 log.XeroRecordId = result.XeroId;
                 log.Status = "Success";
                 log.Message = $"cust:{customerId} synced";
+            }
+            else if (result.Error?.Contains("already assigned", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                // Contact with same name exists — look it up by name and treat as success
+                var contactName = $"{customer.FirstName} {customer.LastName}";
+                var existingId = await LookupXeroContactByNameAsync(connection, contactName);
+                if (existingId is not null)
+                {
+                    log.XeroRecordId = existingId;
+                    log.Status = "Success";
+                    log.Message = $"cust:{customerId} synced (existing contact)";
+                    _logger.LogInformation("Xero contact '{Name}' already exists (ContactID: {Id}), reusing", contactName, existingId);
+                }
+                else
+                {
+                    log.Status = "Failed";
+                    log.Message = TruncateMessage(result.Error);
+                }
             }
             else
             {
@@ -937,6 +973,66 @@ public class XeroService : IXeroService
 
     // Simple in-memory cache for account lookups during a sync batch
     private readonly Dictionary<string, (string? AccountId, string Code)> _accountCache = new();
+
+    /// <summary>Look up an existing Xero contact by exact name. Returns ContactID or null.</summary>
+    private async Task<string?> LookupXeroContactByNameAsync(XeroConnection connection, string contactName)
+    {
+        try
+        {
+            var encoded = Uri.EscapeDataString($"Name==\"{contactName}\"");
+            using var req = new HttpRequestMessage(HttpMethod.Get,
+                $"{XeroApiUrl}/Contacts?where={encoded}");
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", connection.AccessToken);
+            req.Headers.Add("Xero-Tenant-Id", connection.XeroTenantId);
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            var response = await _http.SendAsync(req);
+            if (!response.IsSuccessStatusCode) return null;
+
+            var body = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("Contacts", out var contacts) && contacts.GetArrayLength() > 0)
+            {
+                if (contacts[0].TryGetProperty("ContactID", out var id))
+                    return id.GetString();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to look up Xero contact by name '{Name}'", contactName);
+        }
+        return null;
+    }
+
+    /// <summary>Look up an existing Xero invoice by InvoiceNumber. Returns InvoiceID or null.</summary>
+    private async Task<string?> LookupXeroInvoiceByNumberAsync(XeroConnection connection, string invoiceNo)
+    {
+        try
+        {
+            var encoded = Uri.EscapeDataString($"InvoiceNumber==\"{invoiceNo}\"");
+            using var req = new HttpRequestMessage(HttpMethod.Get,
+                $"{XeroApiUrl}/Invoices?where={encoded}");
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", connection.AccessToken);
+            req.Headers.Add("Xero-Tenant-Id", connection.XeroTenantId);
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            var response = await _http.SendAsync(req);
+            if (!response.IsSuccessStatusCode) return null;
+
+            var body = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("Invoices", out var invoices) && invoices.GetArrayLength() > 0)
+            {
+                if (invoices[0].TryGetProperty("InvoiceID", out var id))
+                    return id.GetString();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to look up Xero invoice by number '{InvoiceNo}'", invoiceNo);
+        }
+        return null;
+    }
 
     /// <summary>
     /// Parse Xero API error response to extract human-readable validation error messages.
