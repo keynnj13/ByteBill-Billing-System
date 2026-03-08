@@ -57,6 +57,12 @@ public interface ISuperAdminService
     // ── Reports ──────────────────────────────────────────────────
     Task<ReportsIndexViewModel> GenerateReportAsync(string report, DateTime from, DateTime to);
     Task<byte[]> ExportReportCsvAsync(string report, DateTime from, DateTime to);
+    Task<SARevenueReportViewModel> GenerateRevenueReportAsync(DateTime from, DateTime to, string label);
+    Task<SAShopsReportViewModel> GenerateShopsReportAsync(DateTime from, DateTime to, string label);
+    Task<SAUsersReportViewModel> GenerateUsersReportAsync(DateTime from, DateTime to, string label);
+    Task<SASubscriptionReportViewModel> GenerateSubscriptionReportAsync(DateTime from, DateTime to, string label);
+    Task<SAPaymentReportViewModel> GeneratePaymentReportAsync(DateTime from, DateTime to, string label);
+    Task<SAGrowthReportViewModel> GenerateGrowthReportAsync(DateTime from, DateTime to, string label);
 
     // ── Audit Log ────────────────────────────────────────────────
     Task LogActionAsync(long userId, string action, string? entityType, long? entityId, string? details, string? ipAddress);
@@ -1339,10 +1345,10 @@ public class SuperAdminService : ISuperAdminService
 
         vm.SummaryCards = new()
         {
-            new() { Label = "Total Revenue", Value = total.ToString("C"), Color = "#10b981", Icon = "peso-sign" },
+            new() { Label = "Total Revenue", Value = "\u20b1" + total.ToString("N2"), Color = "#10b981", Icon = "peso-sign" },
             new() { Label = "Transactions", Value = payments.Count.ToString(), Color = "#6366f1", Icon = "activity" },
             new() { Label = "Paying Shops", Value = shopCount.ToString(), Color = "#3b82f6", Icon = "store" },
-            new() { Label = "Avg / Shop", Value = (shopCount > 0 ? total / shopCount : 0).ToString("C"), Color = "#f59e0b", Icon = "trending-up" }
+            new() { Label = "Avg / Shop", Value = "\u20b1" + (shopCount > 0 ? total / shopCount : 0).ToString("N2"), Color = "#f59e0b", Icon = "trending-up" }
         };
 
         // Monthly chart
@@ -1355,7 +1361,7 @@ public class SuperAdminService : ISuperAdminService
 
         vm.TableRows = payments.Select(p => new ReportTableRow
         {
-            Cells = new[] { p.ReferenceNumber, p.Subscription?.Shop?.ShopName ?? "—", p.Subscription?.Plan?.PlanName ?? "—", p.Amount.ToString("C"), p.PaidAt?.ToString("MMM dd, yyyy") ?? "—" }
+            Cells = new[] { p.ReferenceNumber, p.Subscription?.Shop?.ShopName ?? "—", p.Subscription?.Plan?.PlanName ?? "—", "\u20b1" + p.Amount.ToString("N2"), p.PaidAt?.ToString("MMM dd, yyyy") ?? "—" }
         }).ToList();
     }
 
@@ -1434,8 +1440,8 @@ public class SuperAdminService : ISuperAdminService
         {
             new() { Label = "New Subscriptions", Value = subs.Count.ToString(), Color = "#6366f1", Icon = "credit-card" },
             new() { Label = "Active", Value = activeSubs.ToString(), Color = "#10b981", Icon = "check-circle" },
-            new() { Label = "MRR", Value = totalMRR.ToString("C"), Color = "#3b82f6", Icon = "trending-up" },
-            new() { Label = "Avg Price", Value = (subs.Count > 0 ? subs.Average(s => s.Price) : 0).ToString("C"), Color = "#f59e0b", Icon = "peso-sign" }
+            new() { Label = "MRR", Value = "\u20b1" + totalMRR.ToString("N2"), Color = "#3b82f6", Icon = "trending-up" },
+            new() { Label = "Avg Price", Value = "\u20b1" + (subs.Count > 0 ? subs.Average(s => s.Price) : 0).ToString("N2"), Color = "#f59e0b", Icon = "peso-sign" }
         };
 
         vm.ChartData = subs
@@ -1445,7 +1451,7 @@ public class SuperAdminService : ISuperAdminService
 
         vm.TableRows = subs.Select(s => new ReportTableRow
         {
-            Cells = new[] { s.Shop?.ShopName ?? "—", s.Plan?.PlanName ?? "—", s.BillingCycle, s.Price.ToString("C"), s.Status, s.StartDate.ToString("MMM dd, yyyy") }
+            Cells = new[] { s.Shop?.ShopName ?? "—", s.Plan?.PlanName ?? "—", s.BillingCycle, "\u20b1" + s.Price.ToString("N2"), s.Status, s.StartDate.ToString("MMM dd, yyyy") }
         }).ToList();
     }
 
@@ -1463,8 +1469,8 @@ public class SuperAdminService : ISuperAdminService
 
         vm.SummaryCards = new()
         {
-            new() { Label = "Total Collected", Value = paid.ToString("C"), Color = "#10b981", Icon = "check-circle" },
-            new() { Label = "Pending", Value = pending.ToString("C"), Color = "#f59e0b", Icon = "clock" },
+            new() { Label = "Total Collected", Value = "\u20b1" + paid.ToString("N2"), Color = "#10b981", Icon = "check-circle" },
+            new() { Label = "Pending", Value = "\u20b1" + pending.ToString("N2"), Color = "#f59e0b", Icon = "clock" },
             new() { Label = "Failed", Value = failed.ToString(), Color = "#ef4444", Icon = "x-circle" },
             new() { Label = "Transactions", Value = payments.Count.ToString(), Color = "#6366f1", Icon = "activity" }
         };
@@ -1477,7 +1483,7 @@ public class SuperAdminService : ISuperAdminService
 
         vm.TableRows = payments.Select(p => new ReportTableRow
         {
-            Cells = new[] { p.ReferenceNumber, p.Subscription?.Shop?.ShopName ?? "—", p.Amount.ToString("C"), p.Status, p.PaymentMethod ?? "—", (p.PaidAt ?? p.CreatedAt).ToString("MMM dd, yyyy") }
+            Cells = new[] { p.ReferenceNumber, p.Subscription?.Shop?.ShopName ?? "—", "\u20b1" + p.Amount.ToString("N2"), p.Status, p.PaymentMethod ?? "—", (p.PaidAt ?? p.CreatedAt).ToString("MMM dd, yyyy") }
         }).ToList();
     }
 
@@ -1510,7 +1516,7 @@ public class SuperAdminService : ISuperAdminService
             new() { Label = "Total Shops", Value = currentShops.ToString(), Color = "#6366f1", Icon = "store" },
             new() { Label = "Total Users", Value = currentUsers.ToString(), Color = "#3b82f6", Icon = "users" },
             new() { Label = "Active Subs", Value = currentSubs.ToString(), Color = "#10b981", Icon = "trending-up" },
-            new() { Label = "Lifetime Revenue", Value = totalRevenue.ToString("C"), Color = "#f59e0b", Icon = "peso-sign" }
+            new() { Label = "Lifetime Revenue", Value = "\u20b1" + totalRevenue.ToString("N2"), Color = "#f59e0b", Icon = "peso-sign" }
         };
 
         vm.ChartData = shopCounts;
@@ -1553,6 +1559,205 @@ public class SuperAdminService : ISuperAdminService
         }
 
         return System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  NEW DEDICATED REPORT BUILDERS
+    // ═══════════════════════════════════════════════════════════════
+
+    public async Task<SARevenueReportViewModel> GenerateRevenueReportAsync(DateTime from, DateTime to, string label)
+    {
+        var payments = await _db.SubscriptionPayments
+            .Include(p => p.Subscription!).ThenInclude(s => s.Shop)
+            .Include(p => p.Subscription!).ThenInclude(s => s.Plan)
+            .Where(p => p.Status == "Paid" && p.PaidAt >= from && p.PaidAt <= to)
+            .OrderByDescending(p => p.PaidAt)
+            .ToListAsync();
+
+        var total = payments.Sum(p => p.Amount);
+        var shopCount = payments.Where(p => p.Subscription != null).Select(p => p.Subscription!.ShopId).Distinct().Count();
+        var avg = shopCount > 0 ? total / shopCount : 0;
+
+        // Build interpretation
+        var topShop = payments.Where(p => p.Subscription?.Shop != null)
+            .GroupBy(p => p.Subscription!.Shop!.ShopName)
+            .OrderByDescending(g => g.Sum(x => x.Amount))
+            .FirstOrDefault();
+        var interpretation = $"Total revenue of ₱{total:N2} was collected from {shopCount} paying shop(s) across {payments.Count} transaction(s).";
+        if (topShop != null) interpretation += $" Top contributor: {topShop.Key} with ₱{topShop.Sum(x => x.Amount):N2}.";
+        if (shopCount > 0) interpretation += $" Average revenue per shop is ₱{avg:N2}.";
+
+        return new SARevenueReportViewModel
+        {
+            DateFrom = from, DateTo = to, DateRange = label,
+            TotalRevenue = total,
+            TransactionCount = payments.Count,
+            PayingShops = shopCount,
+            AvgPerShop = avg,
+            Interpretation = interpretation,
+            MonthlyBreakdown = payments.Where(p => p.PaidAt.HasValue)
+                .GroupBy(p => new { p.PaidAt!.Value.Year, p.PaidAt!.Value.Month })
+                .Select(g => new SAMonthlyRevenueRow { Month = new DateTime(g.Key.Year, g.Key.Month, 1).ToString("MMM yyyy"), Amount = g.Sum(x => x.Amount), Count = g.Count() })
+                .OrderBy(m => m.Month).ToList(),
+            Payments = payments.Select(p => new SARevenuePaymentRow
+            {
+                Reference = p.ReferenceNumber,
+                Shop = p.Subscription?.Shop?.ShopName ?? "—",
+                Plan = p.Subscription?.Plan?.PlanName ?? "—",
+                Amount = p.Amount,
+                PaidDate = p.PaidAt?.ToString("MMM dd, yyyy") ?? "—"
+            }).ToList()
+        };
+    }
+
+    public async Task<SAShopsReportViewModel> GenerateShopsReportAsync(DateTime from, DateTime to, string label)
+    {
+        var shops = await _db.Shops.Include(s => s.Users)
+            .Where(s => s.CreatedAt >= from && s.CreatedAt <= to)
+            .OrderByDescending(s => s.CreatedAt).ToListAsync();
+        var allShops = await _db.Shops.CountAsync();
+        var activeShops = await _db.Shops.CountAsync(s => s.Status == "Active");
+
+        var interpretation = $"{shops.Count} new shop(s) registered during this period. Platform total: {allShops} shops ({activeShops} active, {allShops - activeShops} inactive).";
+        if (shops.Count > 0)
+        {
+            var avgUsers = shops.Average(s => s.Users.Count);
+            interpretation += $" Average of {avgUsers:F1} users per new shop.";
+        }
+
+        return new SAShopsReportViewModel
+        {
+            DateFrom = from, DateTo = to, DateRange = label,
+            NewShops = shops.Count, TotalShops = allShops, ActiveShops = activeShops, InactiveShops = allShops - activeShops,
+            Interpretation = interpretation,
+            MonthlyBreakdown = shops.GroupBy(s => s.CreatedAt.ToString("MMM yyyy"))
+                .Select(g => new SAShopMonthlyRow { Month = g.Key, Count = g.Count() }).ToList(),
+            Shops = shops.Select(s => new SAShopRow { Name = s.ShopName, Status = s.Status, Users = s.Users.Count, Created = s.CreatedAt.ToString("MMM dd, yyyy") }).ToList()
+        };
+    }
+
+    public async Task<SAUsersReportViewModel> GenerateUsersReportAsync(DateTime from, DateTime to, string label)
+    {
+        var users = await _db.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.Role).Include(u => u.Shop)
+            .Where(u => u.CreatedAt >= from && u.CreatedAt <= to)
+            .OrderByDescending(u => u.CreatedAt).ToListAsync();
+        var totalUsers = await _db.Users.CountAsync();
+        var activeUsers = await _db.Users.CountAsync(u => u.IsActive);
+        var roleBreakdown = await _db.UserRoles.Include(ur => ur.Role)
+            .GroupBy(ur => ur.Role!.RoleName).Select(g => new { Role = g.Key, Count = g.Count() }).ToListAsync();
+
+        var totalForPct = roleBreakdown.Sum(r => r.Count);
+        totalForPct = totalForPct > 0 ? totalForPct : 1;
+
+        var topRole = roleBreakdown.OrderByDescending(r => r.Count).FirstOrDefault();
+        var interpretation = $"{users.Count} new user(s) joined during this period. {activeUsers} of {totalUsers} total users are active.";
+        if (topRole != null) interpretation += $" Most common role: {topRole.Role} ({topRole.Count}).";
+
+        return new SAUsersReportViewModel
+        {
+            DateFrom = from, DateTo = to, DateRange = label,
+            NewUsers = users.Count, TotalUsers = totalUsers, ActiveUsers = activeUsers, RoleCount = roleBreakdown.Count,
+            Interpretation = interpretation,
+            RoleBreakdown = roleBreakdown.Select(r => new SARoleBreakdownRow { Role = r.Role ?? "Unknown", Count = r.Count, Percentage = Math.Round((decimal)r.Count / totalForPct * 100, 1) }).OrderByDescending(r => r.Count).ToList(),
+            Users = users.Select(u => new SAUserRow { Name = u.FullName, Role = u.UserRoles.FirstOrDefault()?.Role?.RoleName ?? "—", Shop = u.Shop?.ShopName ?? "—", Status = u.IsActive ? "Active" : "Inactive", Created = u.CreatedAt.ToString("MMM dd, yyyy") }).ToList()
+        };
+    }
+
+    public async Task<SASubscriptionReportViewModel> GenerateSubscriptionReportAsync(DateTime from, DateTime to, string label)
+    {
+        var subs = await _db.Subscriptions.Include(s => s.Shop).Include(s => s.Plan)
+            .Where(s => s.StartDate >= from && s.StartDate <= to)
+            .OrderByDescending(s => s.StartDate).ToListAsync();
+        var activeSubs = await _db.Subscriptions.CountAsync(s => s.Status == "Active");
+        var totalMRR = await _db.Subscriptions.Where(s => s.Status == "Active").SumAsync(s => s.Price);
+        var avgPrice = subs.Count > 0 ? subs.Average(s => s.Price) : 0;
+
+        var planBreakdown = subs.GroupBy(s => s.Plan?.PlanName ?? "Unknown").Select(g => new { Plan = g.Key, Count = g.Count() }).ToList();
+        var totalSubs = planBreakdown.Sum(p => p.Count);
+        totalSubs = totalSubs > 0 ? totalSubs : 1;
+
+        var topPlan = planBreakdown.OrderByDescending(p => p.Count).FirstOrDefault();
+        var interpretation = $"{subs.Count} new subscription(s) created. {activeSubs} are currently active with MRR of ₱{totalMRR:N2}.";
+        if (topPlan != null) interpretation += $" Most popular plan: {topPlan.Plan} ({topPlan.Count} subscriptions).";
+
+        return new SASubscriptionReportViewModel
+        {
+            DateFrom = from, DateTo = to, DateRange = label,
+            NewSubscriptions = subs.Count, ActiveSubscriptions = activeSubs, MRR = totalMRR, AvgPrice = avgPrice,
+            Interpretation = interpretation,
+            PlanBreakdown = planBreakdown.Select(p => new SAPlanBreakdownRow { Plan = p.Plan, Count = p.Count, Percentage = Math.Round((decimal)p.Count / totalSubs * 100, 1) }).OrderByDescending(p => p.Count).ToList(),
+            Subscriptions = subs.Select(s => new SASubscriptionRow { Shop = s.Shop?.ShopName ?? "—", Plan = s.Plan?.PlanName ?? "—", Cycle = s.BillingCycle, Price = s.Price, Status = s.Status, StartDate = s.StartDate.ToString("MMM dd, yyyy") }).ToList()
+        };
+    }
+
+    public async Task<SAPaymentReportViewModel> GeneratePaymentReportAsync(DateTime from, DateTime to, string label)
+    {
+        var payments = await _db.SubscriptionPayments
+            .Include(p => p.Subscription!).ThenInclude(s => s.Shop)
+            .Where(p => p.CreatedAt >= from && p.CreatedAt <= to)
+            .OrderByDescending(p => p.CreatedAt).ToListAsync();
+
+        var paid = payments.Where(p => p.Status == "Paid").Sum(p => p.Amount);
+        var pending = payments.Where(p => p.Status == "Pending").Sum(p => p.Amount);
+        var failed = payments.Count(p => p.Status == "Failed");
+        var paidPayments = payments.Where(p => p.Status == "Paid").ToList();
+
+        var methodGroups = paidPayments.GroupBy(p => p.PaymentMethod ?? "Unknown").ToList();
+        var methodTotal = paidPayments.Sum(p => p.Amount);
+        methodTotal = methodTotal > 0 ? methodTotal : 1;
+
+        var topMethod = methodGroups.OrderByDescending(g => g.Sum(x => x.Amount)).FirstOrDefault();
+        var interpretation = $"₱{paid:N2} collected from {paidPayments.Count} successful payment(s). ₱{pending:N2} pending, {failed} failed.";
+        if (topMethod != null) interpretation += $" Top payment method: {topMethod.Key} (₱{topMethod.Sum(x => x.Amount):N2}).";
+
+        return new SAPaymentReportViewModel
+        {
+            DateFrom = from, DateTo = to, DateRange = label,
+            TotalCollected = paid, TotalPending = pending, FailedCount = failed, TransactionCount = payments.Count,
+            Interpretation = interpretation,
+            MethodBreakdown = methodGroups.Select(g => new SAPaymentMethodRow { Method = g.Key ?? "Unknown", Amount = g.Sum(x => x.Amount), Count = g.Count(), Percentage = Math.Round(g.Sum(x => x.Amount) / methodTotal * 100, 1) }).OrderByDescending(m => m.Amount).ToList(),
+            MonthlyBreakdown = paidPayments.GroupBy(p => (p.PaidAt ?? p.CreatedAt).ToString("MMM yyyy"))
+                .Select(g => new SAPaymentMonthlyRow { Month = g.Key, Amount = g.Sum(x => x.Amount), Count = g.Count() }).ToList(),
+            Payments = payments.Select(p => new SAPaymentRow { Reference = p.ReferenceNumber, Shop = p.Subscription?.Shop?.ShopName ?? "—", Amount = p.Amount, Status = p.Status, Method = p.PaymentMethod ?? "—", Date = (p.PaidAt ?? p.CreatedAt).ToString("MMM dd, yyyy") }).ToList()
+        };
+    }
+
+    public async Task<SAGrowthReportViewModel> GenerateGrowthReportAsync(DateTime from, DateTime to, string label)
+    {
+        var months = new List<DateTime>();
+        var cursor = new DateTime(from.Year, from.Month, 1);
+        var endMonth = new DateTime(to.Year, to.Month, 1);
+        while (cursor <= endMonth) { months.Add(cursor); cursor = cursor.AddMonths(1); }
+
+        var growthData = new List<SAGrowthMonthRow>();
+        int? prevCount = null;
+        foreach (var m in months)
+        {
+            var nextMonth = m.AddMonths(1);
+            var count = await _db.Shops.CountAsync(s => s.CreatedAt < nextMonth);
+            var change = prevCount.HasValue && prevCount > 0
+                ? $"{((decimal)(count - prevCount.Value) / prevCount.Value * 100):F1}%"
+                : "—";
+            growthData.Add(new SAGrowthMonthRow { Month = m.ToString("MMM yyyy"), CumulativeShops = count, Change = change });
+            prevCount = count;
+        }
+
+        var currentShops = await _db.Shops.CountAsync();
+        var currentUsers = await _db.Users.CountAsync();
+        var currentSubs = await _db.Subscriptions.CountAsync(s => s.Status == "Active");
+        var totalRevenue = await _db.SubscriptionPayments.Where(p => p.Status == "Paid").SumAsync(p => p.Amount);
+
+        var growth = growthData.Count >= 2 ? growthData.Last().CumulativeShops - growthData.First().CumulativeShops : 0;
+        var interpretation = $"Platform has grown to {currentShops} shops with {currentUsers} users. {currentSubs} active subscription(s) generating ₱{totalRevenue:N2} lifetime revenue.";
+        if (growth > 0) interpretation += $" Net growth of {growth} shop(s) during this period.";
+
+        return new SAGrowthReportViewModel
+        {
+            DateFrom = from, DateTo = to, DateRange = label,
+            TotalShops = currentShops, TotalUsers = currentUsers, ActiveSubscriptions = currentSubs, LifetimeRevenue = totalRevenue,
+            Interpretation = interpretation,
+            MonthlyGrowth = growthData
+        };
     }
 
     // ═══════════════════════════════════════════════════════════════

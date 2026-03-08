@@ -90,12 +90,12 @@
             <div class="table-container">
                 <table class="table" style="table-layout: fixed;">
                     <colgroup>
-                        <col style="width: 20%;" />
-                        <col style="width: 20%;" />
-                        <col style="width: 17%;" />
-                        <col style="width: 12%;" />
-                        <col style="width: 10%;" />
-                        <col style="width: 21%;" />
+                        <col style="width: 19%;" />
+                        <col style="width: 19%;" />
+                        <col style="width: 16%;" />
+                        <col style="width: 11%;" />
+                        <col style="width: 9%;" />
+                        <col style="width: 26%;" />
                     </colgroup>
                     <thead>
                         <tr>
@@ -135,7 +135,7 @@
                                         <span class="status-indicator status-muted">Inactive</span>
                                     }
                                 </td>
-                                <td class="text-muted" style="font-size: 13px;">
+                                <td class="text-muted" style="font-size: 13px; padding-left: 12px;">
                                     @if (user.LastLoginAt.HasValue)
                                     {
                                         @user.LastLoginAt.Value.ToString("MMM dd, h:mm tt")
@@ -217,7 +217,7 @@
     .sau-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; }
     .sau-search-input { padding-left: 40px !important; width: 100%; }
     .sau-user-cell { display: flex; align-items: center; gap: 10px; }
-    .sau-avatar { width: 34px; height: 34px; border-radius: 50%; background: rgba(30,58,138,0.08); color: #1e3a8a; font-weight: 600; font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .sau-avatar { width: 36px; height: 36px; border-radius: 8px; background: rgba(59,130,246,0.1); color: #3b82f6; font-weight: 600; font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .sau-user-name { font-weight: 500; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .sau-email { font-size: 13px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
     .sau-shop-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #374151; background: #f3f4f6; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }

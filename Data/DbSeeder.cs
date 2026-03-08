@@ -64,7 +64,7 @@ public static class DbSeeder
             ShopName = "ByteBill Main Shop",
             Email = "admin@bytebill.com",
             Phone = "+63 XXX XXX XXXX", // Philippine format: +63 XXX XXX XXXX (mobile) or +63 XX XXX XXXX (landline)
-            Address = "Metro Manila, Philippines",
+            Address = "J.P. Laurel Ave., Davao City, Philippines",
             Status = "Active",
             CreatedAt = DateTime.UtcNow
         });

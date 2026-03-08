@@ -30,7 +30,7 @@
             </div>
             <div class="detail-item">
                 <span class="detail-label">Price</span>
-                <span class="detail-value fw-600">@Model.Price.ToString("C")</span>
+                <span class="detail-value fw-600">₱@Model.Price.ToString("N2")</span>
             </div>
             <div class="detail-item">
                 <span class="detail-label">Start Date</span>
@@ -86,7 +86,7 @@
                             <span class="detail-date">@(pmt.PaidAt?.ToString("MMM dd, yyyy") ?? "Pending")</span>
                         </div>
                         <div class="detail-payment-right">
-                            <span class="fw-600">@pmt.Amount.ToString("C")</span>
+                            <span class="fw-600">₱@pmt.Amount.ToString("N2")</span>
                             <span class="status-indicator @(pmt.Status == "Paid" ? "status-success" : pmt.Status == "Pending" ? "status-warning" : "status-danger")" style="font-size: 11px;">@pmt.Status</span>
                         </div>
                     </div>
@@ -94,7 +94,7 @@
             </div>
             <div style="text-align: center; padding: 8px 0;">
                 <span class="detail-total-label">Total Paid:</span>
-                <span class="detail-total-value">@Model.TotalPaid.ToString("C")</span>
+                <span class="detail-total-value">₱@Model.TotalPaid.ToString("N2")</span>
             </div>
         </div>
     }
@@ -108,7 +108,7 @@
     .modal-detail-body { padding: 24px; }
     .detail-header { margin-bottom: 20px; }
     .shp-cell { display: flex; align-items: center; gap: 14px; }
-    .shp-avatar-lg { width: 48px; height: 48px; border-radius: 10px; background: rgba(59,130,246,0.1); color: #3b82f6; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+    .shp-avatar-lg { width: 56px; height: 56px; border-radius: 12px; background: rgba(59,130,246,0.1); color: #3b82f6; font-weight: 700; font-size: 20px; display: flex; align-items: center; justify-content: center; }
     .detail-name { font-size: 18px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
     .shp-default-badge { font-size: 9px; background: rgba(139,92,246,0.12); color: #7c3aed; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase; margin-left: 6px; }
     .detail-section { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #f1f5f9; }

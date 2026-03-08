@@ -1,0 +1,144 @@
+@model SASubscriptionReportViewModel
+@{
+    ViewData["Title"] = "Subscription Overview Report";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Reports", Url = Url.Action("Index", "Reports") }, new() { Label = "Subscription Overview", IsActive = true } } })" />
+
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
+    <div>
+        <h1 class="page-title">Subscription Overview Report</h1>
+        <p class="page-subtitle">@Model.DateRange</p>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center;">
+        <a href="@Url.Action("Index", "Reports")" class="btn btn-ghost" style="display:inline-flex; align-items:center; gap:6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            Back
+        </a>
+        <a href="@Url.Action("ExportSubscriptionsPdf", new { range = Context.Request.Query["range"], from = Context.Request.Query["from"], to = Context.Request.Query["to"] })" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export PDF
+        </a>
+    </div>
+</div>
+
+<partial name="_DateRangeFilter" />
+
+<!-- Summary Stats -->
+<div class="rpt-stats">
+    <div class="rpt-stat"><span class="rpt-stat-label">New Subscriptions</span><span class="rpt-stat-value" style="color:#8b5cf6;">@Model.NewSubscriptions</span></div>
+    <div class="rpt-stat"><span class="rpt-stat-label">Active</span><span class="rpt-stat-value" style="color:#10b981;">@Model.ActiveSubscriptions</span></div>
+    <div class="rpt-stat"><span class="rpt-stat-label">MRR</span><span class="rpt-stat-value">₱@Model.MRR.ToString("N2")</span></div>
+    <div class="rpt-stat"><span class="rpt-stat-label">Avg Price</span><span class="rpt-stat-value">₱@Model.AvgPrice.ToString("N2")</span></div>
+</div>
+
+<!-- Interpretation -->
+@if (!string.IsNullOrEmpty(Model.Interpretation))
+{
+    <div class="insight-box">
+        <div class="insight-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        </div>
+        <div class="insight-text">@Model.Interpretation</div>
+    </div>
+}
+
+<!-- Plan Breakdown Chart + Table -->
+@if (Model.PlanBreakdown.Any())
+{
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:24px;">
+        <div class="card">
+            <div class="card-header"><h3 style="font-size:15px; font-weight:600; margin:0;">Plan Distribution</h3></div>
+            <div class="card-body" style="display:flex;align-items:center;justify-content:center;"><canvas id="planDoughnut" height="280"></canvas></div>
+        </div>
+        <div class="card">
+            <div class="card-header"><h3 style="font-size:15px; font-weight:600; margin:0;">Plan Breakdown</h3></div>
+            <div class="card-body p-0">
+                <div class="table-container">
+                    <table class="table">
+                        <thead><tr><th>Plan</th><th class="text-center">Count</th><th class="text-right">%</th></tr></thead>
+                        <tbody>
+                            @foreach (var p in Model.PlanBreakdown)
+                            {
+                                <tr><td style="font-weight:500;">@p.Plan</td><td class="text-center">@p.Count</td><td class="text-right">@p.Percentage%</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Subscriptions Table -->
+<div class="card">
+    <div class="card-header">
+        <h3 style="font-size:15px; font-weight:600; margin:0;">Subscriptions</h3>
+        <span class="text-muted" style="font-size:13px;">@Model.Subscriptions.Count row(s)</span>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Subscriptions.Any())
+        {
+            <div class="table-container">
+                <table class="table">
+                    <thead><tr><th>Shop</th><th>Plan</th><th>Cycle</th><th class="text-right">Price</th><th>Status</th><th>Start Date</th></tr></thead>
+                    <tbody>
+                        @foreach (var s in Model.Subscriptions)
+                        {
+                            <tr>
+                                <td style="font-weight:500;">@s.Shop</td>
+                                <td>@s.Plan</td>
+                                <td>@s.Cycle</td>
+                                <td class="text-right">₱@s.Price.ToString("N2")</td>
+                                <td><span class="status-badge @(s.Status == "Active" ? "status-success" : s.Status == "Trial" ? "status-info" : "status-muted")">@s.Status</span></td>
+                                <td>@s.StartDate</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div style="padding:60px 0; text-align:center;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                <p style="margin-top:12px; color:#9ca3af; font-size:14px;">No subscriptions found for this period</p>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .page-title { font-size: 24px; font-weight: 700; color: var(--text-primary, #1f2937); margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: var(--text-secondary, #6b7280); }
+    .rpt-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .rpt-stat { text-align: center; padding: 16px; background: var(--bg-primary, white); border-radius: 10px; border: 1px solid var(--border-primary, #e5e7eb); }
+    .rpt-stat-label { display: block; font-size: 12px; color: var(--text-muted, #9ca3af); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .rpt-stat-value { display: block; font-size: 22px; font-weight: 700; color: var(--text-primary, #1f2937); }
+    .insight-box { display: flex; gap: 12px; padding: 16px 20px; margin-bottom: 24px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; }
+    .insight-icon { color: #3b82f6; flex-shrink: 0; margin-top: 2px; }
+    .insight-text { font-size: 14px; color: #1e40af; line-height: 1.6; }
+    .status-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+    .status-success { background: #d1fae5; color: #065f46; }
+    .status-info { background: #dbeafe; color: #1e40af; }
+    .status-muted { background: #f3f4f6; color: #6b7280; }
+    @@media (max-width: 768px) { .rpt-stats { grid-template-columns: repeat(2, 1fr); } }
+</style>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var plans = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.PlanBreakdown.Select(p => p.Plan)));
+    var counts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.PlanBreakdown.Select(p => p.Count)));
+    var palette = ['#8b5cf6','#10b981','#3b82f6','#f59e0b','#ef4444','#ec4899','#6366f1','#14b8a6'];
+    if (!plans.length) return;
+
+    new Chart(document.getElementById('planDoughnut'), {
+        type: 'doughnut',
+        data: { labels: plans, datasets: [{ data: counts, backgroundColor: palette.slice(0, plans.length), borderColor: '#fff', borderWidth: 2 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 11 } } } }, cutout: '55%' }
+    });
+});
+</script>
+}

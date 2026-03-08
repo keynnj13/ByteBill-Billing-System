@@ -92,13 +92,13 @@
             <div class="table-container">
                 <table class="table" style="table-layout: fixed;">
                     <colgroup>
-                        <col style="width: 20%;" />
                         <col style="width: 18%;" />
-                        <col style="width: 14%;" />
+                        <col style="width: 16%;" />
+                        <col style="width: 13%;" />
                         <col style="width: 10%;" />
                         <col style="width: 9%;" />
-                        <col style="width: 18%;" />
-                        <col style="width: 11%;" />
+                        <col style="width: 22%;" />
+                        <col style="width: 12%;" />
                     </colgroup>
                     <thead>
                         <tr>
@@ -134,10 +134,10 @@
                                         <span class="status-indicator status-muted">Inactive</span>
                                     }
                                 </td>
-                                <td class="text-muted" style="font-size: 13px;">
+                                <td class="text-muted" style="font-size: 13px; padding-left: 12px;">
                                     @if (user.LastLoginAt.HasValue)
                                     {
-                                        @user.LastLoginAt.Value.ToString("MMM dd, yyyy h:mm tt")
+                                        @user.LastLoginAt.Value.ToString("MMM dd, h:mm tt")
                                     }
                                     else
                                     {

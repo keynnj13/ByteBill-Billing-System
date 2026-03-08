@@ -1,0 +1,36 @@
+@* Reusable date range filter for SuperAdmin reports *@
+@{
+    var currentRange = ViewContext.HttpContext.Request.Query["range"].ToString();
+    var actionName = ViewContext.RouteData.Values["action"]?.ToString() ?? "Index";
+}
+
+<div class="date-range-bar">
+    <div class="date-presets">
+        <a href="@Url.Action(actionName, new { range = "today" })" class="preset-btn @(currentRange == "today" ? "active" : "")">Today</a>
+        <a href="@Url.Action(actionName, new { range = "week" })" class="preset-btn @(currentRange == "week" ? "active" : "")">This Week</a>
+        <a href="@Url.Action(actionName, new { range = "month" })" class="preset-btn @(currentRange == "month" ? "active" : "")">This Month</a>
+        <a href="@Url.Action(actionName, new { range = "last30" })" class="preset-btn @(currentRange == "last30" || string.IsNullOrEmpty(currentRange) ? "active" : "")">Last 30 Days</a>
+        <a href="@Url.Action(actionName, new { range = "last3mo" })" class="preset-btn @(currentRange == "last3mo" ? "active" : "")">Last 3 Months</a>
+        <a href="@Url.Action(actionName, new { range = "last6mo" })" class="preset-btn @(currentRange == "last6mo" ? "active" : "")">Last 6 Months</a>
+        <a href="@Url.Action(actionName, new { range = "year" })" class="preset-btn @(currentRange == "year" ? "active" : "")">This Year</a>
+    </div>
+    <form method="get" class="date-custom">
+        <input type="hidden" name="range" value="custom" />
+        <input type="date" name="from" class="form-input date-input" value="@ViewContext.HttpContext.Request.Query["from"]" />
+        <span style="color: var(--text-muted, #9ca3af);">to</span>
+        <input type="date" name="to" class="form-input date-input" value="@ViewContext.HttpContext.Request.Query["to"]" />
+        <button type="submit" class="btn btn-outline-primary btn-sm">Apply</button>
+    </form>
+</div>
+
+<style>
+    .date-range-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; padding: 12px 16px; background: var(--bg-primary, white); border-radius: 10px; border: 1px solid var(--border-primary, #e5e7eb); }
+    .date-presets { display: flex; gap: 6px; flex-wrap: wrap; }
+    .preset-btn { padding: 6px 14px; font-size: 13px; font-weight: 500; border-radius: 6px; border: 1px solid var(--border-primary, #e5e7eb); background: transparent; color: var(--text-secondary, #6b7280); cursor: pointer; text-decoration: none; transition: all 0.15s; }
+    .preset-btn:hover { background: var(--bg-secondary, #f3f4f6); color: var(--text-primary, #1f2937); }
+    .preset-btn.active { background: var(--navy, #1e3a5f); color: white; border-color: var(--navy, #1e3a5f); }
+    .date-custom { display: flex; align-items: center; gap: 8px; }
+    .date-input { width: 140px; font-size: 13px; padding: 6px 10px; }
+    .btn-sm { padding: 6px 14px; font-size: 13px; }
+    @@media (max-width: 768px) { .date-range-bar { flex-direction: column; align-items: flex-start; } }
+</style>

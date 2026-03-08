@@ -78,6 +78,11 @@ public class AuthController : Controller
             // Success — clear any tracked attempts
             _loginAttempts.TryRemove(key, out _);
 
+            // ── Update last login tracking ───────────────────────────
+            dbUser.LastLoginAt = DateTime.UtcNow;
+            dbUser.LastIpAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            await _db.SaveChangesAsync();
+
             var roleName = dbUser.UserRoles.FirstOrDefault()?.Role?.RoleName ?? "Billing";
             if (!Enum.TryParse<UserRole>(roleName, out var userRole))
                 userRole = UserRole.Billing;

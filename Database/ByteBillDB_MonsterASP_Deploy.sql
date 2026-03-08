@@ -929,11 +929,18 @@ GO
 IF NOT EXISTS (SELECT 1 FROM SHOP WHERE ShopCode = 'MAIN')
 BEGIN
     INSERT INTO SHOP (ShopCode, ShopName, Email, Phone, [Address])
-    VALUES ('MAIN', 'ByteBill Main Shop', 'admin@bytebill.com', '+63-000-000-0000', 'Metro Manila, Philippines');
+    VALUES ('MAIN', 'ByteBill Main Shop', 'admin@bytebill.com', '+63 XXX XXX XXXX', 'J.P. Laurel Ave., Davao City, Philippines');
     PRINT '✓ Inserted default shop (ShopCode: MAIN)';
 END
 ELSE
-    PRINT '⚠ Shop MAIN already exists';
+BEGIN
+    UPDATE SHOP
+    SET [Address] = 'J.P. Laurel Ave., Davao City, Philippines',
+        Phone = '+63 XXX XXX XXXX'
+    WHERE ShopCode = 'MAIN'
+      AND ([Address] = 'Metro Manila, Philippines' OR Phone = '+63-000-000-0000');
+    PRINT '⚠ Shop MAIN already exists — updated address and phone defaults';
+END
 GO
 
 -- Seed: Roles (matching the application enum)

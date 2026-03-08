@@ -641,7 +641,229 @@ public class SystemSettingsViewModel
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  Reports
+//  REPORTS — HUB
+// ═══════════════════════════════════════════════════════════════
+
+public class SAReportHubViewModel
+{
+    public List<SAReportCategoryCard> Categories { get; set; } = new();
+}
+
+public class SAReportCategoryCard
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Icon { get; set; } = string.Empty;
+    public string Color { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  1. REVENUE REPORT
+// ═══════════════════════════════════════════════════════════════
+
+public class SARevenueReportViewModel
+{
+    public DateTime DateFrom { get; set; }
+    public DateTime DateTo { get; set; }
+    public string DateRange { get; set; } = string.Empty;
+    public decimal TotalRevenue { get; set; }
+    public int TransactionCount { get; set; }
+    public int PayingShops { get; set; }
+    public decimal AvgPerShop { get; set; }
+    public string Interpretation { get; set; } = string.Empty;
+    public List<SAMonthlyRevenueRow> MonthlyBreakdown { get; set; } = new();
+    public List<SARevenuePaymentRow> Payments { get; set; } = new();
+}
+
+public class SAMonthlyRevenueRow
+{
+    public string Month { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public int Count { get; set; }
+}
+
+public class SARevenuePaymentRow
+{
+    public string Reference { get; set; } = string.Empty;
+    public string Shop { get; set; } = string.Empty;
+    public string Plan { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public string PaidDate { get; set; } = string.Empty;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  2. SHOPS ACTIVITY REPORT
+// ═══════════════════════════════════════════════════════════════
+
+public class SAShopsReportViewModel
+{
+    public DateTime DateFrom { get; set; }
+    public DateTime DateTo { get; set; }
+    public string DateRange { get; set; } = string.Empty;
+    public int NewShops { get; set; }
+    public int TotalShops { get; set; }
+    public int ActiveShops { get; set; }
+    public int InactiveShops { get; set; }
+    public string Interpretation { get; set; } = string.Empty;
+    public List<SAShopMonthlyRow> MonthlyBreakdown { get; set; } = new();
+    public List<SAShopRow> Shops { get; set; } = new();
+}
+
+public class SAShopMonthlyRow
+{
+    public string Month { get; set; } = string.Empty;
+    public int Count { get; set; }
+}
+
+public class SAShopRow
+{
+    public string Name { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public int Users { get; set; }
+    public string Created { get; set; } = string.Empty;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  3. USER ACTIVITY REPORT
+// ═══════════════════════════════════════════════════════════════
+
+public class SAUsersReportViewModel
+{
+    public DateTime DateFrom { get; set; }
+    public DateTime DateTo { get; set; }
+    public string DateRange { get; set; } = string.Empty;
+    public int NewUsers { get; set; }
+    public int TotalUsers { get; set; }
+    public int ActiveUsers { get; set; }
+    public int RoleCount { get; set; }
+    public string Interpretation { get; set; } = string.Empty;
+    public List<SARoleBreakdownRow> RoleBreakdown { get; set; } = new();
+    public List<SAUserRow> Users { get; set; } = new();
+}
+
+public class SARoleBreakdownRow
+{
+    public string Role { get; set; } = string.Empty;
+    public int Count { get; set; }
+    public decimal Percentage { get; set; }
+}
+
+public class SAUserRow
+{
+    public string Name { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
+    public string Shop { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string Created { get; set; } = string.Empty;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  4. SUBSCRIPTION OVERVIEW REPORT
+// ═══════════════════════════════════════════════════════════════
+
+public class SASubscriptionReportViewModel
+{
+    public DateTime DateFrom { get; set; }
+    public DateTime DateTo { get; set; }
+    public string DateRange { get; set; } = string.Empty;
+    public int NewSubscriptions { get; set; }
+    public int ActiveSubscriptions { get; set; }
+    public decimal MRR { get; set; }
+    public decimal AvgPrice { get; set; }
+    public string Interpretation { get; set; } = string.Empty;
+    public List<SAPlanBreakdownRow> PlanBreakdown { get; set; } = new();
+    public List<SASubscriptionRow> Subscriptions { get; set; } = new();
+}
+
+public class SAPlanBreakdownRow
+{
+    public string Plan { get; set; } = string.Empty;
+    public int Count { get; set; }
+    public decimal Percentage { get; set; }
+}
+
+public class SASubscriptionRow
+{
+    public string Shop { get; set; } = string.Empty;
+    public string Plan { get; set; } = string.Empty;
+    public string Cycle { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string StartDate { get; set; } = string.Empty;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  5. PAYMENT HISTORY REPORT
+// ═══════════════════════════════════════════════════════════════
+
+public class SAPaymentReportViewModel
+{
+    public DateTime DateFrom { get; set; }
+    public DateTime DateTo { get; set; }
+    public string DateRange { get; set; } = string.Empty;
+    public decimal TotalCollected { get; set; }
+    public decimal TotalPending { get; set; }
+    public int FailedCount { get; set; }
+    public int TransactionCount { get; set; }
+    public string Interpretation { get; set; } = string.Empty;
+    public List<SAPaymentMethodRow> MethodBreakdown { get; set; } = new();
+    public List<SAPaymentMonthlyRow> MonthlyBreakdown { get; set; } = new();
+    public List<SAPaymentRow> Payments { get; set; } = new();
+}
+
+public class SAPaymentMethodRow
+{
+    public string Method { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public int Count { get; set; }
+    public decimal Percentage { get; set; }
+}
+
+public class SAPaymentMonthlyRow
+{
+    public string Month { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public int Count { get; set; }
+}
+
+public class SAPaymentRow
+{
+    public string Reference { get; set; } = string.Empty;
+    public string Shop { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string Method { get; set; } = string.Empty;
+    public string Date { get; set; } = string.Empty;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  6. GROWTH ANALYTICS REPORT
+// ═══════════════════════════════════════════════════════════════
+
+public class SAGrowthReportViewModel
+{
+    public DateTime DateFrom { get; set; }
+    public DateTime DateTo { get; set; }
+    public string DateRange { get; set; } = string.Empty;
+    public int TotalShops { get; set; }
+    public int TotalUsers { get; set; }
+    public int ActiveSubscriptions { get; set; }
+    public decimal LifetimeRevenue { get; set; }
+    public string Interpretation { get; set; } = string.Empty;
+    public List<SAGrowthMonthRow> MonthlyGrowth { get; set; } = new();
+}
+
+public class SAGrowthMonthRow
+{
+    public string Month { get; set; } = string.Empty;
+    public int CumulativeShops { get; set; }
+    public string Change { get; set; } = string.Empty;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LEGACY — kept for CSV/PDF export compatibility
 // ═══════════════════════════════════════════════════════════════
 
 public class ReportsIndexViewModel
@@ -650,14 +872,12 @@ public class ReportsIndexViewModel
     public DateTime DateFrom { get; set; }
     public DateTime DateTo { get; set; }
 
-    // Revenue Report
     public decimal TotalRevenue { get; set; }
     public decimal AveragePerShop { get; set; }
     public int TotalTransactions { get; set; }
     public List<ReportTableRow> TableRows { get; set; } = new();
     public List<ChartDataPoint> ChartData { get; set; } = new();
 
-    // Summary cards vary by report type
     public List<ReportSummaryCard> SummaryCards { get; set; } = new();
 }
 

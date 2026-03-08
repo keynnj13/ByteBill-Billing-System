@@ -1,0 +1,140 @@
+@model SAGrowthReportViewModel
+@{
+    ViewData["Title"] = "Growth Analytics Report";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Reports", Url = Url.Action("Index", "Reports") }, new() { Label = "Growth Analytics", IsActive = true } } })" />
+
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
+    <div>
+        <h1 class="page-title">Growth Analytics Report</h1>
+        <p class="page-subtitle">@Model.DateRange</p>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center;">
+        <a href="@Url.Action("Index", "Reports")" class="btn btn-ghost" style="display:inline-flex; align-items:center; gap:6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            Back
+        </a>
+        <a href="@Url.Action("ExportGrowthPdf", new { range = Context.Request.Query["range"], from = Context.Request.Query["from"], to = Context.Request.Query["to"] })" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export PDF
+        </a>
+    </div>
+</div>
+
+<partial name="_DateRangeFilter" />
+
+<!-- Summary Stats -->
+<div class="rpt-stats">
+    <div class="rpt-stat"><span class="rpt-stat-label">Total Shops</span><span class="rpt-stat-value" style="color:#ef4444;">@Model.TotalShops</span></div>
+    <div class="rpt-stat"><span class="rpt-stat-label">Total Users</span><span class="rpt-stat-value" style="color:#3b82f6;">@Model.TotalUsers</span></div>
+    <div class="rpt-stat"><span class="rpt-stat-label">Active Subscriptions</span><span class="rpt-stat-value" style="color:#8b5cf6;">@Model.ActiveSubscriptions</span></div>
+    <div class="rpt-stat"><span class="rpt-stat-label">Lifetime Revenue</span><span class="rpt-stat-value" style="color:#10b981;">₱@Model.LifetimeRevenue.ToString("N2")</span></div>
+</div>
+
+<!-- Interpretation -->
+@if (!string.IsNullOrEmpty(Model.Interpretation))
+{
+    <div class="insight-box">
+        <div class="insight-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        </div>
+        <div class="insight-text">@Model.Interpretation</div>
+    </div>
+}
+
+<!-- Growth Chart -->
+@if (Model.MonthlyGrowth.Any())
+{
+    <div class="card" style="margin-bottom:24px;">
+        <div class="card-header"><h3 style="font-size:15px; font-weight:600; margin:0;">Cumulative Growth Trend</h3></div>
+        <div class="card-body"><canvas id="growthLineChart" height="320"></canvas></div>
+    </div>
+}
+
+<!-- Monthly Growth Table -->
+<div class="card">
+    <div class="card-header">
+        <h3 style="font-size:15px; font-weight:600; margin:0;">Monthly Growth Data</h3>
+        <span class="text-muted" style="font-size:13px;">@Model.MonthlyGrowth.Count month(s)</span>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.MonthlyGrowth.Any())
+        {
+            <div class="table-container">
+                <table class="table">
+                    <thead><tr><th>Month</th><th class="text-center">Cumulative Shops</th><th class="text-right">Change</th></tr></thead>
+                    <tbody>
+                        @foreach (var g in Model.MonthlyGrowth)
+                        {
+                            var isPositive = g.Change.StartsWith("+");
+                            <tr>
+                                <td style="font-weight:500;">@g.Month</td>
+                                <td class="text-center">@g.CumulativeShops</td>
+                                <td class="text-right" style="color: @(isPositive ? "#10b981" : "#6b7280"); font-weight:500;">@g.Change</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div style="padding:60px 0; text-align:center;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                <p style="margin-top:12px; color:#9ca3af; font-size:14px;">No growth data available for this period</p>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .page-title { font-size: 24px; font-weight: 700; color: var(--text-primary, #1f2937); margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: var(--text-secondary, #6b7280); }
+    .rpt-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .rpt-stat { text-align: center; padding: 16px; background: var(--bg-primary, white); border-radius: 10px; border: 1px solid var(--border-primary, #e5e7eb); }
+    .rpt-stat-label { display: block; font-size: 12px; color: var(--text-muted, #9ca3af); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .rpt-stat-value { display: block; font-size: 22px; font-weight: 700; color: var(--text-primary, #1f2937); }
+    .insight-box { display: flex; gap: 12px; padding: 16px 20px; margin-bottom: 24px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; }
+    .insight-icon { color: #3b82f6; flex-shrink: 0; margin-top: 2px; }
+    .insight-text { font-size: 14px; color: #1e40af; line-height: 1.6; }
+    @@media (max-width: 768px) { .rpt-stats { grid-template-columns: repeat(2, 1fr); } }
+</style>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var labels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MonthlyGrowth.Select(g => g.Month)));
+    var values = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MonthlyGrowth.Select(g => g.CumulativeShops)));
+    if (!labels.length) return;
+
+    new Chart(document.getElementById('growthLineChart'), {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Cumulative Shops',
+                data: values,
+                borderColor: '#ef4444',
+                backgroundColor: '#ef444420',
+                borderWidth: 2.5,
+                fill: true,
+                tension: 0.3,
+                pointBackgroundColor: '#ef4444',
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#f3f4f6' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+});
+</script>
+}

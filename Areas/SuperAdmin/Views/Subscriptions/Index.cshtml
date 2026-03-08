@@ -55,7 +55,7 @@
             <svg width="20" height="20" viewBox="0 0 24 24"><text x="12" y="18" text-anchor="middle" font-size="18" font-weight="600" fill="currentColor" font-family="Inter, sans-serif">&#8369;</text></svg>
         </div>
         <div class="shp-stat-content">
-            <span class="shp-stat-value">@Model.TotalMRR.ToString("C")</span>
+            <span class="shp-stat-value">₱@Model.TotalMRR.ToString("N2")</span>
             <span class="shp-stat-label">MONTHLY RECURRING</span>
         </div>
     </div>
@@ -118,7 +118,7 @@
                                 </td>
                                 <td><span class="fw-500">@sub.PlanName</span></td>
                                 <td>@sub.BillingCycle</td>
-                                <td class="text-right fw-600">@sub.Price.ToString("C")</td>
+                                <td class="text-right fw-600">₱@sub.Price.ToString("N2")</td>
                                 <td class="text-center"><span class="status-indicator @sub.StatusClass">@sub.Status</span></td>
                                 <td>
                                     @if (sub.NextBillingDate.HasValue)

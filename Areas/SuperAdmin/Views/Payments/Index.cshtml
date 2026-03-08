@@ -29,7 +29,7 @@
             <svg width="20" height="20" viewBox="0 0 24 24"><text x="12" y="18" text-anchor="middle" font-size="18" font-weight="600" fill="currentColor" font-family="Inter, sans-serif">&#8369;</text></svg>
         </div>
         <div class="shp-stat-content">
-            <span class="shp-stat-value">@Model.TotalPaid.ToString("C")</span>
+            <span class="shp-stat-value">₱@Model.TotalPaid.ToString("N2")</span>
             <span class="shp-stat-label">TOTAL COLLECTED</span>
         </div>
     </div>
@@ -101,7 +101,7 @@
                                 <td><span class="ref-code">@p.ReferenceNumber</span></td>
                                 <td><span class="fw-500">@p.ShopName</span></td>
                                 <td>@p.PlanName</td>
-                                <td class="text-right fw-600">@p.Amount.ToString("C")</td>
+                                <td class="text-right fw-600">₱@p.Amount.ToString("N2")</td>
                                 <td class="text-center"><span class="status-indicator @p.StatusClass">@p.Status</span></td>
                                 <td>
                                     @{
