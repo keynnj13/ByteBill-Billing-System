@@ -49,6 +49,33 @@
 <!-- Pagination -->
 <div id="notifp-pagination" class="notif-page-pagination" style="display:none;"></div>
 
+<!-- Notification Detail Modal -->
+<div id="notifDetailModal" class="nd-overlay" style="display:none;" onclick="if(event.target===this)closeNotifDetail()">
+    <div class="nd-modal">
+        <div class="nd-header">
+            <div id="nd-icon" class="nd-header-icon"></div>
+            <button class="nd-close" onclick="closeNotifDetail()" title="Close">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div class="nd-body">
+            <div class="nd-meta-row">
+                <span id="nd-badge" class="np-type-badge"></span>
+                <span id="nd-time" class="nd-time"></span>
+            </div>
+            <h3 id="nd-title" class="nd-title"></h3>
+            <p id="nd-message" class="nd-message"></p>
+        </div>
+        <div class="nd-footer">
+            <button class="btn btn-ghost btn-sm" onclick="closeNotifDetail()">Close</button>
+            <a id="nd-goto" href="#" class="btn btn-primary btn-sm" style="display:none;">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+                View Details
+            </a>
+        </div>
+    </div>
+</div>
+
 @section Styles {
 <style>
     .notif-page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
@@ -148,6 +175,49 @@
     @@media (max-width: 640px) {
         .notif-page-toolbar { flex-direction: column; align-items: stretch; }
         .notif-search-input { width: 100%; }
+        .nd-modal { width: 95vw; }
+    }
+
+    /* ── Notification Detail Modal ── */
+    .nd-overlay {
+        position: fixed; inset: 0; z-index: 9999;
+        background: rgba(0,0,0,0.45); backdrop-filter: blur(2px);
+        display: flex; align-items: center; justify-content: center;
+        animation: ndFadeIn 0.15s ease;
+    }
+    @@keyframes ndFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .nd-modal {
+        background: var(--card); border-radius: 16px; width: 480px; max-width: 95vw;
+        box-shadow: 0 24px 80px rgba(0,0,0,0.18); overflow: hidden;
+        animation: ndSlideUp 0.2s ease;
+    }
+    @@keyframes ndSlideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .nd-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 24px 24px 0;
+    }
+    .nd-header-icon {
+        width: 48px; height: 48px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .nd-header-icon.adjustment { background: rgba(245,176,65,0.15); color: #d97706; }
+    .nd-header-icon.approved   { background: rgba(16,185,129,0.15); color: #059669; }
+    .nd-header-icon.rejected   { background: rgba(239,68,68,0.15);  color: #dc2626; }
+    .nd-header-icon.info       { background: rgba(59,130,246,0.12); color: #3b82f6; }
+    .nd-close {
+        width: 32px; height: 32px; border: none; background: none; border-radius: 8px;
+        color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center;
+        transition: all 0.15s;
+    }
+    .nd-close:hover { background: var(--gray-light); color: var(--foreground); }
+    .nd-body { padding: 16px 24px 20px; }
+    .nd-meta-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .nd-time { font-size: 12px; color: var(--gray-400); }
+    .nd-title { font-size: 17px; font-weight: 700; color: var(--foreground); margin: 0 0 8px; line-height: 1.4; }
+    .nd-message { font-size: 14px; color: var(--muted); margin: 0; line-height: 1.6; }
+    .nd-footer {
+        display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+        padding: 16px 24px; border-top: 1px solid var(--gray-border);
     }
 </style>
 }
@@ -160,6 +230,7 @@
     let currentFilter = '';
     let currentSearch = '';
     let searchTimer = null;
+    let notifCache = {};
 
     const listEl = document.getElementById('notifp-list');
     const paginationEl = document.getElementById('notifp-pagination');
@@ -244,8 +315,9 @@
                 html += `<div class="notif-page-group-label">${label}</div>`;
                 for (const n of groups[label]) {
                     const safeUrl = n.url ? encodeURI(n.url) : '#';
+                    notifCache[n.id] = n;
                     html += `
-                    <div class="notif-page-card ${!n.isRead ? 'unread' : ''}" data-id="${n.id}" onclick="window.__notifPageClick(${n.id}, '${safeUrl}')">
+                    <div class="notif-page-card ${!n.isRead ? 'unread' : ''}" data-id="${n.id}" onclick="window.__notifPageClick(${n.id})">
                         <div class="np-icon ${escapeHtml(n.type)}">${iconSvg(n.type)}</div>
                         <div class="np-body">
                             <div class="np-title">${escapeHtml(n.title)}</div>
@@ -295,7 +367,11 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    window.__notifPageClick = async function (id, url) {
+    window.__notifPageClick = async function (id) {
+        const n = notifCache[id];
+        if (!n) return;
+
+        // Mark as read in UI
         const card = document.querySelector(`.notif-page-card[data-id="${id}"]`);
         if (card && card.classList.contains('unread')) {
             card.classList.remove('unread');
@@ -307,8 +383,44 @@
             if (cnt === 0) { unreadBadge.style.display = 'none'; markAllBtn.style.display = 'none'; }
         }
         try { await fetch(`/api/notifications/read/${id}`, { method: 'POST' }); } catch { }
-        if (url && url !== '#') window.location.href = url;
+
+        // Populate & show modal
+        const modal = document.getElementById('notifDetailModal');
+        const iconEl = document.getElementById('nd-icon');
+        iconEl.className = 'nd-header-icon ' + (n.type || 'info');
+        iconEl.innerHTML = iconSvg(n.type).replace(/width="18"/g, 'width="22"').replace(/height="18"/g, 'height="22"');
+        document.getElementById('nd-badge').className = 'np-type-badge ' + (n.type || 'info');
+        document.getElementById('nd-badge').textContent = n.type || 'info';
+        document.getElementById('nd-time').textContent = n.timeAgo || '';
+        document.getElementById('nd-title').textContent = n.title || '';
+        document.getElementById('nd-message').textContent = n.message || '';
+        const gotoBtn = document.getElementById('nd-goto');
+        if (n.url && n.url !== '#') {
+            gotoBtn.style.display = '';
+            if (n.url.includes('/DetailsModal/')) {
+                gotoBtn.removeAttribute('href');
+                gotoBtn.onclick = function (e) {
+                    e.preventDefault();
+                    closeNotifDetail();
+                    openAjaxModal(n.url, n.title || 'Details');
+                };
+            } else {
+                gotoBtn.href = n.url;
+                gotoBtn.onclick = null;
+            }
+        } else {
+            gotoBtn.style.display = 'none';
+        }
+        modal.style.display = 'flex';
     };
+
+    window.closeNotifDetail = function () {
+        document.getElementById('notifDetailModal').style.display = 'none';
+    };
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeNotifDetail();
+    });
 
     window.markAllPageRead = async function () {
         markAllBtn.style.display = 'none';

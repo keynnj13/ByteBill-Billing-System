@@ -221,6 +221,7 @@ public class InvoiceService : IInvoiceService
     {
         // Load job order with lines
         var jobOrder = await _db.JobOrders
+            .Include(j => j.Customer)
             .Include(j => j.JobOrderServices).ThenInclude(s => s.Service)
             .Include(j => j.JobOrderParts).ThenInclude(p => p.Item)
             .Include(j => j.Invoice)
@@ -325,6 +326,21 @@ public class InvoiceService : IInvoiceService
                 $"Invoice {invoiceNo} for {subtotal:C} has been created from job order {jobOrder.JobOrderNo}.",
                 "info",
                 $"/Admin/Invoices/DetailsModal/{invoice.InvoiceId}");
+        }
+
+        // Notify billing users about new pending invoice
+        var billingUsers = await _db.Users
+            .Where(u => u.ShopId == shopId && u.IsActive
+                && u.UserRoles.Any(ur => ur.Role!.RoleName == "Billing"))
+            .Select(u => u.UserId)
+            .ToListAsync();
+        foreach (var billingId in billingUsers)
+        {
+            await _notif.CreateAsync(billingId, shopId,
+                "New Pending Invoice",
+                $"Invoice {invoiceNo} for {subtotal:C} is pending payment. Customer: {jobOrder.Customer?.FullName ?? "N/A"}.",
+                "info",
+                $"/Billing/Invoices/DetailsModal/{invoice.InvoiceId}");
         }
 
         // Auto-sync to Xero (errors logged internally in XeroService)

@@ -125,6 +125,13 @@ public class ProfileController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ChangePassword(ChangePasswordRequest model)
     {
+        var role = User.GetRole();
+        if (role is not ("Admin" or "SuperAdmin"))
+        {
+            TempData["Error"] = "Only administrators can change passwords.";
+            return RedirectToAction(nameof(Index));
+        }
+
         var userId = User.GetUserId();
         var shopId = User.GetShopId();
         var user = await _db.Users.FindAsync(userId);
@@ -143,9 +150,15 @@ public class ProfileController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        if (model.NewPassword.Length < 6)
+        if (model.NewPassword.Length < 12)
         {
-            TempData["Error"] = "New password must be at least 6 characters.";
+            TempData["Error"] = "New password must be at least 12 characters.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(model.NewPassword, @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{12,}$"))
+        {
+            TempData["Error"] = "Password must include uppercase, lowercase, number, and special character.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -209,7 +222,7 @@ public class ProfileController : Controller
         Response.Cookies.Append("ByteBillTheme", theme, new CookieOptions
         {
             HttpOnly = false,
-            Secure = true,
+            Secure = false,
             Expires = DateTimeOffset.UtcNow.AddDays(365),
             SameSite = SameSiteMode.Lax,
             Path = "/"

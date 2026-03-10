@@ -104,7 +104,7 @@ public class RegisterController : Controller
         Response.Cookies.Append("BB_CheckoutSession", sessionId!, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = false,
             SameSite = SameSiteMode.Lax,
             MaxAge = TimeSpan.FromHours(1),
             Path = "/Register"
@@ -195,7 +195,7 @@ public class RegisterController : Controller
         Response.Cookies.Append("ByteBillTheme", "light", new CookieOptions
         {
             HttpOnly = false,
-            Secure = true,
+            Secure = false,
             Expires = DateTimeOffset.UtcNow.AddDays(365),
             SameSite = SameSiteMode.Lax,
             Path = "/"
@@ -278,7 +278,7 @@ public class RegisterController : Controller
         Response.Cookies.Append("BB_CheckoutSession", sessionId!, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = false,
             SameSite = SameSiteMode.Lax,
             MaxAge = TimeSpan.FromHours(1),
             Path = "/Register"

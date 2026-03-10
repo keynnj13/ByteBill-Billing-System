@@ -68,7 +68,7 @@
     </div>
     <div class="rr-stat-card">
         <div class="rr-stat-icon rr-icon-slate">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><text x="12" y="18" text-anchor="middle" font-size="18" font-weight="700" font-family="sans-serif">₱</text></svg>
         </div>
         <div class="rr-stat-content">
             <span class="rr-stat-label">Avg. Invoice</span>
@@ -173,8 +173,8 @@
     .rr-date-label { font-size: 13px; font-weight: 500; color: #6b7280; }
     .rr-date-input { width: 160px; }
     .rr-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-    .rr-stat-card { display: flex; align-items: center; gap: 14px; padding: 18px 20px; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-    .rr-stat-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .rr-stat-card { position: relative; padding: 18px 20px; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .rr-stat-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; position: absolute; top: 18px; right: 20px; }
     .rr-icon-navy    { background: rgba(30,58,138,0.08); color: #1e3a8a; }
     .rr-icon-emerald { background: rgba(5,150,105,0.10); color: #059669; }
     .rr-icon-red     { background: rgba(220,38,38,0.08); color: #dc2626; }

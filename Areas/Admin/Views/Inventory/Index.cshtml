@@ -160,8 +160,8 @@
     .page-subtitle { font-size: 14px; color: #6b7280; }
     .low-stock-text { color: #f59e0b; font-weight: 500; }
     .inv-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
-    .inv-stat-card { display: flex; align-items: center; gap: 14px; padding: 16px 20px; background: white; border-radius: 10px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-    .inv-stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .inv-stat-card { position: relative; padding: 16px 20px; background: white; border-radius: 10px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .inv-stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; position: absolute; top: 16px; right: 20px; }
     .inv-stat-blue { background: rgba(59,130,246,0.1); color: #3b82f6; }
     .inv-stat-amber { background: rgba(245,158,11,0.1); color: #f59e0b; }
     .inv-stat-purple { background: rgba(139,92,246,0.1); color: #8b5cf6; }
@@ -246,9 +246,18 @@
         <form id="writeoffForm" method="post" style="padding:20px 24px;">
             @Html.AntiForgeryToken()
             <input type="hidden" id="writeoffItemId" name="id" />
+            <input type="hidden" id="writeoffMaxQty" />
             <div style="margin-bottom:16px;">
                 <p id="writeoffItemName" style="font-weight:500; color:var(--foreground); margin-bottom:4px;"></p>
                 <p id="writeoffCurrentStock" style="font-size:13px; color:var(--muted);"></p>
+            </div>
+            <div style="margin-bottom:16px;">
+                <label class="form-label" style="display:block; font-size:13px; font-weight:500; margin-bottom:6px;">Quantity to Write Off <span style="color:#ef4444;">*</span></label>
+                <input type="number" id="writeoffQty" name="quantity" min="1" required class="form-input" style="width:100%;" />
+                <label style="display:flex; align-items:center; gap:6px; margin-top:8px; font-size:13px; color:#374151; cursor:pointer;">
+                    <input type="checkbox" id="writeoffAll" style="accent-color:#ef4444;" />
+                    Write off all stock
+                </label>
             </div>
             <div style="margin-bottom:16px;">
                 <label class="form-label" style="display:block; font-size:13px; font-weight:500; margin-bottom:6px;">Reason <span style="color:#ef4444;">*</span></label>
@@ -268,7 +277,7 @@
             <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:12px; margin-bottom:20px;">
                 <p style="font-size:12px; color:#991b1b; margin:0; font-weight:500;">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-right:4px;"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                    This action is permanent. Written-off items cannot be restored.
+                    This action is permanent. Written-off stock cannot be restored.
                 </p>
             </div>
             <div style="display:flex; gap:8px; justify-content:flex-end;">
@@ -323,20 +332,40 @@ function openWriteOffModal(id, name, currentQty) {
     document.getElementById('writeoffItemId').value = id;
     document.getElementById('writeoffItemName').textContent = name;
     document.getElementById('writeoffCurrentStock').textContent = 'Current stock: ' + currentQty;
+    document.getElementById('writeoffMaxQty').value = currentQty;
+    var qtyInput = document.getElementById('writeoffQty');
+    qtyInput.value = 1;
+    qtyInput.max = currentQty;
+    document.getElementById('writeoffAll').checked = false;
     document.getElementById('writeoffReason').value = '';
     document.getElementById('writeoffNotes').value = '';
     document.getElementById('writeoffModal').style.display = 'flex';
 }
+
+document.getElementById('writeoffAll').addEventListener('change', function() {
+    var qtyInput = document.getElementById('writeoffQty');
+    var maxQty = parseInt(document.getElementById('writeoffMaxQty').value, 10);
+    if (this.checked) {
+        qtyInput.value = maxQty;
+        qtyInput.readOnly = true;
+    } else {
+        qtyInput.value = 1;
+        qtyInput.readOnly = false;
+    }
+});
+
 function closeWriteOffModal() { document.getElementById('writeoffModal').style.display = 'none'; }
 document.getElementById('writeoffModal').addEventListener('click', function(e) { if (e.target === this) closeWriteOffModal(); });
 document.getElementById('writeoffForm').addEventListener('submit', function(e) {
     e.preventDefault();
     var id = document.getElementById('writeoffItemId').value;
+    var quantity = document.getElementById('writeoffQty').value;
     var reason = document.getElementById('writeoffReason').value;
     var notes = document.getElementById('writeoffNotes').value;
     var token = this.querySelector('input[name="__RequestVerificationToken"]').value;
     if (!reason) { alert('Please select a reason.'); return; }
-    fetch('@Url.Action("WriteOff", "Inventory", new { area = "Admin" })?id=' + id + '&reason=' + encodeURIComponent(reason) + '&notes=' + encodeURIComponent(notes), {
+    if (!quantity || parseInt(quantity) < 1) { alert('Please enter a valid quantity.'); return; }
+    fetch('@Url.Action("WriteOff", "Inventory", new { area = "Admin" })?id=' + id + '&quantity=' + quantity + '&reason=' + encodeURIComponent(reason) + '&notes=' + encodeURIComponent(notes), {
         method: 'POST',
         headers: { 'X-Requested-With': 'XMLHttpRequest', 'RequestVerificationToken': token }
     })

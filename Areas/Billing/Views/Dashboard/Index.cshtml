@@ -10,12 +10,6 @@
         <h1 class="page-title">Billing Dashboard</h1>
         <p class="page-subtitle">Invoicing and payment overview</p>
     </div>
-    <div class="page-actions">
-        <button type="button" class="btn btn-primary" onclick="openAjaxModal('@Url.Action("CreateModal", "Payments", new { area = "Billing" })', 'Record Payment')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            Record Payment
-        </button>
-    </div>
 </div>
 
 
@@ -277,8 +271,8 @@
     .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
     .page-subtitle { font-size: 14px; color: #6b7280; }
     .bd-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-    .bd-stat-card { display: flex; align-items: center; gap: 14px; padding: 16px 20px; background: white; border-radius: 10px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-    .bd-stat-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .bd-stat-card { position: relative; padding: 16px 20px; background: white; border-radius: 10px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .bd-stat-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; position: absolute; top: 16px; right: 20px; }
     .bd-stat-emerald { background: rgba(16,185,129,0.1); color: #10b981; }
     .bd-stat-amber { background: rgba(245,158,11,0.1); color: #f59e0b; }
     .bd-stat-blue { background: rgba(59,130,246,0.1); color: #3b82f6; }

@@ -58,7 +58,7 @@
     </div>
     <div class="ir-stat-card">
         <div class="ir-stat-icon ir-icon-emerald">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><text x="12" y="18" text-anchor="middle" font-size="18" font-weight="700" font-family="sans-serif">₱</text></svg>
         </div>
         <div class="ir-stat-content">
             <span class="ir-stat-label">Stock Value (Cost)</span>
@@ -198,8 +198,8 @@
     .ir-subtitle { font-size: 14px; color: #6b7280; }
     .ir-header-actions { display: flex; gap: 8px; align-items: center; }
     .ir-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-    .ir-stat-card { display: flex; align-items: center; gap: 14px; padding: 18px 20px; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-    .ir-stat-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .ir-stat-card { position: relative; padding: 18px 20px; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .ir-stat-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; position: absolute; top: 18px; right: 20px; }
     .ir-icon-navy    { background: rgba(30,58,138,0.08); color: #1e3a8a; }
     .ir-icon-amber   { background: rgba(217,119,6,0.10); color: #d97706; }
     .ir-icon-red     { background: rgba(220,38,38,0.08); color: #dc2626; }

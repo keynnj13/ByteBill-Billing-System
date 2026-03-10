@@ -454,7 +454,7 @@
                                 <div class="rg-field">
                                     <label>Password <span class="req">*</span></label>
                                     <div class="rg-pw-wrap">
-                                        <input asp-for="Password" type="password" placeholder="Min. 8 characters" autocomplete="new-password" id="pwInput" />
+                                        <input asp-for="Password" type="password" placeholder="Min. 12 characters" autocomplete="new-password" id="pwInput" />
                                         <button type="button" class="rg-pw-toggle" onclick="togglePw('pwInput', this)" aria-label="Toggle password">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                         </button>
@@ -554,7 +554,7 @@
             var v = this.value, bar = document.getElementById('pwBar'), lbl = document.getElementById('pwLabel');
             if (!v.length) { bar.className = 'rg-strength-bar'; lbl.className = 'rg-str-label'; lbl.textContent = ''; return; }
             var s = 0;
-            if (v.length >= 8) s++;
+            if (v.length >= 12) s++;
             if (/[A-Z]/.test(v) && /[a-z]/.test(v)) s++;
             if (/\d/.test(v) && /[^a-zA-Z\d]/.test(v)) s++;
             if (s <= 1) { bar.className = 'rg-strength-bar rg-str-weak'; lbl.className = 'rg-str-label weak'; lbl.textContent = 'Weak'; }

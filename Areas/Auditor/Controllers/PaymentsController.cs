@@ -131,4 +131,51 @@ public class PaymentsController : Controller
 
         return View(model);
     }
+
+    [HttpGet]
+    public async Task<IActionResult> DetailsModal(long id)
+    {
+        if (!IsAuthorized()) return Forbid();
+        var shopId = User.GetShopId();
+
+        var p = await _db.Payments
+            .AsNoTracking()
+            .Where(p => p.PaymentId == id && p.ShopId == shopId)
+            .Include(p => p.Customer)
+            .Include(p => p.ReceivedByUser)
+            .Include(p => p.PaymentAllocations).ThenInclude(pa => pa.Invoice)
+            .FirstOrDefaultAsync();
+
+        if (p == null) return NotFound();
+
+        var model = new PaymentDetailViewModel
+        {
+            Id = p.PaymentId,
+            PaymentNumber = p.PaymentNo,
+            CustomerId = p.CustomerId,
+            CustomerName = p.Customer!.FirstName + " " + p.Customer.LastName,
+            CustomerEmail = p.Customer.Email,
+            CustomerPhone = p.Customer.Phone ?? "",
+            InvoiceId = p.PaymentAllocations.FirstOrDefault()?.InvoiceId,
+            InvoiceNumber = p.PaymentAllocations.FirstOrDefault()?.Invoice?.InvoiceNo,
+            Method = p.Method,
+            Amount = p.Amount,
+            ReferenceNo = p.ReferenceNo,
+            ReferenceNumber = p.ReferenceNo,
+            PaidAt = p.PaymentDate,
+            PaymentDate = p.PaymentDate,
+            ReceivedByName = p.ReceivedByUser != null ? p.ReceivedByUser.FirstName + " " + p.ReceivedByUser.LastName : null,
+            Status = p.Status,
+            IsVoid = p.Status == PaymentStatus.Refunded || p.Status == PaymentStatus.Failed,
+            Notes = p.Notes,
+            Allocations = p.PaymentAllocations.Select(pa => new PaymentAllocationItem
+            {
+                InvoiceId = pa.InvoiceId,
+                InvoiceNumber = pa.Invoice?.InvoiceNo ?? "",
+                AmountApplied = pa.AmountApplied
+            }).ToList()
+        };
+
+        return PartialView("_DetailsModal", model);
+    }
 }

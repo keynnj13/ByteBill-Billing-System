@@ -281,7 +281,7 @@
         </div>
         <div class="ig-stat-card">
             <div class="ig-stat-icon ig-stat-emerald">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9h6a4 4 0 0 1 0 8H6V5h6a4 4 0 0 1 0 8"></path><line x1="5" y1="11" x2="17" y2="11"></line><line x1="5" y1="14" x2="17" y2="14"></line></svg>
             </div>
             <div class="ig-stat-content">
                 <span class="ig-stat-label">Total Processed</span>
@@ -612,8 +612,8 @@ function createTableEngine(cfg) {
     .ig-stats { display: grid; gap: 16px; margin-bottom: 20px; }
     .ig-stats-3 { grid-template-columns: repeat(3, 1fr); }
     .ig-stats-2 { grid-template-columns: repeat(2, 1fr); }
-    .ig-stat-card { display: flex; align-items: center; gap: 14px; padding: 18px 20px; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-    .ig-stat-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .ig-stat-card { position: relative; padding: 18px 20px; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .ig-stat-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; position: absolute; top: 18px; right: 20px; }
     .ig-stat-navy    { background: rgba(30,58,138,0.08); color: #1e3a8a; }
     .ig-stat-emerald { background: rgba(5,150,105,0.10); color: #059669; }
     .ig-stat-red     { background: rgba(220,38,38,0.08); color: #dc2626; }

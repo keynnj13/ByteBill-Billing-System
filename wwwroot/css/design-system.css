@@ -3243,9 +3243,11 @@ a:hover {
 }
 
 /* ── Avatar (initials circle) ── */
-[data-theme="dark"] .avatar {
-    background: rgba(59, 130, 246, 0.15);
-    color: #60a5fa;
+[data-theme="dark"] .avatar,
+[data-theme="dark"] .avatar-sm,
+[data-theme="dark"] .avatar-xs {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
 }
 
 /* ── Readonly Form Inputs ── */

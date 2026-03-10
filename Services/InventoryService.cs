@@ -153,7 +153,7 @@ public class InventoryService : IInventoryService
 
         var totalCount = await query.CountAsync();
         var lowStockCount = await _db.InventoryItems
-            .Where(i => i.ShopId == shopId && i.QtyOnHand <= i.ReorderLevel)
+            .Where(i => i.ShopId == shopId && i.IsActive && i.QtyOnHand <= i.ReorderLevel)
             .CountAsync();
 
         var items = await query
@@ -230,6 +230,11 @@ public class InventoryService : IInventoryService
 
     public async Task<InventoryListItemDto> CreateAsync(long shopId, CreateInventoryItemRequest req)
     {
+        // Pre-check for duplicate SKU
+        var skuExists = await _db.InventoryItems.AnyAsync(i => i.ShopId == shopId && i.SKU == req.SKU);
+        if (skuExists)
+            throw new InvalidOperationException($"An inventory item with SKU '{req.SKU}' already exists.");
+
         var categoryId = await ResolveOrCreateCategoryAsync(shopId, req.CategoryName, req.CategoryId);
 
         var entity = new InventoryItem

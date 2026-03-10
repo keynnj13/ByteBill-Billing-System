@@ -1,6 +1,7 @@
 using ByteBill_BS.Data;
 using ByteBill_BS.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
@@ -16,7 +17,10 @@ QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add<ByteBill_BS.Filters.DbExceptionFilter>();
+});
 
 // Configure SQL Server database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -31,9 +35,7 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
     options.Cookie.SameSite = SameSiteMode.Lax;
-    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() 
-        ? CookieSecurePolicy.SameAsRequest 
-        : CookieSecurePolicy.Always;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
 });
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -43,9 +45,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.AccessDeniedPath = "/Auth/AccessDenied";
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
         options.SlidingExpiration = true;
-        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() 
-            ? CookieSecurePolicy.SameAsRequest 
-            : CookieSecurePolicy.Always;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
         options.Cookie.SameSite = SameSiteMode.Lax;
         // Return 401 for API requests instead of redirecting
         options.Events.OnRedirectToLogin = ctx =>
@@ -120,6 +120,9 @@ builder.Services.AddHttpClient<IPayMongoService, PayMongoService>(client =>
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
+// ── SignalR for real-time notifications ───────────────────────────────
+builder.Services.AddSignalR();
+
 // ── Self-service registration ────────────────────────────────────────
 builder.Services.AddHttpClient<IRegistrationService, RegistrationService>(client =>
 {
@@ -165,13 +168,17 @@ catch (Exception ex)
 // Configure the HTTP request pipeline.
 // Temporarily show detailed errors on all environments for debugging
 app.UseDeveloperExceptionPage();
-if (!app.Environment.IsDevelopment())
+
+app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
-    // app.UseExceptionHandler("/Home/Error");  // Re-enable after debugging
-    app.UseHsts();
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
 app.UseRouting();
 
 app.UseAuthentication();
@@ -191,6 +198,9 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Landing}/{action=Index}/{id?}")
     .WithStaticAssets();
+
+// ── SignalR hub endpoint ─────────────────────────────────────────────
+app.MapHub<ByteBill_BS.Hubs.NotificationHub>("/hubs/notifications");
 
 await app.RunAsync();
     

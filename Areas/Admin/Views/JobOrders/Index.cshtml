@@ -171,8 +171,8 @@
     .page-title { font-size: 24px; font-weight: 700; color: #1f2937; margin-bottom: 4px; }
     .page-subtitle { font-size: 14px; color: #6b7280; }
     .stat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .stat-card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px; }
-    .stat-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .stat-card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; position: relative; }
+    .stat-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; position: absolute; top: 20px; right: 20px; }
     .bg-primary-light { background: #eff6ff; }
     .bg-warning-light { background: #fffbeb; }
     .bg-success-light { background: #ecfdf5; }
@@ -185,7 +185,7 @@
     .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
     .search-input { padding-left: 40px; min-width: 240px; }
     .customer-cell { display: flex; align-items: center; gap: 8px; }
-    .avatar-xs { width: 28px; height: 28px; border-radius: 50%; background: rgba(59,130,246,0.1); color: #3b82f6; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 11px; flex-shrink: 0; }
+    .avatar-xs { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 11px; flex-shrink: 0; }
     .customer-text { font-size: 13px; font-weight: 500; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .order-link { font-weight: 600; color: #3b82f6; text-decoration: none; font-size: 13px; }
     .order-link:hover { text-decoration: underline; }

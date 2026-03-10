@@ -236,6 +236,8 @@
 
     let notifications = [];
 
+    let unreadCount = 0;
+
     function iconSvg(type) {
         switch (type) {
             case 'adjustment': return '<svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
@@ -245,7 +247,8 @@
         }
     }
 
-    function render(unreadCount) {
+    function render(uc) {
+        unreadCount = uc;
         badge.textContent = unreadCount;
         if (unreadCount === 0) badge.classList.add('hidden');
         else badge.classList.remove('hidden');
@@ -293,15 +296,55 @@
         try {
             await fetch(`/api/notifications/read/${id}`, { method: 'POST' });
         } catch { }
-        if (url && url !== '#') window.location.href = url;
+        if (url && url !== '#') {
+            if (url.includes('/DetailsModal/')) {
+                // Close the notification dropdown first
+                const dropdown = document.getElementById('notif-dropdown');
+                if (dropdown) dropdown.classList.add('hidden');
+                // Get the notification title for the modal header
+                const n = notifications.find(x => x.notificationId === id);
+                const modalTitle = n ? n.title : 'Details';
+                openAjaxModal(url, modalTitle);
+            } else {
+                window.location.href = url;
+            }
+        }
         else loadNotifications();
     };
 
     // Initial load
     loadNotifications();
 
-    // Poll every 30 seconds
-    setInterval(loadNotifications, 30000);
+    // Real-time notifications via SignalR
+    if (window.signalR) {
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl('/hubs/notifications')
+            .withAutomaticReconnect()
+            .build();
+
+        connection.on('ReceiveNotification', function (notif) {
+            // Prepend to local array and re-render
+            notifications.unshift({
+                notificationId: notif.id,
+                title: notif.title,
+                message: notif.message,
+                type: notif.type,
+                url: notif.url || '#',
+                isRead: false,
+                timeAgo: 'just now'
+            });
+            unreadCount++;
+            render(unreadCount);
+        });
+
+        connection.start().catch(function () {
+            // Fallback to polling if SignalR fails
+            setInterval(loadNotifications, 30000);
+        });
+    } else {
+        // Fallback: poll every 30 seconds
+        setInterval(loadNotifications, 30000);
+    }
 
     // Toggle dropdown
     bell.addEventListener('click', function (e) {

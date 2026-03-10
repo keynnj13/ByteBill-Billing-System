@@ -336,9 +336,9 @@
 
     /* ── Stat Cards ── */
     .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
-    .stat-card { display:flex; align-items:center; gap:16px; padding:20px; background:var(--bg-primary,white); border-radius:12px; border:1px solid var(--border-primary,#e5e7eb); box-shadow:0 1px 3px rgba(0,0,0,.04); transition:transform .15s,box-shadow .15s; }
+    .stat-card { position:relative; padding:20px; background:var(--bg-primary,white); border-radius:12px; border:1px solid var(--border-primary,#e5e7eb); box-shadow:0 1px 3px rgba(0,0,0,.04); transition:transform .15s,box-shadow .15s; }
     .stat-card:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,.08); }
-    .stat-icon-wrap { width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+    .stat-icon-wrap { width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;position:absolute;top:20px;right:20px; }
     .stat-card-emerald .stat-icon-wrap { background:rgba(16,185,129,.12);color:#10b981; }
     .stat-card-red .stat-icon-wrap { background:rgba(239,68,68,.12);color:#ef4444; }
     .stat-card-amber .stat-icon-wrap { background:rgba(245,158,11,.12);color:#f59e0b; }

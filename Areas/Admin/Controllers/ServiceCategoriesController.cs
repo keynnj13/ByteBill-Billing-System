@@ -23,7 +23,7 @@ public class ServiceCategoriesController : Controller
         if (!IsAuthorized()) return Forbid();
         var shopId = User.GetShopId();
         var categories = await _db.ServiceCategories
-            .Where(c => c.ShopId == shopId)
+            .Where(c => c.ShopId == shopId && !c.IsArchived)
             .OrderBy(c => c.CategoryName)
             .Select(c => new
             {
@@ -90,7 +90,7 @@ public class ServiceCategoriesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Delete(long id)
+    public async Task<IActionResult> Archive(long id)
     {
         if (!IsAuthorized()) return Forbid();
         var shopId = User.GetShopId();
@@ -101,11 +101,11 @@ public class ServiceCategoriesController : Controller
         if (cat == null) return NotFound();
 
         if (cat.Services.Any(s => s.IsActive))
-            return Json(new { success = false, message = $"Cannot delete — {cat.Services.Count(s => s.IsActive)} active service(s) use this category. Reassign them first." });
+            return Json(new { success = false, message = $"Cannot archive — {cat.Services.Count(s => s.IsActive)} active service(s) use this category. Reassign them first." });
 
-        _db.ServiceCategories.Remove(cat);
+        cat.IsArchived = true;
         await _db.SaveChangesAsync();
 
-        return Json(new { success = true, message = "Category deleted." });
+        return Json(new { success = true, message = "Category archived." });
     }
 }

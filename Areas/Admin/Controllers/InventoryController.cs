@@ -17,12 +17,14 @@ public class InventoryController : Controller
     private readonly IInventoryService _service;
     private readonly ApplicationDbContext _db;
     private readonly IAuditService _audit;
+    private readonly INotificationService _notif;
 
-    public InventoryController(IInventoryService service, ApplicationDbContext db, IAuditService audit)
+    public InventoryController(IInventoryService service, ApplicationDbContext db, IAuditService audit, INotificationService notif)
     {
         _service = service;
         _db = db;
         _audit = audit;
+        _notif = notif;
     }
 
     private bool IsAuthorized()
@@ -102,18 +104,29 @@ public class InventoryController : Controller
         }
 
         var shopId = User.GetShopId();
-        await _service.CreateAsync(shopId, new CreateInventoryItemRequest
+        try
         {
-            SKU = model.SKU,
-            ItemName = model.Name,
-            CategoryName = model.Category,
-            Unit = model.Unit,
-            UnitCost = model.CostPrice,
-            UnitPrice = model.SellingPrice,
-            QtyOnHand = model.QuantityInStock,
-            ReorderLevel = model.ReorderLevel,
-            IsActive = model.IsActive
-        });
+            await _service.CreateAsync(shopId, new CreateInventoryItemRequest
+            {
+                SKU = model.SKU,
+                ItemName = model.Name,
+                CategoryName = model.Category,
+                Unit = model.Unit,
+                UnitCost = model.CostPrice,
+                UnitPrice = model.SellingPrice,
+                QtyOnHand = model.QuantityInStock,
+                ReorderLevel = model.ReorderLevel,
+                IsActive = model.IsActive
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return Json(new { success = false, message = ex.Message });
+            ModelState.AddModelError("SKU", ex.Message);
+            model.ExistingCategories = await _service.GetCategoriesAsync(shopId);
+            return View(model);
+        }
 
         TempData["Success"] = "Inventory item created successfully!";
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
@@ -269,6 +282,25 @@ public class InventoryController : Controller
         if (!result)
             return Json(new { success = false, message = "Item not found." });
 
+        // Notify all technicians in the shop about the stock-in
+        var item = await _db.InventoryItems.FirstOrDefaultAsync(i => i.ShopId == shopId && i.ItemId == id);
+        if (item != null)
+        {
+            var techIds = await _db.Users
+                .Where(u => u.ShopId == shopId && u.IsActive
+                    && u.UserRoles.Any(ur => ur.Role!.RoleName == "Technician"))
+                .Select(u => u.UserId)
+                .ToListAsync();
+            foreach (var techId in techIds)
+            {
+                await _notif.CreateAsync(techId, shopId,
+                    "Parts Restocked",
+                    $"{item.ItemName} — {quantity} unit(s) added to inventory.",
+                    "info",
+                    $"/Technician/PartsUsage");
+            }
+        }
+
         TempData["Success"] = "Stock restocked successfully!";
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return Json(new { success = true, message = "Stock restocked successfully!" });
@@ -301,7 +333,7 @@ public class InventoryController : Controller
     // ─── WRITE OFF ──────────────────────────────────────────
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> WriteOff(long id, string reason, string? notes)
+    public async Task<IActionResult> WriteOff(long id, int quantity, string reason, string? notes)
     {
         if (!IsAuthorized()) return Forbid();
         var shopId = User.GetShopId();
@@ -312,34 +344,41 @@ public class InventoryController : Controller
         if (string.IsNullOrWhiteSpace(reason) || !validReasons.Contains(reason))
             return Json(new { success = false, message = "Please select a valid reason." });
 
-        // Record write-off transaction for the remaining stock
-        if (item.QtyOnHand > 0)
-        {
-            _db.InventoryTxns.Add(new Models.InventoryTxn
-            {
-                ItemId = item.ItemId,
-                TxnType = Models.Enums.InventoryTxnType.WRITEOFF,
-                Quantity = item.QtyOnHand,
-                ReferenceType = "WriteOff",
-                ReferenceId = item.ItemId,
-                Remarks = $"{reason}{(string.IsNullOrWhiteSpace(notes) ? "" : ": " + notes.Trim())}",
-                CreatedAt = DateTime.UtcNow
-            });
-        }
+        if (quantity < 1 || quantity > item.QtyOnHand)
+            return Json(new { success = false, message = $"Quantity must be between 1 and {item.QtyOnHand}." });
 
-        item.IsActive = false;
+        // Record write-off transaction
+        _db.InventoryTxns.Add(new Models.InventoryTxn
+        {
+            ItemId = item.ItemId,
+            TxnType = Models.Enums.InventoryTxnType.WRITEOFF,
+            Quantity = quantity,
+            ReferenceType = "WriteOff",
+            ReferenceId = item.ItemId,
+            Remarks = $"{reason}{(string.IsNullOrWhiteSpace(notes) ? "" : ": " + notes.Trim())}",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        item.QtyOnHand -= quantity;
+
+        // Archive only when all stock is written off
+        if (item.QtyOnHand <= 0)
+        {
+            item.IsActive = false;
+        }
         item.WriteOffReason = reason;
         item.WriteOffNotes = notes?.Trim();
-        item.QtyOnHand = 0;
+
         await _db.SaveChangesAsync();
 
+        var qtyLabel = quantity == (item.QtyOnHand + quantity) ? "all stock" : $"{quantity} unit(s)";
         await _audit.LogAsync(shopId, User.GetUserId(), "WriteOff", "InventoryItem", item.ItemId,
-            $"Written off inventory item '{item.ItemName}' — Reason: {reason}",
+            $"Written off {qtyLabel} of '{item.ItemName}' — Reason: {reason}",
             HttpContext.Connection.RemoteIpAddress?.ToString());
 
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-            return Json(new { success = true, message = "Item written off successfully." });
-        TempData["Success"] = $"Item '{item.ItemName}' written off.";
+            return Json(new { success = true, message = $"Written off {quantity} unit(s) of '{item.ItemName}'." });
+        TempData["Success"] = $"Written off {quantity} unit(s) of '{item.ItemName}'.";
         return RedirectToAction(nameof(Index));
     }
 }

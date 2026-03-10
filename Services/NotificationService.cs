@@ -1,5 +1,7 @@
 using ByteBill_BS.Data;
+using ByteBill_BS.Hubs;
 using ByteBill_BS.Models;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace ByteBill_BS.Services;
@@ -40,8 +42,13 @@ public class NotificationDto
 public class NotificationService : INotificationService
 {
     private readonly ApplicationDbContext _db;
+    private readonly IHubContext<NotificationHub> _hub;
 
-    public NotificationService(ApplicationDbContext db) => _db = db;
+    public NotificationService(ApplicationDbContext db, IHubContext<NotificationHub> hub)
+    {
+        _db = db;
+        _hub = hub;
+    }
 
     public async Task<List<NotificationDto>> GetByUserAsync(long userId, int take = 20)
     {
@@ -102,7 +109,7 @@ public class NotificationService : INotificationService
 
     public async Task CreateAsync(long userId, long shopId, string title, string message, string type, string? url = null)
     {
-        _db.Notifications.Add(new Notification
+        var notif = new Notification
         {
             UserId = userId,
             ShopId = shopId,
@@ -112,8 +119,21 @@ public class NotificationService : INotificationService
             Url = url,
             IsRead = false,
             CreatedAt = DateTime.UtcNow
-        });
+        };
+        _db.Notifications.Add(notif);
         await _db.SaveChangesAsync();
+
+        // Push real-time notification via SignalR
+        await _hub.Clients.User(userId.ToString()).SendAsync("ReceiveNotification", new
+        {
+            id = notif.NotificationId,
+            title = notif.Title,
+            message = notif.Message,
+            type = notif.Type,
+            url = notif.Url,
+            isRead = false,
+            createdAt = notif.CreatedAt
+        });
     }
 
     public async Task NotifySuperAdminsAsync(long shopId, string title, string message, string type, string? url = null)

@@ -308,6 +308,8 @@
                         </div>
                         <div class="form-group" style="margin-bottom: 12px;">
                             @{
+                                var notesRequired = Model.Status == JobOrderStatus.WaitingForParts
+                                    || allowedTransitions.Contains(JobOrderStatus.WaitingForParts);
                                 var notesPlaceholder = Model.Status switch
                                 {
                                     JobOrderStatus.Diagnosis => "Notes required for Waiting for Parts...",
@@ -319,17 +321,34 @@
                                     : (Model.Status == JobOrderStatus.Diagnosis
                                         ? "Notes are required when changing to Waiting for Parts."
                                         : (string)null);
+                                // Show by default when current status is WaitingForParts (always needs notes)
+                                var showByDefault = Model.Status == JobOrderStatus.WaitingForParts;
                             }
-                            <textarea name="notes" class="form-input" rows="2" placeholder="@notesPlaceholder" style="font-size: 13px;"></textarea>
-                            @if (notesHint != null)
-                            {
-                                <p style="font-size: 11px; color: #d97706; margin: 4px 0 0 4px;">⚠ @notesHint</p>
-                            }
+                            <div id="statusNotesGroup" style="@(showByDefault ? "" : "display:none;")">
+                                <textarea name="notes" class="form-input" rows="2" placeholder="@notesPlaceholder" style="font-size: 13px;"></textarea>
+                                @if (notesHint != null)
+                                {
+                                    <p id="statusNotesHint" style="font-size: 11px; color: #d97706; margin: 4px 0 0 4px;">⚠ @notesHint</p>
+                                }
+                            </div>
                         </div>
                         <button type="submit" class="btn btn-primary btn-sm" style="width: 100%;">
                             Update Status
                         </button>
                     </form>
+                    <script>
+                    (function() {
+                        var sel = document.querySelector('select[name="status"]');
+                        var grp = document.getElementById('statusNotesGroup');
+                        if (sel && grp) {
+                            sel.addEventListener('change', function() {
+                                grp.style.display = sel.value === 'WaitingForParts' || '@Model.Status' === 'WaitingForParts' ? '' : 'none';
+                            });
+                            // Trigger on initial load
+                            sel.dispatchEvent(new Event('change'));
+                        }
+                    })();
+                    </script>
                 </div>
             </div>
         }
