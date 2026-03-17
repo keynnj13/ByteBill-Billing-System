@@ -48,9 +48,6 @@ public class EmailService : IEmailService
         _logger = logger;
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  1. INVOICE EMAIL
-    // ═════════════════════════════════════════════════════════════════════
     public async Task SendInvoiceAsync(long invoiceId)
     {
         var invoice = await _db.Invoices
@@ -94,9 +91,6 @@ public class EmailService : IEmailService
             attachmentFilename: $"{invoice.InvoiceNo}.pdf");
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  2. PAYMENT RECEIPT EMAIL
-    // ═════════════════════════════════════════════════════════════════════
     public async Task SendReceiptAsync(long paymentId)
     {
         var payment = await _db.Payments
@@ -140,9 +134,6 @@ public class EmailService : IEmailService
             attachmentFilename: $"Receipt-{payment.PaymentNo}.pdf");
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  3. SUBSCRIPTION CONFIRMATION EMAIL
-    // ═════════════════════════════════════════════════════════════════════
     public async Task SendSubscriptionConfirmationAsync(long subscriptionPaymentId)
     {
         var subPay = await _db.SubscriptionPayments
