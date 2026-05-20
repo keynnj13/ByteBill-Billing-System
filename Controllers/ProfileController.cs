@@ -10,20 +10,31 @@ using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace ByteBill_BS.Controllers;
 
 [Authorize]
 public class ProfileController : Controller
 {
+    private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(250);
+    private static readonly Regex NameLettersOnlyRegex = new("^[A-Za-z]+$", RegexOptions.Compiled, RegexTimeout);
+
     private readonly ApplicationDbContext _db;
     private readonly IAuditService _audit;
+    private readonly IMfaService _mfa;
+    private readonly IPasswordBlacklistValidator _passwordBlacklist;
 
-    public ProfileController(ApplicationDbContext db, IAuditService audit)
+    public ProfileController(ApplicationDbContext db, IAuditService audit, IMfaService mfa, IPasswordBlacklistValidator passwordBlacklist)
     {
         _db = db;
         _audit = audit;
+        _mfa = mfa;
+        _passwordBlacklist = passwordBlacklist;
     }
+
+    private static bool IsAjaxRequest(string? requestedWith)
+        => string.Equals(requestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
 
     // ── Profile Settings Page ──────────────────────────────────────────
     [HttpGet("/Profile")]
@@ -68,6 +79,12 @@ public class ProfileController : Controller
 
         if (user is null) return RedirectToAction("Login", "Auth");
 
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Invalid profile data.";
+            return RedirectToAction(nameof(Index));
+        }
+
         // Capture old values for audit
         var oldValues = JsonSerializer.Serialize(new
         {
@@ -85,9 +102,21 @@ public class ProfileController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        if (!string.IsNullOrWhiteSpace(model.Phone) && !System.Text.RegularExpressions.Regex.IsMatch(model.Phone, @"^09\d{9}$"))
+        if (!string.IsNullOrWhiteSpace(model.Phone) && !Regex.IsMatch(model.Phone, @"^09\d{9}$", RegexOptions.None, RegexTimeout))
         {
             TempData["Error"] = "Phone must be 11 digits starting with 09.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (!NameLettersOnlyRegex.IsMatch(model.FirstName.Trim()) || !NameLettersOnlyRegex.IsMatch(model.LastName.Trim()))
+        {
+            TempData["Error"] = "First name and last name must contain letters only.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (!string.IsNullOrWhiteSpace(model.MiddleName) && !NameLettersOnlyRegex.IsMatch(model.MiddleName.Trim()))
+        {
+            TempData["Error"] = "Middle name must contain letters only.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -138,6 +167,12 @@ public class ProfileController : Controller
 
         if (user is null) return RedirectToAction("Login", "Auth");
 
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Invalid password data.";
+            return RedirectToAction(nameof(Index));
+        }
+
         if (string.IsNullOrWhiteSpace(model.CurrentPassword) || string.IsNullOrWhiteSpace(model.NewPassword))
         {
             TempData["Error"] = "Both current and new password are required.";
@@ -156,9 +191,15 @@ public class ProfileController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        if (!System.Text.RegularExpressions.Regex.IsMatch(model.NewPassword, @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{12,}$"))
+        if (!Regex.IsMatch(model.NewPassword, @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{12,}$", RegexOptions.None, RegexTimeout))
         {
             TempData["Error"] = "Password must include uppercase, lowercase, number, and special character.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (_passwordBlacklist.IsDisallowed(model.NewPassword))
+        {
+            TempData["Error"] = _passwordBlacklist.ErrorMessage;
             return RedirectToAction(nameof(Index));
         }
 
@@ -185,29 +226,118 @@ public class ProfileController : Controller
     public async Task<IActionResult> Preferences()
     {
         var userId = User.GetUserId();
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _db.Users
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(u => u.UserId == userId);
         if (user is null) return RedirectToAction("Login", "Auth");
+
+        var role = user.UserRoles.FirstOrDefault()?.Role?.RoleName ?? string.Empty;
+        var canManageMfa = role is "Admin" or "SuperAdmin";
 
         return View(new PreferencesViewModel
         {
             ThemePreference = user.ThemePreference,
             EmailNotifications = user.EmailNotifications,
-            InAppNotifications = user.InAppNotifications
+            InAppNotifications = user.InAppNotifications,
+            IsMfaEnabled = user.IsMfaEnabled,
+            CanManageMfa = canManageMfa
         });
+    }
+
+    [HttpPost("/Profile/ManageMfa")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ManageMfa(string? totpCode, bool reconfigure = false)
+    {
+        var role = User.GetRole();
+        if (role is not ("Admin" or "SuperAdmin"))
+        {
+            TempData["Error"] = "Only administrators can manage MFA.";
+            return RedirectToAction(nameof(Preferences));
+        }
+
+        var userId = User.GetUserId();
+        var shopId = User.GetShopId();
+        var user = await _db.Users
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(u => u.UserId == userId);
+
+        if (user is null)
+        {
+            return RedirectToAction("Login", "Auth");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Invalid MFA request.";
+            return RedirectToAction(nameof(Preferences));
+        }
+
+        if (!user.IsMfaEnabled)
+        {
+            TempData["AuthMessage"] = "Set up MFA to protect your account.";
+            return RedirectToAction("SetupMfa", "Auth", new { fromPreferences = true, regenerate = true });
+        }
+
+        if (string.IsNullOrWhiteSpace(user.TotpSecretKey) || string.IsNullOrWhiteSpace(totpCode) || !_mfa.VerifyTotpCode(user.TotpSecretKey, totpCode))
+        {
+            TempData["Error"] = "Invalid authenticator code. Please try again.";
+            return RedirectToAction(nameof(Preferences));
+        }
+
+        user.IsMfaEnabled = false;
+        user.MfaType = null;
+        user.TotpSecretKey = null;
+        user.EmailOtpHash = null;
+        user.EmailOtpExpiresAt = null;
+        user.EmailOtpFailedAttempts = 0;
+        user.AuthVersion += 1;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        await _audit.LogAsync(shopId, userId,
+            reconfigure ? "MfaResetStarted" : "MfaDisabled",
+            "User", userId,
+            reconfigure ? "User started MFA reconfiguration from preferences." : "User disabled MFA from preferences.",
+            ip);
+
+        await RefreshAuthCookieAsync(user);
+
+        if (reconfigure)
+        {
+            TempData["AuthMessage"] = "Confirm your new authenticator app setup.";
+            return RedirectToAction("SetupMfa", "Auth", new { fromPreferences = true, regenerate = true });
+        }
+
+        TempData["Success"] = "Multi-factor authentication has been disabled.";
+        return RedirectToAction(nameof(Preferences));
     }
 
     [HttpPost("/Profile/UpdatePreferences")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdatePreferences(PreferencesUpdateRequest model)
+    public async Task<IActionResult> UpdatePreferences(
+        PreferencesUpdateRequest model,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         var userId = User.GetUserId();
         var shopId = User.GetShopId();
         var user = await _db.Users.FindAsync(userId);
         if (user is null)
         {
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return Json(new { success = false, message = "Session expired." });
             return RedirectToAction("Login", "Auth");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            if (IsAjaxRequest(requestedWith))
+                return Json(new { success = false, message = "Invalid preferences data." });
+            TempData["Error"] = "Invalid preferences data.";
+            return RedirectToAction(nameof(Preferences));
         }
 
         var theme = model.ThemePreference == "dark" ? "dark" : "light";
@@ -221,8 +351,8 @@ public class ProfileController : Controller
         // ── Update theme cookie ────────────────────────────────────
         Response.Cookies.Append("ByteBillTheme", theme, new CookieOptions
         {
-            HttpOnly = false,
-            Secure = false,
+            HttpOnly = true,
+            Secure = true,
             Expires = DateTimeOffset.UtcNow.AddDays(365),
             SameSite = SameSiteMode.Lax,
             Path = "/"
@@ -232,7 +362,7 @@ public class ProfileController : Controller
         await _audit.LogAsync(shopId, userId, "Update", "User", userId,
             $"Updated preferences: theme={theme}, email={model.EmailNotifications}, inApp={model.InAppNotifications}", ip);
 
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = true });
 
         TempData["Success"] = "Preferences saved successfully.";
@@ -251,12 +381,17 @@ public class ProfileController : Controller
             new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
             new Claim(ClaimTypes.Name, user.FullName),
             new Claim("UserId", user.UserId.ToString()),
+            new Claim("AuthVersion", user.AuthVersion.ToString()),
             new Claim("FullName", user.FullName),
             new Claim("FirstName", user.FirstName),
             new Claim("LastName", user.LastName),
             new Claim("Initials", user.Initials),
             new Claim("Role", userRole.ToString()),
-            new Claim("ShopId", user.ShopId.ToString())
+            new Claim("ShopId", user.ShopId.ToString()),
+            new Claim("MustChangePassword", user.MustChangePassword ? "1" : "0"),
+            new Claim("IsMfaEnabled", user.IsMfaEnabled ? "1" : "0"),
+            new Claim("MfaOnboarded", user.LastMfaAt.HasValue ? "1" : "0"),
+            new Claim("LastActivityUtc", DateTime.UtcNow.ToString("O"))
         };
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -285,8 +420,17 @@ public class ProfileViewModel
 
 public class ProfileUpdateRequest
 {
+    private const string NamePattern = @"^[A-Za-z]+$";
+
+    [Required]
+    [RegularExpression(NamePattern, ErrorMessage = "First name must contain letters only")]
     public string FirstName { get; set; } = string.Empty;
+
+    [RegularExpression(NamePattern, ErrorMessage = "Middle name must contain letters only")]
     public string? MiddleName { get; set; }
+
+    [Required]
+    [RegularExpression(NamePattern, ErrorMessage = "Last name must contain letters only")]
     public string LastName { get; set; } = string.Empty;
     public string? Email { get; set; }
 
@@ -300,6 +444,8 @@ public class PreferencesViewModel
     public string ThemePreference { get; set; } = "light";
     public bool EmailNotifications { get; set; }
     public bool InAppNotifications { get; set; }
+    public bool IsMfaEnabled { get; set; }
+    public bool CanManageMfa { get; set; }
 }
 
 public class PreferencesUpdateRequest

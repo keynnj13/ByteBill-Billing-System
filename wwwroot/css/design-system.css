@@ -2993,16 +2993,16 @@ a:hover {
 [data-theme="dark"] .rpt-stat-card,
 [data-theme="dark"] .rpt-link-card,
 [data-theme="dark"] .rr-stat-card,
-[data-theme="dark"] .pr-stat-card,
+[data-theme="dark"] .adj-stat-label { color: #cbd5e1; }
 [data-theme="dark"] .sp-stat-card,
 [data-theme="dark"] .ir-stat-card,
-[data-theme="dark"] .ig-stat-card,
+[data-theme="dark"] .adj-section-desc { color: #cbd5e1; }
 [data-theme="dark"] .sau-stat-card,
 [data-theme="dark"] .shp-stat-card,
-[data-theme="dark"] .slog-stat-card,
-[data-theme="dark"] .stat-card,
-[data-theme="dark"] .stg-card,
-[data-theme="dark"] .info-card {
+[data-theme="dark"] .adj-reviewed-by { color: #cbd5e1; }
+[data-theme="dark"] .adj-date { color: #cbd5e1; }
+[data-theme="dark"] .adj-empty-title { color: #cbd5e1; }
+[data-theme="dark"] .adj-empty-desc { color: #cbd5e1; }
     background: var(--card);
     border-color: var(--gray-border);
 }

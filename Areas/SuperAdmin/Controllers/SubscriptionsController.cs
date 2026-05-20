@@ -23,6 +23,9 @@ public class SubscriptionsController : Controller
         return roleClaim == UserRole.SuperAdmin.ToString();
     }
 
+    private static bool IsAjaxRequest(string? requestedWith)
+        => string.Equals(requestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+
     private long GetUserId() => long.TryParse(User.Claims.FirstOrDefault(c => c.Type == "UserId")?.Value, out var id) ? id : 0;
     private string? GetIpAddress() => HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -61,7 +64,9 @@ public class SubscriptionsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Assign(AssignSubscriptionViewModel model)
+    public async Task<IActionResult> Assign(
+        AssignSubscriptionViewModel model,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return Forbid();
 
@@ -69,14 +74,14 @@ public class SubscriptionsController : Controller
         {
             model.AvailableShops = await _service.GetShopDropdownAsync();
             ViewBag.Plans = await _service.GetActivePlansAsync();
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_AssignModal", model);
             return RedirectToAction(nameof(Index));
         }
 
         var result = await _service.AssignSubscriptionAsync(model.ShopId, model.PlanId, model.BillingCycle, GetUserId(), GetIpAddress());
 
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = result.Success, message = result.Message, checkoutUrl = result.CheckoutUrl });
 
         if (result.Success) TempData["Success"] = result.Message;
@@ -86,11 +91,19 @@ public class SubscriptionsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Cancel(long id)
+    public async Task<IActionResult> Cancel(
+        long id,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid)
+        {
+            if (IsAjaxRequest(requestedWith))
+                return Json(new { success = false, message = "Invalid request." });
+            return RedirectToAction(nameof(Index));
+        }
         var result = await _service.CancelSubscriptionAsync(id, GetUserId(), GetIpAddress());
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = result.Success, message = result.Message });
         return RedirectToAction(nameof(Index));
     }

@@ -25,6 +25,7 @@ public class PaymentsController : Controller
     public async Task<IActionResult> Index(string? search, PaymentMethod? method, int page = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+        if (!ModelState.IsValid) return BadRequest();
         var shopId = User.GetShopId();
         const int pageSize = 20;
 
@@ -67,7 +68,7 @@ public class PaymentsController : Controller
                 ReferenceNo = p.ReferenceNo,
                 ReceivedByName = p.ReceivedByUser != null ? p.ReceivedByUser.FirstName + " " + p.ReceivedByUser.LastName : null,
                 Status = p.Status,
-                IsVoid = p.Status == PaymentStatus.Refunded ? true : p.Status == PaymentStatus.Failed ? true : false
+                IsVoid = p.Status == PaymentStatus.Refunded || p.Status == PaymentStatus.Failed
             })
             .ToListAsync();
 
@@ -90,6 +91,7 @@ public class PaymentsController : Controller
     public async Task<IActionResult> Details(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+        if (!ModelState.IsValid) return BadRequest();
         var shopId = User.GetShopId();
 
         var p = await _db.Payments

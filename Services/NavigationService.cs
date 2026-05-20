@@ -81,6 +81,7 @@ public class NavigationService : INavigationService
                 Items = new[]
                 {
                     new NavigationItem { Title = "Announcements", Icon = "bell", Url = "/SuperAdmin/Announcements" },
+                    new NavigationItem { Title = "Security", Icon = "shield", Url = "/SuperAdmin/Security" },
                     new NavigationItem { Title = "Settings", Icon = "settings", Url = "/SuperAdmin/Settings" }
                 }
             }

@@ -16,14 +16,19 @@ public class UsersController : Controller
 {
     private readonly ApplicationDbContext _db;
     private readonly IAuditService _audit;
+    private readonly IEmailSecurityService _emailSecurity;
 
-    public UsersController(ApplicationDbContext db, IAuditService audit)
+    public UsersController(ApplicationDbContext db, IAuditService audit, IEmailSecurityService emailSecurity)
     {
         _db = db;
         _audit = audit;
+        _emailSecurity = emailSecurity;
     }
 
     private bool IsAuthorized() => User.IsInRoles("Admin", "SuperAdmin");
+
+    private static bool IsAjaxRequest(string? requestedWith)
+        => string.Equals(requestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
 
     private static string GetInitials(string firstName, string lastName)
     {
@@ -37,6 +42,12 @@ public class UsersController : Controller
     public async Task<IActionResult> Index(string? search, UserRole? role, int page = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Invalid filters.";
+            return RedirectToAction(nameof(Index));
+        }
 
         var shopId = User.GetShopId();
         var currentUserId = User.GetUserId();
@@ -53,9 +64,10 @@ public class UsersController : Controller
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim().ToLower();
+            var termHash = _emailSecurity.ComputeHash(term);
             query = query.Where(u =>
                 (u.FirstName + " " + u.LastName).ToLower().Contains(term) ||
-                (u.Email != null && u.Email.ToLower().Contains(term)) ||
+                (u.EmailHash != null && u.EmailHash == termHash) ||
                 u.UserName.ToLower().Contains(term));
         }
 
@@ -157,7 +169,9 @@ public class UsersController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(UserFormViewModel model)
+    public async Task<IActionResult> Create(
+        UserFormViewModel model,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
@@ -180,7 +194,7 @@ public class UsersController : Controller
 
         if (!ModelState.IsValid)
         {
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_CreateModal", model);
             return View(model);
         }
@@ -224,7 +238,7 @@ public class UsersController : Controller
             HttpContext.Connection.RemoteIpAddress?.ToString());
 
         TempData["Success"] = "User created successfully!";
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = true, message = "User created successfully!" });
         return RedirectToAction(nameof(Index));
     }
@@ -234,6 +248,7 @@ public class UsersController : Controller
     public async Task<IActionResult> Edit(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+        if (!ModelState.IsValid) return BadRequest();
         var model = await GetEditModelAsync(id);
         if (model == null) return NotFound();
         return View(model);
@@ -243,6 +258,7 @@ public class UsersController : Controller
     public async Task<IActionResult> EditModal(long id)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
         var model = await GetEditModelAsync(id);
         if (model == null) return NotFound();
         return PartialView("_EditModal", model);
@@ -278,7 +294,9 @@ public class UsersController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(UserFormViewModel model)
+    public async Task<IActionResult> Edit(
+        UserFormViewModel model,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
@@ -294,7 +312,7 @@ public class UsersController : Controller
 
         if (!ModelState.IsValid)
         {
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_EditModal", model);
             return View(model);
         }
@@ -351,7 +369,7 @@ public class UsersController : Controller
             HttpContext.Connection.RemoteIpAddress?.ToString());
 
         TempData["Success"] = "User updated successfully!";
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = true, message = "User updated successfully!" });
         return RedirectToAction(nameof(Index));
     }
@@ -361,6 +379,7 @@ public class UsersController : Controller
     public async Task<IActionResult> Details(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+        if (!ModelState.IsValid) return BadRequest();
         var model = await GetDetailModelAsync(id);
         if (model == null) return NotFound();
         return View(model);
@@ -370,6 +389,7 @@ public class UsersController : Controller
     public async Task<IActionResult> DetailsModal(long id)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
         var model = await GetDetailModelAsync(id);
         if (model == null) return NotFound();
         return PartialView("_DetailsModal", model);
@@ -461,9 +481,12 @@ public class UsersController : Controller
     // ─── TOGGLE STATUS ──────────────────────────────────────
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ToggleStatus(long id)
+    public async Task<IActionResult> ToggleStatus(
+        long id,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
 
         var shopId = User.GetShopId();
         var user = await _db.Users
@@ -481,7 +504,7 @@ public class UsersController : Controller
             $"User '{user.UserName}' {statusText}",
             HttpContext.Connection.RemoteIpAddress?.ToString());
 
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = true, message = $"User {statusText} successfully!" });
         return RedirectToAction(nameof(Index));
     }

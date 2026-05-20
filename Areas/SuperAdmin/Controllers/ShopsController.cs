@@ -23,6 +23,9 @@ public class ShopsController : Controller
         return roleClaim == UserRole.SuperAdmin.ToString();
     }
 
+    private static bool IsAjaxRequest(string? requestedWith)
+        => string.Equals(requestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+
     private long GetUserId() => long.TryParse(User.Claims.FirstOrDefault(c => c.Type == "UserId")?.Value, out var id) ? id : 0;
     private string? GetIpAddress() => HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -49,11 +52,19 @@ public class ShopsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ToggleStatus(long id)
+    public async Task<IActionResult> ToggleStatus(
+        long id,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid)
+        {
+            if (IsAjaxRequest(requestedWith))
+                return Json(new { success = false, message = "Invalid request." });
+            return BadRequest();
+        }
         var result = await _service.ToggleShopStatusAsync(id, GetUserId(), GetIpAddress());
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = result.Success, message = result.Message });
         return RedirectToAction(nameof(Index));
     }
@@ -69,13 +80,15 @@ public class ShopsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(ShopFormViewModel model)
+    public async Task<IActionResult> Edit(
+        ShopFormViewModel model,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return Forbid();
 
         if (!ModelState.IsValid)
         {
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
             {
                 var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
                 return Json(new { success = false, message = string.Join(" ", errors) });
@@ -84,7 +97,7 @@ public class ShopsController : Controller
         }
 
         var result = await _service.UpdateShopAsync(model, GetUserId(), GetIpAddress());
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = result.Success, message = result.Message });
         return RedirectToAction(nameof(Index));
     }

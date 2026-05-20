@@ -31,6 +31,9 @@ public class ServicesController : Controller
         return roleClaim == UserRole.Admin.ToString();
     }
 
+    private static bool IsAjaxRequest(string? requestedWith)
+        => string.Equals(requestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+
     [HttpGet]
     public async Task<IActionResult> Index(string? search, string? category, int page = 1)
     {
@@ -91,7 +94,9 @@ public class ServicesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(ServiceFormViewModel model)
+    public async Task<IActionResult> Create(
+        ServiceFormViewModel model,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
@@ -99,7 +104,7 @@ public class ServicesController : Controller
         {
             var shopId2 = User.GetShopId();
             model.ExistingCategories = await _service.GetCategoriesAsync(shopId2);
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_CreateModal", model);
             return View(model);
         }
@@ -117,7 +122,7 @@ public class ServicesController : Controller
         });
 
         TempData["Success"] = "Service created successfully!";
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = true, message = "Service created successfully!" });
         return RedirectToAction(nameof(Index));
     }
@@ -164,7 +169,9 @@ public class ServicesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(ServiceFormViewModel model)
+    public async Task<IActionResult> Edit(
+        ServiceFormViewModel model,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
@@ -172,7 +179,7 @@ public class ServicesController : Controller
         {
             var shopId2 = User.GetShopId();
             model.ExistingCategories = await _service.GetCategoriesAsync(shopId2);
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_EditModal", model);
             return View(model);
         }
@@ -192,7 +199,7 @@ public class ServicesController : Controller
         if (result == null) return NotFound();
 
         TempData["Success"] = "Service updated successfully!";
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = true, message = "Service updated successfully!" });
         return RedirectToAction(nameof(Index));
     }
@@ -239,9 +246,17 @@ public class ServicesController : Controller
     // ─── DISCONTINUE ────────────────────────────────────────
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Discontinue(long id)
+    public async Task<IActionResult> Discontinue(
+        long id,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid)
+        {
+            if (IsAjaxRequest(requestedWith))
+                return Json(new { success = false, message = "Invalid request." });
+            return BadRequest();
+        }
         var shopId = User.GetShopId();
         var svc = await _db.ServiceCatalogs.FirstOrDefaultAsync(s => s.ShopId == shopId && s.ServiceId == id);
         if (svc == null) return NotFound();
@@ -253,7 +268,7 @@ public class ServicesController : Controller
             $"Discontinued service '{svc.ServiceName}'",
             HttpContext.Connection.RemoteIpAddress?.ToString());
 
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = true, message = "Service discontinued successfully!" });
         TempData["Success"] = "Service discontinued.";
         return RedirectToAction(nameof(Index));

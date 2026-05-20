@@ -6,7 +6,7 @@ public class PaginationViewModel
     public int TotalPages { get; set; }
     public int TotalItems { get; set; }
     public int PageSize { get; set; } = 10;
-    public string BaseUrl { get; set; } = string.Empty;
+    public string? BaseUrl { get; set; }
     public string? SearchTerm { get; set; }
 
     /// <summary>Extra query-string parameters to preserve across pages (e.g. filters).</summary>

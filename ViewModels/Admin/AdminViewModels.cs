@@ -50,19 +50,25 @@ public class UserItemViewModel
 
 public class UserFormViewModel
 {
+    private const string NamePattern = @"^[A-Za-z]+(?:\s+[A-Za-z]+)*$";
+    private const string PhMobilePattern = @"^\d{11}$";
+
     public long Id { get; set; }
 
     [Required(ErrorMessage = "First name is required")]
     [StringLength(50)]
+    [RegularExpression(NamePattern, ErrorMessage = "First name may contain letters and spaces only")]
     [Display(Name = "First Name")]
     public string FirstName { get; set; } = string.Empty;
 
     [StringLength(50)]
+    [RegularExpression(NamePattern, ErrorMessage = "Middle name may contain letters and spaces only")]
     [Display(Name = "Middle Name")]
     public string? MiddleName { get; set; }
 
     [Required(ErrorMessage = "Last name is required")]
     [StringLength(50)]
+    [RegularExpression(NamePattern, ErrorMessage = "Last name may contain letters and spaces only")]
     [Display(Name = "Last Name")]
     public string LastName { get; set; } = string.Empty;
 
@@ -78,8 +84,8 @@ public class UserFormViewModel
     [Display(Name = "Email")]
     public string Email { get; set; } = string.Empty;
 
-    [StringLength(11)]
-    [RegularExpression(@"^09\d{9}$", ErrorMessage = "Phone must be 11 digits starting with 09")]
+    [StringLength(11, MinimumLength = 11, ErrorMessage = "Phone must be exactly 11 digits")]
+    [RegularExpression(PhMobilePattern, ErrorMessage = "Phone must be exactly 11 digits")]
     [Display(Name = "Phone")]
     public string? Phone { get; set; }
 
@@ -151,6 +157,7 @@ public class UserActivityItem
 public class AuditLogListViewModel
 {
     public List<AuditLogItemViewModel> Logs { get; set; } = new();
+    public string LogType { get; set; } = "transaction";
     public string? SearchTerm { get; set; }
     public string? EntityFilter { get; set; }
     public string? ActionFilter { get; set; }

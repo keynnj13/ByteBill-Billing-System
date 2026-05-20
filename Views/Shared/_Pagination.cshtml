@@ -2,6 +2,7 @@
 
 @if (Model.TotalPages > 1)
 {
+    var baseUrl = Model.BaseUrl ?? string.Empty;
     var searchQuery = !string.IsNullOrEmpty(Model.SearchTerm) ? "&search=" + Uri.EscapeDataString(Model.SearchTerm) : "";
     var extraQuery = string.Join("", Model.ExtraParams.Where(kv => !string.IsNullOrEmpty(kv.Value)).Select(kv => "&" + Uri.EscapeDataString(kv.Key) + "=" + Uri.EscapeDataString(kv.Value)));
     var filterQuery = searchQuery + extraQuery;
@@ -12,7 +13,7 @@
         </p>
         
         <nav class="pagination" aria-label="Pagination">
-            <a href="@(Model.BaseUrl)?page=@(Model.CurrentPage - 1)@filterQuery" 
+                <a href="@baseUrl?page=@(Model.CurrentPage - 1)@filterQuery" 
                class="pagination-btn @(!Model.HasPreviousPage ? "disabled" : "")"
                @(!Model.HasPreviousPage ? "aria-disabled=true tabindex=-1" : "")
                aria-label="Previous page">
@@ -27,7 +28,7 @@
                 
                 if (startPage > 1)
                 {
-                    <a href="@(Model.BaseUrl)?page=1@filterQuery" class="pagination-btn">1</a>
+                    <a href="@baseUrl?page=1@filterQuery" class="pagination-btn">1</a>
                     if (startPage > 2)
                     {
                         <span class="pagination-btn" style="border: none; cursor: default;">...</span>
@@ -37,7 +38,7 @@
                 for (int i = startPage; i <= endPage; i++)
                 {
                     var isActive = i == Model.CurrentPage;
-                    <a href="@(Model.BaseUrl)?page=@i@filterQuery" 
+                          <a href="@baseUrl?page=@i@filterQuery" 
                        class="pagination-btn @(isActive ? "active" : "")"
                        @(isActive ? "aria-current=page" : "")>@i</a>
                 }
@@ -48,13 +49,13 @@
                     {
                         <span class="pagination-btn" style="border: none; cursor: default;">...</span>
                     }
-                    <a href="@(Model.BaseUrl)?page=@Model.TotalPages@filterQuery" class="pagination-btn">@Model.TotalPages</a>
+                    <a href="@baseUrl?page=@Model.TotalPages@filterQuery" class="pagination-btn">@Model.TotalPages</a>
                 }
             }
             
             @if (Model.HasNextPage)
             {
-                <a href="@(Model.BaseUrl)?page=@(Model.CurrentPage + 1)@filterQuery" 
+                     <a href="@baseUrl?page=@(Model.CurrentPage + 1)@filterQuery" 
                    class="pagination-btn"
                    aria-label="Next page">
                     <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">

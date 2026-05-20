@@ -320,7 +320,7 @@
                                     ? "Notes are required to confirm parts have been received."
                                     : (Model.Status == JobOrderStatus.Diagnosis
                                         ? "Notes are required when changing to Waiting for Parts."
-                                        : (string)null);
+                                        : (string?)null);
                                 // Show by default when current status is WaitingForParts (always needs notes)
                                 var showByDefault = Model.Status == JobOrderStatus.WaitingForParts;
                             }

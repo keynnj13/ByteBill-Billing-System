@@ -13,6 +13,19 @@ namespace ByteBill_BS.Areas.Admin.Controllers;
 public class AuditLogsController : Controller
 {
     private readonly ApplicationDbContext _db;
+    private static readonly string[] SecurityActions =
+    [
+        "Login",
+        "Logout",
+        "FailedLogin",
+        "SecurityLockedLoginAttempt",
+        "SecurityPermanentLockLoginAttempt",
+        "PasswordResetRequested",
+        "PasswordResetCompleted",
+        "SecuritySuspendSuperAdmin",
+        "SecurityRestoreSuperAdmin",
+        "SecurityUnlockUser"
+    ];
 
     public AuditLogsController(ApplicationDbContext db)
     {
@@ -26,9 +39,15 @@ public class AuditLogsController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? search, string? entity, string? logAction, DateTime? dateFrom, DateTime? dateTo, int page = 1)
+    public async Task<IActionResult> Index(string? search, string? entity, string? logAction, DateTime? dateFrom, DateTime? dateTo, string logType = "transaction", int page = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Invalid filters.";
+            return RedirectToAction(nameof(Index));
+        }
 
         var shopId = User.GetShopId();
         const int pageSize = 5;
@@ -37,6 +56,8 @@ public class AuditLogsController : Controller
             .Where(a => a.ShopId == shopId)
             .Where(a => a.UserId == null || !a.User!.UserRoles.Any(ur => ur.Role!.RoleName == "SuperAdmin"))
             .AsQueryable();
+
+        query = ApplyLogTypeFilter(query, logType);
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -67,6 +88,7 @@ public class AuditLogsController : Controller
 
         var allShopLogs = _db.AuditLogs.Where(a => a.ShopId == shopId)
             .Where(a => a.UserId == null || !a.User!.UserRoles.Any(ur => ur.Role!.RoleName == "SuperAdmin"));
+        allShopLogs = ApplyLogTypeFilter(allShopLogs, logType);
         var todayCount = await allShopLogs.CountAsync(a => a.CreatedAt >= todayStart);
         var weekCount = await allShopLogs.CountAsync(a => a.CreatedAt >= weekStart);
 
@@ -92,17 +114,25 @@ public class AuditLogsController : Controller
             .ToListAsync();
 
         // Get distinct entity names and action types for filter dropdowns
-        var entityNames = await _db.AuditLogs
+        var filteredEntitiesQuery = _db.AuditLogs
             .Where(a => a.ShopId == shopId)
             .Where(a => a.UserId == null || !a.User!.UserRoles.Any(ur => ur.Role!.RoleName == "SuperAdmin"))
+            .AsQueryable();
+        filteredEntitiesQuery = ApplyLogTypeFilter(filteredEntitiesQuery, logType);
+
+        var entityNames = await filteredEntitiesQuery
             .Select(a => a.EntityName)
             .Distinct()
             .OrderBy(e => e)
             .ToListAsync();
 
-        var actionTypes = await _db.AuditLogs
+        var filteredActionsQuery = _db.AuditLogs
             .Where(a => a.ShopId == shopId)
             .Where(a => a.UserId == null || !a.User!.UserRoles.Any(ur => ur.Role!.RoleName == "SuperAdmin"))
+            .AsQueryable();
+        filteredActionsQuery = ApplyLogTypeFilter(filteredActionsQuery, logType);
+
+        var actionTypes = await filteredActionsQuery
             .Select(a => a.Action)
             .Distinct()
             .OrderBy(a => a)
@@ -110,6 +140,7 @@ public class AuditLogsController : Controller
 
         var viewModel = new AuditLogListViewModel
         {
+            LogType = string.Equals(logType, "security", StringComparison.OrdinalIgnoreCase) ? "security" : "transaction",
             SearchTerm = search,
             EntityFilter = entity,
             ActionFilter = logAction,
@@ -129,9 +160,12 @@ public class AuditLogsController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Poll(string? search, string? entity, string? logAction, DateTime? dateFrom, DateTime? dateTo, int page = 1)
+    public async Task<IActionResult> Poll(string? search, string? entity, string? logAction, DateTime? dateFrom, DateTime? dateTo, string logType = "transaction", int page = 1)
     {
         if (!IsAuthorized()) return Forbid();
+
+        if (!ModelState.IsValid)
+            return BadRequest(new { error = "Invalid filters." });
 
         var shopId = User.GetShopId();
         const int pageSize = 5;
@@ -139,6 +173,8 @@ public class AuditLogsController : Controller
         var query = _db.AuditLogs.Where(a => a.ShopId == shopId)
             .Where(a => a.UserId == null || !a.User!.UserRoles.Any(ur => ur.Role!.RoleName == "SuperAdmin"))
             .AsQueryable();
+
+        query = ApplyLogTypeFilter(query, logType);
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -160,6 +196,7 @@ public class AuditLogsController : Controller
         var totalCount = await query.CountAsync();
         var now = DateTime.UtcNow;
         var allShopLogs = _db.AuditLogs.Where(a => a.ShopId == shopId);
+        allShopLogs = ApplyLogTypeFilter(allShopLogs, logType);
         var todayCount = await allShopLogs.CountAsync(a => a.CreatedAt >= now.Date);
         var weekCount = await allShopLogs.CountAsync(a => a.CreatedAt >= now.Date.AddDays(-7));
 
@@ -188,6 +225,7 @@ public class AuditLogsController : Controller
     private static string GetActionClass(string action) => action switch
     {
         "Login" or "Logout" => "status-info",
+        "FailedLogin" or "SecurityLockedLoginAttempt" or "SecurityPermanentLockLoginAttempt" => "status-danger",
         "Create" => "status-success",
         "Update" or "Adjustment" => "status-warning",
         "Archive" or "Deactivate" or "Delete" => "status-danger",
@@ -196,10 +234,24 @@ public class AuditLogsController : Controller
         _ => "status-default"
     };
 
+    private static bool IsSecurityAction(string action)
+    {
+        return SecurityActions.Contains(action);
+    }
+
+    private static IQueryable<ByteBill_BS.Models.AuditLog> ApplyLogTypeFilter(IQueryable<ByteBill_BS.Models.AuditLog> query, string logType)
+    {
+        var isSecurity = string.Equals(logType, "security", StringComparison.OrdinalIgnoreCase);
+        return isSecurity
+            ? query.Where(a => SecurityActions.Contains(a.Action))
+            : query.Where(a => !SecurityActions.Contains(a.Action));
+    }
+
     [HttpGet]
     public async Task<IActionResult> DetailsModal(long id)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
 
         var shopId = User.GetShopId();
         var log = await _db.AuditLogs
@@ -212,7 +264,7 @@ public class AuditLogsController : Controller
                 EntityId = a.EntityId,
                 Details = a.Details,
                 UserName = a.User != null ? a.User.FirstName + " " + a.User.LastName : "System",
-                UserEmail = a.User != null ? a.User.Email : "—",
+                UserEmail = a.User != null ? (a.User.Email ?? "—") : "—",
                 CreatedAt = a.CreatedAt,
                 IpAddress = a.IpAddress,
                 OldValues = a.OldValues,

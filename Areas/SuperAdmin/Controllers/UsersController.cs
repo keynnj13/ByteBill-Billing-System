@@ -23,6 +23,9 @@ public class UsersController : Controller
         return roleClaim == UserRole.SuperAdmin.ToString();
     }
 
+    private static bool IsAjaxRequest(string? requestedWith)
+        => string.Equals(requestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+
     private long GetUserId() => long.TryParse(User.Claims.FirstOrDefault(c => c.Type == "UserId")?.Value, out var id) ? id : 0;
     private string? GetIpAddress() => HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -50,23 +53,40 @@ public class UsersController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ToggleStatus(long id)
+    public async Task<IActionResult> ToggleStatus(
+        long id,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid)
+        {
+            if (IsAjaxRequest(requestedWith))
+                return Json(new { success = false, message = "Invalid request." });
+            return BadRequest();
+        }
         var result = await _service.ToggleUserStatusAsync(id, GetUserId(), GetIpAddress());
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = result.Success, message = result.Message });
         return RedirectToAction(nameof(Index));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ResetPassword(long id, string? newPassword)
+    public async Task<IActionResult> ResetPassword(
+        long id,
+        string? newPassword,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid)
+        {
+            if (IsAjaxRequest(requestedWith))
+                return Json(new { success = false, message = "Invalid request." });
+            return BadRequest();
+        }
         var password = newPassword ?? "ByteBill@123";
         var result = await _service.ResetUserPasswordAsync(id, password, GetUserId(), GetIpAddress());
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = result.Success, message = result.Message });
         return RedirectToAction(nameof(Index));
     }
@@ -82,13 +102,15 @@ public class UsersController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(GlobalUserFormViewModel model)
+    public async Task<IActionResult> Edit(
+        GlobalUserFormViewModel model,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return Forbid();
 
         if (!ModelState.IsValid)
         {
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
             {
                 var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
                 return Json(new { success = false, message = string.Join(" ", errors) });
@@ -100,7 +122,7 @@ public class UsersController : Controller
         }
 
         var result = await _service.UpdateUserAsync(model, GetUserId(), GetIpAddress());
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = result.Success, message = result.Message });
         return RedirectToAction(nameof(Index));
     }

@@ -29,6 +29,7 @@ public class DashboardController : Controller
     public async Task<IActionResult> Index(string? period, DateTime? from, DateTime? to)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+        if (!ModelState.IsValid) return BadRequest();
         var shopId = User.GetShopId();
         var (dateFrom, dateTo, activePeriod) = ResolveDateRange(period, from, to);
         var hasDateFilter = dateFrom != DateTime.MinValue;
@@ -208,6 +209,7 @@ public class DashboardController : Controller
     public async Task<IActionResult> Poll(string? period, DateTime? from, DateTime? to)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
         var shopId = User.GetShopId();
         var (dateFrom, dateTo, _) = ResolveDateRange(period, from, to);
         var hasDateFilter = dateFrom != DateTime.MinValue;

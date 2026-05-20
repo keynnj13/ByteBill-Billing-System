@@ -22,13 +22,15 @@ public class CustomerService : ICustomerService
     private readonly IAuditService _audit;
     private readonly IHttpContextAccessor _httpCtx;
     private readonly IXeroService _xero;
+    private readonly IEmailSecurityService _emailSecurity;
 
-    public CustomerService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx, IXeroService xero)
+    public CustomerService(ApplicationDbContext db, IAuditService audit, IHttpContextAccessor httpCtx, IXeroService xero, IEmailSecurityService emailSecurity)
     {
         _db = db;
         _audit = audit;
         _httpCtx = httpCtx;
         _xero = xero;
+        _emailSecurity = emailSecurity;
     }
 
     private string? ClientIp => _httpCtx.HttpContext?.Connection.RemoteIpAddress?.ToString();
@@ -44,10 +46,12 @@ public class CustomerService : ICustomerService
         if (!string.IsNullOrWhiteSpace(req.Search))
         {
             var term = req.Search.Trim().ToLower();
+            var termHash = _emailSecurity.ComputeHash(term);
+            var phoneHash = _emailSecurity.ComputePhoneHash(req.Search);
             query = query.Where(c =>
                 (c.FirstName + " " + c.LastName).ToLower().Contains(term) ||
-                (c.Email != null && c.Email.ToLower().Contains(term)) ||
-                (c.Phone != null && c.Phone.Contains(term)));
+                (c.EmailHash != null && c.EmailHash == termHash) ||
+                (phoneHash != null && c.PhoneHash != null && c.PhoneHash == phoneHash));
         }
 
         var totalCount = await query.CountAsync();
@@ -127,16 +131,18 @@ public class CustomerService : ICustomerService
         // ── Duplicate checks ─────────────────────────────────────────
         if (!string.IsNullOrWhiteSpace(req.Email))
         {
+            var emailHash = _emailSecurity.ComputeHash(req.Email);
             var emailExists = await _db.Customers
-                .AnyAsync(c => c.ShopId == shopId && c.Email == req.Email.Trim() && c.IsActive);
+                .AnyAsync(c => c.ShopId == shopId && c.EmailHash != null && c.EmailHash == emailHash && c.IsActive);
             if (emailExists)
                 throw new InvalidOperationException("A customer with this email address already exists.");
         }
 
         if (!string.IsNullOrWhiteSpace(req.Phone))
         {
+            var phoneHash = _emailSecurity.ComputePhoneHash(req.Phone);
             var phoneExists = await _db.Customers
-                .AnyAsync(c => c.ShopId == shopId && c.Phone == req.Phone.Trim() && c.IsActive);
+                .AnyAsync(c => c.ShopId == shopId && c.PhoneHash != null && c.PhoneHash == phoneHash && c.IsActive);
             if (phoneExists)
                 throw new InvalidOperationException("A customer with this phone number already exists.");
         }
@@ -201,16 +207,18 @@ public class CustomerService : ICustomerService
         // ── Duplicate checks (exclude current) ───────────────────────
         if (!string.IsNullOrWhiteSpace(req.Email))
         {
+            var emailHash = _emailSecurity.ComputeHash(req.Email);
             var emailExists = await _db.Customers
-                .AnyAsync(c => c.ShopId == shopId && c.CustomerId != customerId && c.Email == req.Email.Trim() && c.IsActive);
+                .AnyAsync(c => c.ShopId == shopId && c.CustomerId != customerId && c.EmailHash != null && c.EmailHash == emailHash && c.IsActive);
             if (emailExists)
                 throw new InvalidOperationException("Another customer with this email address already exists.");
         }
 
         if (!string.IsNullOrWhiteSpace(req.Phone))
         {
+            var phoneHash = _emailSecurity.ComputePhoneHash(req.Phone);
             var phoneExists = await _db.Customers
-                .AnyAsync(c => c.ShopId == shopId && c.CustomerId != customerId && c.Phone == req.Phone.Trim() && c.IsActive);
+                .AnyAsync(c => c.ShopId == shopId && c.CustomerId != customerId && c.PhoneHash != null && c.PhoneHash == phoneHash && c.IsActive);
             if (phoneExists)
                 throw new InvalidOperationException("Another customer with this phone number already exists.");
         }

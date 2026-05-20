@@ -1,10 +1,8 @@
 using ByteBill_BS.Models.Enums;
 using ByteBill_BS.Services;
 using ByteBill_BS.ViewModels.Register;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using ByteBill_BS.Extensions;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 using System.Text.Json;
 
 namespace ByteBill_BS.Controllers;
@@ -37,6 +35,8 @@ public class RegisterController : Controller
     [HttpGet]
     public async Task<IActionResult> CreateAccount(long planId, string cycle = "Monthly")
     {
+        if (!ModelState.IsValid) return BadRequest();
+
         var plan = await _reg.GetPlanAsync(planId);
         if (plan is null)
         {
@@ -104,7 +104,7 @@ public class RegisterController : Controller
         Response.Cookies.Append("BB_CheckoutSession", sessionId!, new CookieOptions
         {
             HttpOnly = true,
-            Secure = false,
+            Secure = true,
             SameSite = SameSiteMode.Lax,
             MaxAge = TimeSpan.FromHours(1),
             Path = "/Register"
@@ -118,11 +118,13 @@ public class RegisterController : Controller
     //  STEP 3: PAYMENT SUCCESS → CREATE ACCOUNT → AUTO-LOGIN
     // ═══════════════════════════════════════════════════════════════════
     [HttpGet]
-    public async Task<IActionResult> PaymentSuccess(string? session_id)
+    public async Task<IActionResult> PaymentSuccess(
+        string? session_id,
+        [FromCookie(Name = "BB_CheckoutSession")] string? checkoutSession)
     {
         ViewData["HideNavigation"] = true;
 
-        var sessionId = Request.Cookies["BB_CheckoutSession"] ?? session_id;
+        var sessionId = checkoutSession ?? session_id;
         if (string.IsNullOrWhiteSpace(sessionId))
         {
             TempData["Error"] = "Invalid payment session. Please start the registration again.";
@@ -165,40 +167,12 @@ public class RegisterController : Controller
 
         // Clean up session and cookie
         HttpContext.Session.Remove(RegSessionKey);
-        Response.Cookies.Delete("BB_CheckoutSession", new CookieOptions { Path = "/Register" });
-
-        // ── Auto-login ───────────────────────────────────────────────
-        var claims = new List<Claim>
+        Response.Cookies.Delete("BB_CheckoutSession", new CookieOptions
         {
-            new(ClaimTypes.NameIdentifier, result.UserId.ToString()),
-            new(ClaimTypes.Name, result.FullName),
-            new("UserId", result.UserId.ToString()),
-            new("FullName", result.FullName),
-            new("FirstName", result.FirstName),
-            new("LastName", result.LastName),
-            new("Initials", result.Initials),
-            new("Role", UserRole.Admin.ToString()),
-            new("ShopId", result.ShopId.ToString())
-        };
-
-        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-        var principal = new ClaimsPrincipal(identity);
-
-        var authProperties = new AuthenticationProperties
-        {
-            IsPersistent = false,
-            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8)
-        };
-
-        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProperties);
-
-        Response.Cookies.Append("ByteBillTheme", "light", new CookieOptions
-        {
-            HttpOnly = false,
-            Secure = false,
-            Expires = DateTimeOffset.UtcNow.AddDays(365),
-            SameSite = SameSiteMode.Lax,
-            Path = "/"
+            Path = "/Register",
+            Secure = true,
+            HttpOnly = true,
+            SameSite = SameSiteMode.Lax
         });
 
         _logger.LogInformation("New shop registered: {ShopId} by user {UserName}", result.ShopId, result.UserName);
@@ -214,8 +188,8 @@ public class RegisterController : Controller
             $"Payment of {amount:C} received from {model.ShopName} for {model.PlanName} ({model.BillingCycle}).",
             "info", "/SuperAdmin/Payments");
 
-        TempData["Success"] = $"Welcome to ByteBill, {result.FirstName}! Your shop is ready.";
-        return RedirectToAction("Index", "Dashboard", new { area = "Admin" });
+        TempData["AuthMessage"] = "Payment successful. Your temporary login password was sent to your email. Sign in to continue.";
+        return RedirectToAction("Login", "Auth");
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -278,7 +252,7 @@ public class RegisterController : Controller
         Response.Cookies.Append("BB_CheckoutSession", sessionId!, new CookieOptions
         {
             HttpOnly = true,
-            Secure = false,
+            Secure = true,
             SameSite = SameSiteMode.Lax,
             MaxAge = TimeSpan.FromHours(1),
             Path = "/Register"

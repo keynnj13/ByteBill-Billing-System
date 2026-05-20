@@ -18,4 +18,6 @@ public class LoginViewModel
     public string? ReturnUrl { get; set; }
     
     public string? ErrorMessage { get; set; }
+
+    public string? RecaptchaToken { get; set; }
 }

@@ -24,6 +24,12 @@ public class AdjustmentsController : Controller
     public async Task<IActionResult> Index(string? type, int page = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Invalid filters.";
+            return RedirectToAction(nameof(Index));
+        }
         var shopId = User.GetShopId();
 
         var query = _db.CreditDebitAdjustments

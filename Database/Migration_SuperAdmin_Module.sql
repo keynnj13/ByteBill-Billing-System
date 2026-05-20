@@ -28,7 +28,7 @@ BEGIN
     ALTER TABLE [USERS] ADD [LastLoginAt] DATETIME2(0) NULL;
 END
 
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('USERS') AND name = 'LastIpAddress')
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('USERS') AND name = 'LastIpAddres  s')
 BEGIN
     ALTER TABLE [USERS] ADD [LastIpAddress] NVARCHAR(50) NULL;
 END

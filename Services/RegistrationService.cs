@@ -4,6 +4,7 @@ using ByteBill_BS.ViewModels.Register;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -46,19 +47,22 @@ public class RegistrationService : IRegistrationService
     private readonly PayMongoSettings _payMongoSettings;
     private readonly ILogger<RegistrationService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IEmailSecurityService _emailSecurity;
 
     public RegistrationService(
         ApplicationDbContext db,
         HttpClient http,
         IOptions<PayMongoSettings> payMongoSettings,
         ILogger<RegistrationService> logger,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        IEmailSecurityService emailSecurity)
     {
         _db = db;
         _http = http;
         _payMongoSettings = payMongoSettings.Value;
         _logger = logger;
         _scopeFactory = scopeFactory;
+        _emailSecurity = emailSecurity;
 
         // Configure HTTP client for PayMongo
         var authBytes = Encoding.UTF8.GetBytes($"{_payMongoSettings.SecretKey}:");
@@ -258,6 +262,8 @@ public class RegistrationService : IRegistrationService
     // ═══════════════════════════════════════════════════════════════════
     public async Task<string?> CheckUniquenessAsync(string shopName, string username, string email)
     {
+        var emailHash = _emailSecurity.ComputeHash(email);
+
         var shopNameTaken = await _db.Shops
             .AnyAsync(s => s.ShopName.ToLower() == shopName.ToLower().Trim());
         if (shopNameTaken)
@@ -269,7 +275,7 @@ public class RegistrationService : IRegistrationService
             return "Username is already taken. Please choose a different one.";
 
         var emailTaken = await _db.Users
-            .AnyAsync(u => u.Email != null && u.Email.ToLower() == email.ToLower().Trim());
+            .AnyAsync(u => u.EmailHash != null && u.EmailHash == emailHash);
         if (emailTaken)
             return "Email is already registered. Please use a different email or log in.";
 
@@ -282,6 +288,8 @@ public class RegistrationService : IRegistrationService
     public async Task<RegistrationResult> CreateAccountAsync(CreateAccountViewModel model,
         decimal paidAmount, string? paymentMethod, string? payMongoPaymentId)
     {
+        var emailHash = _emailSecurity.ComputeHash(model.Email);
+
         // ── Validate uniqueness ──────────────────────────────────────
         var existingUser = await _db.Users
             .AnyAsync(u => u.UserName == model.UserName.ToLower().Trim());
@@ -289,7 +297,7 @@ public class RegistrationService : IRegistrationService
             return RegistrationResult.Fail("Username is already taken. Please choose a different one.");
 
         var existingEmail = await _db.Users
-            .AnyAsync(u => u.Email != null && u.Email.ToLower() == model.Email.ToLower().Trim());
+            .AnyAsync(u => u.EmailHash != null && u.EmailHash == emailHash);
         if (existingEmail)
             return RegistrationResult.Fail("Email is already registered. Please use a different email or log in.");
 
@@ -320,6 +328,7 @@ public class RegistrationService : IRegistrationService
             await _db.SaveChangesAsync();
 
             // ── 2. Create Admin User ─────────────────────────────────
+            var temporaryPassword = GenerateTemporaryPassword();
             var user = new User
             {
                 ShopId = shop.ShopId,
@@ -327,8 +336,10 @@ public class RegistrationService : IRegistrationService
                 MiddleName = model.MiddleName?.Trim(),
                 LastName = model.LastName.Trim(),
                 UserName = model.UserName.ToLower().Trim(),
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password, workFactor: 12),
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(temporaryPassword, workFactor: 12),
                 Email = model.Email.Trim(),
+                MustChangePassword = true,
+                TemporaryPasswordIssuedAt = DateTime.UtcNow,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             };
@@ -409,8 +420,9 @@ public class RegistrationService : IRegistrationService
                 try
                 {
                     using var scope = _scopeFactory.CreateScope();
-                    await scope.ServiceProvider.GetRequiredService<IEmailService>()
-                        .SendSubscriptionConfirmationAsync(subPayId);
+                    var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+                    await emailService.SendSubscriptionConfirmationAsync(subPayId);
+                    await emailService.SendInitialCredentialsAsync(user.Email!, user.FullName, user.UserName, temporaryPassword);
                 }
                 catch (Exception ex)
                 {
@@ -482,5 +494,35 @@ public class RegistrationService : IRegistrationService
         }
 
         return code;
+    }
+
+    private static string GenerateTemporaryPassword()
+    {
+        const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        const string lower = "abcdefghijkmnopqrstuvwxyz";
+        const string digits = "23456789";
+        const string special = "!@#$%^&*()_+-=[]{}";
+        const string all = upper + lower + digits + special;
+
+        var chars = new List<char>
+        {
+            upper[RandomNumberGenerator.GetInt32(upper.Length)],
+            lower[RandomNumberGenerator.GetInt32(lower.Length)],
+            digits[RandomNumberGenerator.GetInt32(digits.Length)],
+            special[RandomNumberGenerator.GetInt32(special.Length)]
+        };
+
+        for (var i = chars.Count; i < 14; i++)
+        {
+            chars.Add(all[RandomNumberGenerator.GetInt32(all.Length)]);
+        }
+
+        for (var i = chars.Count - 1; i > 0; i--)
+        {
+            var j = RandomNumberGenerator.GetInt32(i + 1);
+            (chars[i], chars[j]) = (chars[j], chars[i]);
+        }
+
+        return new string(chars.ToArray());
     }
 }

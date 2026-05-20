@@ -11,23 +11,23 @@
             <div class="form-row">
                 <div class="form-group" style="flex: 1;">
                     <label asp-for="FirstName" class="form-label">First Name <span class="required">*</span></label>
-                    <input asp-for="FirstName" class="form-input" placeholder="Enter first name" />
+                    <input asp-for="FirstName" class="form-input js-name-only" placeholder="Enter first name" />
                     <span asp-validation-for="FirstName" class="field-validation-error"></span>
                 </div>
                 <div class="form-group" style="flex: 1;">
                     <label asp-for="MiddleName" class="form-label">Middle Name</label>
-                    <input asp-for="MiddleName" class="form-input" placeholder="Enter middle name" />
+                    <input asp-for="MiddleName" class="form-input js-name-only" placeholder="Enter middle name" />
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group" style="flex: 1;">
                     <label asp-for="LastName" class="form-label">Last Name <span class="required">*</span></label>
-                    <input asp-for="LastName" class="form-input" placeholder="Enter last name" />
+                    <input asp-for="LastName" class="form-input js-name-only" placeholder="Enter last name" />
                     <span asp-validation-for="LastName" class="field-validation-error"></span>
                 </div>
                 <div class="form-group" style="flex: 1;">
                     <label asp-for="Phone" class="form-label">Phone</label>
-                    <input asp-for="Phone" type="tel" class="form-input" maxlength="11" inputmode="numeric" pattern="09[0-9]{9}" placeholder="09XXXXXXXXX" />
+                    <input asp-for="Phone" type="tel" class="form-input js-phone-digits-only" maxlength="11" inputmode="numeric" pattern="[0-9]{11}" placeholder="09XXXXXXXXX" />
                 </div>
             </div>
         </div>
@@ -95,3 +95,28 @@
         <button type="submit" class="btn btn-primary" onclick="submitAjaxForm(event, 'saCreateUserForm')">Create User</button>
     </div>
 </form>
+
+<script>
+    (function () {
+        var root = document.getElementById('saCreateUserForm');
+        if (!root) return;
+
+        root.querySelectorAll('.js-name-only').forEach(function (input) {
+            input.addEventListener('input', function () {
+                var cleaned = input.value.replace(/[^A-Za-z\s]/g, '').replace(/\s{2,}/g, ' ');
+                if (cleaned !== input.value) {
+                    input.value = cleaned;
+                }
+            });
+        });
+
+        root.querySelectorAll('.js-phone-digits-only').forEach(function (input) {
+            input.addEventListener('input', function () {
+                var cleaned = input.value.replace(/\D/g, '').slice(0, 11);
+                if (cleaned !== input.value) {
+                    input.value = cleaned;
+                }
+            });
+        });
+    })();
+</script>

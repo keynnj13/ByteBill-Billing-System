@@ -30,6 +30,9 @@ public class CheckoutViewModel
 /// </summary>
 public class CreateAccountViewModel
 {
+    private const string NamePattern = @"^[A-Za-z]+(?:[ '-][A-Za-z]+)*$";
+    private const string PhMobilePattern = @"^(09\d{9}|\+639\d{9})$";
+
     /// <summary>PayMongo checkout session ID (from redirect URL).</summary>
     public string? SessionId { get; set; }
 
@@ -54,8 +57,8 @@ public class CreateAccountViewModel
     [Display(Name = "Shop Email")]
     public string ShopEmail { get; set; } = string.Empty;
 
-    [StringLength(11)]
-    [RegularExpression(@"^09\d{9}$", ErrorMessage = "Phone must be 11 digits starting with 09")]
+    [StringLength(13)]
+    [RegularExpression(PhMobilePattern, ErrorMessage = "Phone must be in 09XXXXXXXXX or +639XXXXXXXXX format")]
     [Display(Name = "Phone Number")]
     public string? ShopPhone { get; set; }
 
@@ -74,15 +77,18 @@ public class CreateAccountViewModel
     // ── Owner / Admin Account ────────────────────────────────────
     [Required(ErrorMessage = "First name is required")]
     [StringLength(50)]
+    [RegularExpression(NamePattern, ErrorMessage = "First name may contain letters, spaces, hyphen, and apostrophe only")]
     [Display(Name = "First Name")]
     public string FirstName { get; set; } = string.Empty;
 
     [StringLength(50)]
+    [RegularExpression(NamePattern, ErrorMessage = "Middle name may contain letters, spaces, hyphen, and apostrophe only")]
     [Display(Name = "Middle Name")]
     public string? MiddleName { get; set; }
 
     [Required(ErrorMessage = "Last name is required")]
     [StringLength(50)]
+    [RegularExpression(NamePattern, ErrorMessage = "Last name may contain letters, spaces, hyphen, and apostrophe only")]
     [Display(Name = "Last Name")]
     public string LastName { get; set; } = string.Empty;
 
@@ -98,19 +104,6 @@ public class CreateAccountViewModel
     [Display(Name = "Email")]
     public string Email { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Password is required")]
-    [StringLength(100, MinimumLength = 12, ErrorMessage = "Password must be at least 12 characters")]
-    [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{12,}$",
-        ErrorMessage = "Password must be at least 12 characters and include uppercase, lowercase, number, and special character")]
-    [DataType(DataType.Password)]
-    [Display(Name = "Password")]
-    public string Password { get; set; } = string.Empty;
-
-    [Required(ErrorMessage = "Please confirm your password")]
-    [Compare("Password", ErrorMessage = "Passwords do not match")]
-    [DataType(DataType.Password)]
-    [Display(Name = "Confirm Password")]
-    public string ConfirmPassword { get; set; } = string.Empty;
 }
 
 /// <summary>

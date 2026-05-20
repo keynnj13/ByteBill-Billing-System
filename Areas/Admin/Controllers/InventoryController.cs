@@ -33,10 +33,19 @@ public class InventoryController : Controller
         return roleClaim == UserRole.Admin.ToString();
     }
 
+    private static bool IsAjaxRequest(string? requestedWith)
+        => string.Equals(requestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+
     [HttpGet]
     public async Task<IActionResult> Index(string? search, string? category, bool? lowStock, int page = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Invalid filters.";
+            return RedirectToAction(nameof(Index));
+        }
 
         var shopId = User.GetShopId();
         var result = await _service.GetListAsync(shopId, new PagedRequest { Page = page, PageSize = 10, Search = search }, category, lowStock);
@@ -92,13 +101,15 @@ public class InventoryController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(InventoryFormViewModel model)
+    public async Task<IActionResult> Create(
+        InventoryFormViewModel model,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
         if (!ModelState.IsValid)
         {
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_CreateModal", model);
             return View(model);
         }
@@ -121,7 +132,7 @@ public class InventoryController : Controller
         }
         catch (InvalidOperationException ex)
         {
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return Json(new { success = false, message = ex.Message });
             ModelState.AddModelError("SKU", ex.Message);
             model.ExistingCategories = await _service.GetCategoriesAsync(shopId);
@@ -129,7 +140,7 @@ public class InventoryController : Controller
         }
 
         TempData["Success"] = "Inventory item created successfully!";
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = true, message = "Inventory item created successfully!" });
         return RedirectToAction(nameof(Index));
     }
@@ -178,13 +189,15 @@ public class InventoryController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(InventoryFormViewModel model)
+    public async Task<IActionResult> Edit(
+        InventoryFormViewModel model,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
         if (!ModelState.IsValid)
         {
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_EditModal", model);
             return View(model);
         }
@@ -206,7 +219,7 @@ public class InventoryController : Controller
         if (result == null) return NotFound();
 
         TempData["Success"] = "Inventory item updated successfully!";
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = true, message = "Inventory item updated successfully!" });
         return RedirectToAction(nameof(Index));
     }
@@ -265,9 +278,20 @@ public class InventoryController : Controller
     // ─── QUICK RESTOCK ──────────────────────────────────────
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Restock(long id, int quantity, string? remarks)
+    public async Task<IActionResult> Restock(
+        long id,
+        int quantity,
+        string? remarks,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid)
+        {
+            if (IsAjaxRequest(requestedWith))
+                return Json(new { success = false, message = "Invalid request." });
+            TempData["Error"] = "Invalid request.";
+            return RedirectToAction(nameof(Index));
+        }
         if (quantity <= 0)
             return Json(new { success = false, message = "Quantity must be greater than zero." });
 
@@ -302,7 +326,7 @@ public class InventoryController : Controller
         }
 
         TempData["Success"] = "Stock restocked successfully!";
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = true, message = "Stock restocked successfully!" });
         return RedirectToAction(nameof(Index));
     }
@@ -310,9 +334,18 @@ public class InventoryController : Controller
     // ─── ARCHIVE ────────────────────────────────────────────
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Archive(long id)
+    public async Task<IActionResult> Archive(
+        long id,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid)
+        {
+            if (IsAjaxRequest(requestedWith))
+                return Json(new { success = false, message = "Invalid request." });
+            TempData["Error"] = "Invalid request.";
+            return RedirectToAction(nameof(Index));
+        }
         var shopId = User.GetShopId();
         var item = await _db.InventoryItems.FirstOrDefaultAsync(i => i.ShopId == shopId && i.ItemId == id);
         if (item == null) return NotFound();
@@ -324,7 +357,7 @@ public class InventoryController : Controller
             $"Archived inventory item '{item.ItemName}'",
             HttpContext.Connection.RemoteIpAddress?.ToString());
 
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = true, message = "Inventory item archived!" });
         TempData["Success"] = "Item archived.";
         return RedirectToAction(nameof(Index));
@@ -333,9 +366,18 @@ public class InventoryController : Controller
     // ─── WRITE OFF ──────────────────────────────────────────
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> WriteOff(long id, int quantity, string reason, string? notes)
+    public async Task<IActionResult> WriteOff(
+        long id,
+        int quantity,
+        string reason,
+        string? notes,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid)
+        {
+            return Json(new { success = false, message = "Invalid write-off request." });
+        }
         var shopId = User.GetShopId();
         var item = await _db.InventoryItems.FirstOrDefaultAsync(i => i.ShopId == shopId && i.ItemId == id && i.IsActive);
         if (item == null) return NotFound();
@@ -376,7 +418,7 @@ public class InventoryController : Controller
             $"Written off {qtyLabel} of '{item.ItemName}' — Reason: {reason}",
             HttpContext.Connection.RemoteIpAddress?.ToString());
 
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = true, message = $"Written off {quantity} unit(s) of '{item.ItemName}'." });
         TempData["Success"] = $"Written off {quantity} unit(s) of '{item.ItemName}'.";
         return RedirectToAction(nameof(Index));

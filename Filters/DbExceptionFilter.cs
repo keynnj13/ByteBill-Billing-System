@@ -18,10 +18,15 @@ public class DbExceptionFilter : IAsyncExceptionFilter
 
         var message = GetUserFriendlyMessage(dbEx);
 
-        var isAjax = context.HttpContext.Request.Headers["X-Requested-With"] == "XMLHttpRequest"
-                  || context.HttpContext.Request.Headers.Accept.ToString().Contains("application/json");
+        var endpoint = context.HttpContext.GetEndpoint();
+        var isApi = endpoint?.Metadata.GetMetadata<ApiControllerAttribute>() != null;
+        var requestedWith = context.HttpContext.Items.TryGetValue("RequestedWith", out var value)
+            ? value as string
+            : null;
+        var isAjax = string.Equals(requestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+        var expectsJson = isApi || isAjax;
 
-        if (isAjax)
+        if (expectsJson)
         {
             context.Result = new JsonResult(new { success = false, message })
             {
@@ -41,11 +46,7 @@ public class DbExceptionFilter : IAsyncExceptionFilter
                 tempData["Error"] = message;
             }
 
-            // Redirect back to the referring page or fallback to controller index
-            var referer = context.HttpContext.Request.Headers.Referer.ToString();
-            context.Result = !string.IsNullOrEmpty(referer)
-                ? new RedirectResult(referer)
-                : new RedirectToActionResult("Index", controller, area != null ? new { area } : null);
+            context.Result = new RedirectToActionResult("Index", controller, area != null ? new { area } : null);
         }
 
         context.ExceptionHandled = true;

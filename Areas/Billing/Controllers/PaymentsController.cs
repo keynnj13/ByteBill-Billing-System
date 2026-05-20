@@ -33,6 +33,9 @@ public class PaymentsController : Controller
 
     private bool IsAuthorized() => User.IsInRoles("Billing", "Admin", "SuperAdmin");
 
+    private static bool IsAjaxRequest(string? requestedWith)
+        => string.Equals(requestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+
     private static string GetInitials(string name)
     {
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -173,13 +176,15 @@ public class PaymentsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(PaymentCreateViewModel model)
+    public async Task<IActionResult> Create(
+        PaymentCreateViewModel model,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
         if (!ModelState.IsValid)
         {
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_CreateModal", model);
             return View(model);
         }
@@ -195,7 +200,7 @@ public class PaymentsController : Controller
         if (invoice == null)
         {
             ModelState.AddModelError("", "Invoice not found.");
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_CreateModal", model);
             return View(model);
         }
@@ -203,7 +208,7 @@ public class PaymentsController : Controller
         if (model.Amount > invoice.Balance)
         {
             ModelState.AddModelError("Amount", $"Amount cannot exceed invoice balance of {invoice.Balance:F2}.");
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_CreateModal", model);
             return View(model);
         }
@@ -225,7 +230,7 @@ public class PaymentsController : Controller
         if (!result.Success)
         {
             ModelState.AddModelError("", result.Message ?? "Failed to record payment.");
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_CreateModal", model);
             return View(model);
         }
@@ -239,7 +244,7 @@ public class PaymentsController : Controller
         }
 
         TempData["Success"] = "Payment recorded successfully!";
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = true, message = "Payment recorded successfully!", id = result.Data?.PaymentId });
         return RedirectToAction(nameof(Index));
     }

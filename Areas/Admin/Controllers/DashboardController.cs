@@ -25,6 +25,12 @@ public class DashboardController : Controller
         if (!User.IsInRoles("Admin"))
             return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Invalid filters.";
+            return RedirectToAction(nameof(Index));
+        }
+
         // Resolve date range from preset or custom
         var (dateFrom, dateTo, activePeriod) = ResolveDateRange(period, from, to);
 
@@ -50,6 +56,9 @@ public class DashboardController : Controller
     {
         if (!User.IsInRoles("Admin"))
             return Unauthorized();
+
+        if (!ModelState.IsValid)
+            return BadRequest(new { error = "Invalid filters." });
 
         var (dateFrom, dateTo, _) = ResolveDateRange(period, from, to);
         var data = await BuildDashboardDataAsync(dateFrom, dateTo);

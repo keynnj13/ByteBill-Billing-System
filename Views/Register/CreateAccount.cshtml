@@ -11,7 +11,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"]</title>
     <link rel="icon" type="image/png" href="@Url.Content("~/img/logo-bytebill.png")" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/fonts-inter.css" asp-append-version="true" />
     <style>
         :root {
             --rg-navy: hsl(213, 54%, 20%);
@@ -339,7 +339,7 @@
             <div class="rg-form-wrap">
                 <div class="rg-form-area">
                     <h2 class="rg-form-title">Set up your shop</h2>
-                    <p class="rg-form-subtitle">Create your shop workspace and admin credentials to get started.</p>
+                    <p class="rg-form-subtitle">Create your shop workspace and admin profile. A temporary password will be emailed after payment.</p>
 
                     @if (!ViewData.ModelState.IsValid && ViewData.ModelState.Values.Any(v => v.Errors.Any()))
                     {
@@ -444,34 +444,16 @@
                                 <div class="rg-field">
                                     <label>Email <span class="req">*</span></label>
                                     <div class="rg-email-wrap">
-                                        <input asp-for="Email" type="email" autocomplete="email" id="emailInput" placeholder="admin&#64;shopname.com" />
+                                        <input asp-for="Email" type="email" autocomplete="email" id="emailInput" placeholder="owner&#64;yourshop.com" />
                                     </div>
-                                    <span class="rg-email-hint" id="emailHint">Auto-generated from shop name</span>
+                                    <span class="rg-email-hint" id="emailHint">Use your real, verified email account.</span>
                                     <span asp-validation-for="Email" class="field-error"></span>
                                 </div>
                             </div>
                             <div class="rg-grid">
-                                <div class="rg-field">
-                                    <label>Password <span class="req">*</span></label>
-                                    <div class="rg-pw-wrap">
-                                        <input asp-for="Password" type="password" placeholder="Min. 12 characters" autocomplete="new-password" id="pwInput" />
-                                        <button type="button" class="rg-pw-toggle" onclick="togglePw('pwInput', this)" aria-label="Toggle password">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                                        </button>
-                                    </div>
-                                    <div class="rg-strength-bar" id="pwBar"><div class="rg-str-fill"></div></div>
-                                    <span class="rg-str-label" id="pwLabel"></span>
-                                    <span asp-validation-for="Password" class="field-error"></span>
-                                </div>
-                                <div class="rg-field">
-                                    <label>Confirm Password <span class="req">*</span></label>
-                                    <div class="rg-pw-wrap">
-                                        <input asp-for="ConfirmPassword" type="password" placeholder="Re-enter password" autocomplete="new-password" id="cpInput" />
-                                        <button type="button" class="rg-pw-toggle" onclick="togglePw('cpInput', this)" aria-label="Toggle password">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                                        </button>
-                                    </div>
-                                    <span asp-validation-for="ConfirmPassword" class="field-error"></span>
+                                <div class="rg-field rg-full">
+                                    <label>Initial Password Delivery</label>
+                                    <input value="A secure temporary password will be sent to your admin email after successful payment." readonly />
                                 </div>
                             </div>
                         </div>
@@ -494,23 +476,6 @@
     </div>
 
     <script>
-        // â”€â”€ Auto-generate email from shop name â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        var emailInput = document.getElementById('emailInput');
-        var emailManual = false;
-
-        emailInput.addEventListener('input', function () { emailManual = true; });
-
-        document.getElementById('shopNameInput').addEventListener('input', function () {
-            if (emailManual && emailInput.value.trim() !== '') return;
-            var name = this.value.trim();
-            if (!name) { emailInput.value = ''; emailInput.placeholder = 'admin@@shopname.com'; return; }
-            var word = name.split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9]/g, '');
-            if (!word) return;
-            emailInput.value = 'admin@@' + word + '.com';
-            emailInput.placeholder = 'admin@@' + word + '.com';
-            emailManual = false;
-        });
-
         // â”€â”€ Auto-generate username from first + last name â”€â”€â”€â”€â”€â”€â”€
         var unInput = document.getElementById('unInput');
         var unManual = false;
@@ -537,29 +502,6 @@
         // â”€â”€ Phone: digits only, max 11 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         document.querySelector('[name="ShopPhone"]').addEventListener('input', function () {
             this.value = this.value.replace(/\D/g, '').slice(0, 11);
-        });
-
-        // â”€â”€ Password toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        function togglePw(id, btn) {
-            var el = document.getElementById(id);
-            var show = el.type === 'password';
-            el.type = show ? 'text' : 'password';
-            btn.innerHTML = show
-                ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
-                : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-        }
-
-        // â”€â”€ Password strength â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        document.getElementById('pwInput').addEventListener('input', function () {
-            var v = this.value, bar = document.getElementById('pwBar'), lbl = document.getElementById('pwLabel');
-            if (!v.length) { bar.className = 'rg-strength-bar'; lbl.className = 'rg-str-label'; lbl.textContent = ''; return; }
-            var s = 0;
-            if (v.length >= 12) s++;
-            if (/[A-Z]/.test(v) && /[a-z]/.test(v)) s++;
-            if (/\d/.test(v) && /[^a-zA-Z\d]/.test(v)) s++;
-            if (s <= 1) { bar.className = 'rg-strength-bar rg-str-weak'; lbl.className = 'rg-str-label weak'; lbl.textContent = 'Weak'; }
-            else if (s === 2) { bar.className = 'rg-strength-bar rg-str-med'; lbl.className = 'rg-str-label med'; lbl.textContent = 'Medium'; }
-            else { bar.className = 'rg-strength-bar rg-str-strong'; lbl.className = 'rg-str-label strong'; lbl.textContent = 'Strong'; }
         });
 
         // â”€â”€ Prevent double submit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

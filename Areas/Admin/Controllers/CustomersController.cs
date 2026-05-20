@@ -28,10 +28,19 @@ public class CustomersController : Controller
 
     private bool IsAuthorized() => User.IsInRoles("Admin", "SuperAdmin");
 
+    private static bool IsAjaxRequest(string? requestedWith)
+        => string.Equals(requestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+
     [HttpGet]
     public async Task<IActionResult> Index(string? search, int page = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Invalid filters.";
+            return RedirectToAction(nameof(Index));
+        }
 
         var shopId = User.GetShopId();
         var result = await _customerService.GetListAsync(shopId, new PagedRequest { Search = search, Page = page, PageSize = 10 });
@@ -76,13 +85,15 @@ public class CustomersController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(CustomerFormViewModel model)
+    public async Task<IActionResult> Create(
+        CustomerFormViewModel model,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
         if (!ModelState.IsValid)
         {
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_CreateModal", model);
             return View(model);
         }
@@ -103,14 +114,15 @@ public class CustomersController : Controller
             });
 
             TempData["Success"] = "Customer created successfully!";
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return Json(new { success = true, message = "Customer created successfully!" });
             return RedirectToAction(nameof(Index));
         }
         catch (InvalidOperationException ex)
         {
-            ModelState.AddModelError("", ex.Message);
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            _ = ex;
+            ModelState.AddModelError("", "Unable to save customer right now. Please verify the details and try again.");
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_CreateModal", model);
             return View(model);
         }
@@ -120,6 +132,7 @@ public class CustomersController : Controller
     public async Task<IActionResult> Edit(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+        if (!ModelState.IsValid) return BadRequest();
 
         var shopId = User.GetShopId();
         var customer = await _customerService.GetByIdAsync(shopId, id);
@@ -132,6 +145,7 @@ public class CustomersController : Controller
     public async Task<IActionResult> EditModal(long id)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
 
         var shopId = User.GetShopId();
         var customer = await _customerService.GetByIdAsync(shopId, id);
@@ -142,13 +156,15 @@ public class CustomersController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(CustomerFormViewModel model)
+    public async Task<IActionResult> Edit(
+        CustomerFormViewModel model,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
         if (!ModelState.IsValid)
         {
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_EditModal", model);
             return View(model);
         }
@@ -171,14 +187,15 @@ public class CustomersController : Controller
             if (result == null) return NotFound();
 
             TempData["Success"] = "Customer updated successfully!";
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return Json(new { success = true, message = "Customer updated successfully!" });
             return RedirectToAction(nameof(Index));
         }
         catch (InvalidOperationException ex)
         {
-            ModelState.AddModelError("", ex.Message);
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            _ = ex;
+            ModelState.AddModelError("", "Unable to update customer right now. Please verify the details and try again.");
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_EditModal", model);
             return View(model);
         }
@@ -188,6 +205,7 @@ public class CustomersController : Controller
     public async Task<IActionResult> Details(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+        if (!ModelState.IsValid) return BadRequest();
 
         var model = await GetCustomerDetailAsync(id);
         if (model == null) return NotFound();
@@ -198,6 +216,7 @@ public class CustomersController : Controller
     public async Task<IActionResult> DetailsModal(long id)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
 
         var model = await GetCustomerDetailAsync(id);
         if (model == null) return NotFound();
@@ -279,9 +298,12 @@ public class CustomersController : Controller
     // ─── ARCHIVE ────────────────────────────────────────────
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Archive(long id)
+    public async Task<IActionResult> Archive(
+        long id,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
         var shopId = User.GetShopId();
         var customer = await _db.Customers.FirstOrDefaultAsync(c => c.ShopId == shopId && c.CustomerId == id);
         if (customer == null) return NotFound();
@@ -293,7 +315,7 @@ public class CustomersController : Controller
             $"Archived customer '{customer.FullName}'",
             HttpContext.Connection.RemoteIpAddress?.ToString());
 
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = true, message = "Customer archived successfully!" });
         TempData["Success"] = "Customer archived.";
         return RedirectToAction(nameof(Index));

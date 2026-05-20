@@ -73,6 +73,7 @@ public class ReportsController : Controller
     public async Task<IActionResult> Revenue(string? range, DateTime? from, DateTime? to)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+        if (!ModelState.IsValid) return BadRequest();
         var (dateFrom, dateTo, label) = ResolveDateRange(range, from, to);
         var vm = await _service.GenerateRevenueReportAsync(dateFrom, dateTo, label);
         return View(vm);
@@ -85,6 +86,7 @@ public class ReportsController : Controller
     public async Task<IActionResult> Shops(string? range, DateTime? from, DateTime? to)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+        if (!ModelState.IsValid) return BadRequest();
         var (dateFrom, dateTo, label) = ResolveDateRange(range, from, to);
         var vm = await _service.GenerateShopsReportAsync(dateFrom, dateTo, label);
         return View(vm);
@@ -97,6 +99,7 @@ public class ReportsController : Controller
     public async Task<IActionResult> Users(string? range, DateTime? from, DateTime? to)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+        if (!ModelState.IsValid) return BadRequest();
         var (dateFrom, dateTo, label) = ResolveDateRange(range, from, to);
         var vm = await _service.GenerateUsersReportAsync(dateFrom, dateTo, label);
         return View(vm);
@@ -109,6 +112,7 @@ public class ReportsController : Controller
     public async Task<IActionResult> Subscriptions(string? range, DateTime? from, DateTime? to)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+        if (!ModelState.IsValid) return BadRequest();
         var (dateFrom, dateTo, label) = ResolveDateRange(range, from, to);
         var vm = await _service.GenerateSubscriptionReportAsync(dateFrom, dateTo, label);
         return View(vm);
@@ -121,6 +125,7 @@ public class ReportsController : Controller
     public async Task<IActionResult> Payments(string? range, DateTime? from, DateTime? to)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+        if (!ModelState.IsValid) return BadRequest();
         var (dateFrom, dateTo, label) = ResolveDateRange(range, from, to);
         var vm = await _service.GeneratePaymentReportAsync(dateFrom, dateTo, label);
         return View(vm);
@@ -133,6 +138,7 @@ public class ReportsController : Controller
     public async Task<IActionResult> Growth(string? range, DateTime? from, DateTime? to)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+        if (!ModelState.IsValid) return BadRequest();
         var (dateFrom, dateTo, label) = ResolveDateRange(range, from, to);
         var vm = await _service.GenerateGrowthReportAsync(dateFrom, dateTo, label);
         return View(vm);
@@ -144,6 +150,7 @@ public class ReportsController : Controller
     public async Task<IActionResult> ExportCsv(string report = "revenue", string? from = null, string? to = null)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
 
         var dateFrom = DateTime.TryParse(from, out var df) ? df : DateTime.UtcNow.AddMonths(-6);
         var dateTo = DateTime.TryParse(to, out var dt) ? dt : DateTime.UtcNow;
@@ -159,6 +166,7 @@ public class ReportsController : Controller
     public async Task<IActionResult> ExportRevenuePdf(string? range, DateTime? from, DateTime? to)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
         var (dateFrom, dateTo, label) = ResolveDateRange(range, from, to);
         var vm = await _service.GenerateRevenueReportAsync(dateFrom, dateTo, label);
 
@@ -211,6 +219,7 @@ public class ReportsController : Controller
     public async Task<IActionResult> ExportShopsPdf(string? range, DateTime? from, DateTime? to)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
         var (dateFrom, dateTo, label) = ResolveDateRange(range, from, to);
         var vm = await _service.GenerateShopsReportAsync(dateFrom, dateTo, label);
 
@@ -248,6 +257,7 @@ public class ReportsController : Controller
     public async Task<IActionResult> ExportUsersPdf(string? range, DateTime? from, DateTime? to)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
         var (dateFrom, dateTo, label) = ResolveDateRange(range, from, to);
         var vm = await _service.GenerateUsersReportAsync(dateFrom, dateTo, label);
 
@@ -285,6 +295,7 @@ public class ReportsController : Controller
     public async Task<IActionResult> ExportSubscriptionsPdf(string? range, DateTime? from, DateTime? to)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
         var (dateFrom, dateTo, label) = ResolveDateRange(range, from, to);
         var vm = await _service.GenerateSubscriptionReportAsync(dateFrom, dateTo, label);
 
@@ -322,6 +333,7 @@ public class ReportsController : Controller
     public async Task<IActionResult> ExportPaymentsPdf(string? range, DateTime? from, DateTime? to)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
         var (dateFrom, dateTo, label) = ResolveDateRange(range, from, to);
         var vm = await _service.GeneratePaymentReportAsync(dateFrom, dateTo, label);
 
@@ -371,6 +383,7 @@ public class ReportsController : Controller
     public async Task<IActionResult> ExportGrowthPdf(string? range, DateTime? from, DateTime? to)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
         var (dateFrom, dateTo, label) = ResolveDateRange(range, from, to);
         var vm = await _service.GenerateGrowthReportAsync(dateFrom, dateTo, label);
 
@@ -408,6 +421,7 @@ public class ReportsController : Controller
     public async Task<IActionResult> ExportPdf(string report = "revenue", string? from = null, string? to = null)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
         var dateFrom = DateTime.TryParse(from, out var df) ? df : DateTime.UtcNow.AddMonths(-6);
         var dateTo = DateTime.TryParse(to, out var dt) ? dt : DateTime.UtcNow;
 

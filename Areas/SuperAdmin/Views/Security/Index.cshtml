@@ -1,0 +1,137 @@
+@model ByteBill_BS.Areas.SuperAdmin.Controllers.SecurityController.SuperAdminSecurityViewModel
+@{
+    ViewData["Title"] = "Security";
+}
+
+<partial name="~/Views/Shared/_Breadcrumbs.cshtml" model="@(new BreadcrumbViewModel { Items = new List<BreadcrumbViewModel.BreadcrumbItem> { new() { Label = "Dashboard", Url = Url.Action("Index", "Dashboard") }, new() { Label = "Security", IsActive = true } } })" />
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Security Control</h1>
+        <p class="page-subtitle">Emergency suspend/restore for the counterpart protected SuperAdmin account.</p>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success" style="margin-bottom:16px;">@TempData["Success"]</div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger" style="margin-bottom:16px;">@TempData["Error"]</div>
+}
+
+<div class="card" style="margin-bottom: 18px;">
+    <div class="card-header">
+        <h3 style="margin: 0; font-size: 16px;">Protected SuperAdmins</h3>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Last Login</th>
+                        <th style="text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var user in Model.ProtectedSuperAdmins)
+                {
+                    <tr>
+                        <td>@user.UserName</td>
+                        <td>@(string.IsNullOrWhiteSpace(user.Email) ? "-" : user.Email)</td>
+                        <td>
+                            @if (user.IsActive)
+                            {
+                                <span class="status-indicator status-success">Active</span>
+                            }
+                            else
+                            {
+                                <span class="status-indicator status-danger">Suspended</span>
+                            }
+                        </td>
+                        <td>
+                            @if (user.LastLoginAt.HasValue)
+                            {
+                                @user.LastLoginAt.Value.ToString("MMM dd, yyyy h:mm tt")
+                            }
+                            else
+                            {
+                                <span style="color:#9ca3af;">Never</span>
+                            }
+                        </td>
+                        <td style="text-align:right;">
+                            @if (user.IsActive)
+                            {
+                                <form asp-action="SuspendSuperAdmin" asp-controller="Security" asp-area="SuperAdmin" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@user.UserId" />
+                                    <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Suspend this protected SuperAdmin account?')">Suspend</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <form asp-action="RestoreSuperAdmin" asp-controller="Security" asp-area="SuperAdmin" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@user.UserId" />
+                                    <button type="submit" class="btn btn-outline-primary" onclick="return confirm('Restore this protected SuperAdmin account?')">Restore</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 style="margin: 0; font-size: 16px;">Permanently Locked Users</h3>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.LockedUsers.Count == 0)
+        {
+            <div style="padding: 16px; color: #6b7280;">No permanently locked users.</div>
+        }
+        else
+        {
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Locked At</th>
+                            <th>Reason</th>
+                            <th style="text-align:right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var user in Model.LockedUsers)
+                    {
+                        <tr>
+                            <td>@user.UserName</td>
+                            <td>@(string.IsNullOrWhiteSpace(user.Email) ? "-" : user.Email)</td>
+                            <td>@(user.PermanentlyLockedAt?.ToString("MMM dd, yyyy h:mm tt") ?? "-")</td>
+                            <td>@(string.IsNullOrWhiteSpace(user.LockoutReason) ? "-" : user.LockoutReason)</td>
+                            <td style="text-align:right;">
+                                <form asp-action="UnlockUser" asp-controller="Security" asp-area="SuperAdmin" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@user.UserId" />
+                                    <button type="submit" class="btn btn-outline-primary" onclick="return confirm('Unlock this user?')">Unlock</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

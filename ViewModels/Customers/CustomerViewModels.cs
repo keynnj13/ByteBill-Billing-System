@@ -29,19 +29,25 @@ public class CustomerItemViewModel
 
 public class CustomerFormViewModel
 {
+    private const string NamePattern = @"^[A-Za-z]+(?:[ '-][A-Za-z]+)*$";
+    private const string PhMobilePattern = @"^(09\d{9}|\+639\d{9})$";
+
     public long Id { get; set; }
     
     [Required(ErrorMessage = "First name is required")]
     [StringLength(20, ErrorMessage = "First name cannot exceed 20 characters")]
+    [RegularExpression(NamePattern, ErrorMessage = "First name may contain letters, spaces, hyphen, and apostrophe only")]
     [Display(Name = "First Name")]
     public string FirstName { get; set; } = string.Empty;
 
     [StringLength(10, ErrorMessage = "Middle name cannot exceed 10 characters")]
+    [RegularExpression(NamePattern, ErrorMessage = "Middle name may contain letters, spaces, hyphen, and apostrophe only")]
     [Display(Name = "Middle Name")]
     public string? MiddleName { get; set; }
     
     [Required(ErrorMessage = "Last name is required")]
     [StringLength(10, ErrorMessage = "Last name cannot exceed 10 characters")]
+    [RegularExpression(NamePattern, ErrorMessage = "Last name may contain letters, spaces, hyphen, and apostrophe only")]
     [Display(Name = "Last Name")]
     public string LastName { get; set; } = string.Empty;
     
@@ -50,8 +56,8 @@ public class CustomerFormViewModel
     [Display(Name = "Email")]
     public string? Email { get; set; }
     
-    [RegularExpression(@"^09\d{9}$", ErrorMessage = "Phone must be 11 digits starting with 09")]
-    [StringLength(11, MinimumLength = 11, ErrorMessage = "Phone number must be exactly 11 digits")]
+    [RegularExpression(PhMobilePattern, ErrorMessage = "Phone must be in 09XXXXXXXXX or +639XXXXXXXXX format")]
+    [StringLength(13, MinimumLength = 11, ErrorMessage = "Phone number format is invalid")]
     [Display(Name = "Phone")]
     public string? Phone { get; set; }
     

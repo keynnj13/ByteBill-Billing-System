@@ -1,0 +1,126 @@
+@model ByteBill_BS.ViewModels.Auth.MfaChallengeViewModel
+@{
+    ViewData["Title"] = "Set Up Multi-Factor Authentication";
+    ViewData["HideNavigation"] = true;
+
+    var setupKey = (ViewData["SetupMfaManualKey"] as string) ?? string.Empty;
+    var qrCodeUrl = (ViewData["SetupMfaQrCodeUrl"] as string) ?? string.Empty;
+    var fromPreferences = ViewData["FromPreferences"] is bool fromPref && fromPref;
+}
+
+<div class="recovery-page">
+    <div class="card recovery-card recovery-card-wide recovery-card-modern">
+        <div class="recovery-header-meta">
+            <span class="recovery-kicker">Account Security</span>
+            <div class="force-password-header-actions">
+                <span class="recovery-session-pill">MFA Setup</span>
+                <a href="/Auth/Logout" class="btn btn-ghost btn-sm force-password-logout" aria-label="Sign out and continue later">Sign Out</a>
+            </div>
+        </div>
+
+        <h1 class="recovery-title">Set up authenticator app</h1>
+        <p class="recovery-subtitle">Scan the QR code with Google Authenticator, Microsoft Authenticator, or any TOTP app, then enter the 6-digit code to continue.</p>
+
+        @if (TempData["AuthMessage"] != null)
+        {
+            <div class="recovery-alert recovery-alert-warning" role="status">@TempData["AuthMessage"]</div>
+        }
+
+        <form method="post" asp-action="SetupMfa" asp-controller="Auth" asp-route-fromPreferences="@fromPreferences" class="recovery-form" novalidate>
+            @Html.AntiForgeryToken()
+            <partial name="_ValidationSummary" />
+
+            <div class="recovery-form-grid">
+                <div class="recovery-form-main">
+                    <div class="form-group">
+                        <label asp-for="TotpCode" class="form-label">Authenticator Code</label>
+                        <input asp-for="TotpCode" class="form-input" inputmode="numeric" autocomplete="one-time-code" placeholder="Enter 6-digit code" maxlength="6" aria-required="true" />
+                        <span asp-validation-for="TotpCode" class="form-error"></span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary recovery-submit" id="verifyMfaBtn">
+                        Verify and Continue
+                    </button>
+
+                    @if (fromPreferences)
+                    {
+                        <a href="/Profile/Preferences" class="btn btn-secondary" style="margin-top:10px; width:100%;">Cancel and Go Back</a>
+                    }
+                </div>
+
+                <div class="recovery-form-side">
+                    <div class="recovery-checklist" aria-label="MFA setup instructions">
+                        <h2 class="recovery-checklist-title">Setup instructions</h2>
+                        @if (!string.IsNullOrWhiteSpace(qrCodeUrl))
+                        {
+                            <div class="mfa-qr-wrap">
+                                <img src="@qrCodeUrl" alt="QR code for authenticator setup" class="mfa-qr-img" />
+                            </div>
+                        }
+                        <div class="recovery-check-item ok">
+                            <span class="recovery-check-dot" aria-hidden="true"></span>
+                            <span>Scan the QR code in your authenticator app</span>
+                        </div>
+                        <div class="recovery-check-item ok">
+                            <span class="recovery-check-dot" aria-hidden="true"></span>
+                            <span>If scanning fails, enter this setup key manually</span>
+                        </div>
+                        <div class="mfa-manual-key" role="note">@setupKey</div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Styles {
+<link rel="stylesheet" href="~/css/auth-recovery.css" asp-append-version="true" />
+<style>
+    .mfa-qr-wrap {
+        display: flex;
+        justify-content: center;
+        padding: 8px;
+        background: #ffffff;
+        border: 1px solid var(--gray-200);
+        border-radius: 10px;
+        margin-bottom: 10px;
+    }
+
+    .mfa-qr-img {
+        width: 180px;
+        height: 180px;
+        max-width: 100%;
+        object-fit: contain;
+    }
+
+    .mfa-manual-key {
+        margin-top: 8px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--navy-700);
+        background: #ffffff;
+        border: 1px dashed var(--gray-300);
+        border-radius: 8px;
+        padding: 10px 12px;
+        word-break: break-all;
+    }
+</style>
+}
+
+@section Scripts {
+<script>
+    (function () {
+        var form = document.querySelector('form');
+        var submitBtn = document.getElementById('verifyMfaBtn');
+        if (!form || !submitBtn) {
+            return;
+        }
+
+        form.addEventListener('submit', function () {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Verifying code...';
+        });
+    })();
+</script>
+}

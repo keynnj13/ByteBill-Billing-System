@@ -7,6 +7,8 @@ using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using SendGrid;
 using SendGrid.Helpers.Mail;
+using System.Net;
+using System.Net.Mail;
 
 namespace ByteBill_BS.Services;
 
@@ -16,6 +18,18 @@ public class SendGridSettings
     public string ApiKey { get; set; } = string.Empty;
     public string FromEmail { get; set; } = "noreply@bytebill.ph";
     public string FromName { get; set; } = "ByteBill";
+}
+
+public class SmtpSettings
+{
+    public bool Enabled { get; set; } = false;
+    public string Host { get; set; } = "smtp.gmail.com";
+    public int Port { get; set; } = 587;
+    public string Username { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string FromEmail { get; set; } = "noreply@bytebill.ph";
+    public string FromName { get; set; } = "ByteBill";
+    public bool EnableSsl { get; set; } = true;
 }
 
 // ── Interface ────────────────────────────────────────────────────────────
@@ -29,6 +43,15 @@ public interface IEmailService
 
     /// <summary>Send subscription confirmation to shop owner after successful payment.</summary>
     Task SendSubscriptionConfirmationAsync(long subscriptionPaymentId);
+
+    /// <summary>Send password reset link email.</summary>
+    Task SendPasswordResetLinkAsync(string toEmail, string toName, string resetUrl, DateTime expiresAt);
+
+    /// <summary>Send one-time security code for MFA fallback.</summary>
+    Task SendSecurityCodeAsync(string toEmail, string toName, string code, DateTime expiresAt);
+
+    /// <summary>Send initial temporary credentials after subscription payment.</summary>
+    Task SendInitialCredentialsAsync(string toEmail, string toName, string userName, string temporaryPassword);
 }
 
 // ── Implementation ───────────────────────────────────────────────────────
@@ -36,15 +59,18 @@ public class EmailService : IEmailService
 {
     private readonly ApplicationDbContext _db;
     private readonly SendGridSettings _settings;
+    private readonly SmtpSettings _smtpSettings;
     private readonly ILogger<EmailService> _logger;
 
     public EmailService(
         ApplicationDbContext db,
         IOptions<SendGridSettings> settings,
+        IOptions<SmtpSettings> smtpSettings,
         ILogger<EmailService> logger)
     {
         _db = db;
         _settings = settings.Value;
+        _smtpSettings = smtpSettings.Value;
         _logger = logger;
     }
 
@@ -178,6 +204,151 @@ public class EmailService : IEmailService
             shopName: "ByteBill");
     }
 
+    public async Task SendPasswordResetLinkAsync(string toEmail, string toName, string resetUrl, DateTime expiresAt)
+    {
+        var subject = "Reset your ByteBill password";
+        var htmlBody = BuildPasswordResetEmailHtml(toName, resetUrl, expiresAt);
+        var plainText = BuildPasswordResetPlainText(toName, resetUrl, expiresAt);
+
+        if (await TrySendWithSmtpAsync(toEmail, toName, subject, plainText, htmlBody, "password reset"))
+        {
+            return;
+        }
+
+        if (!IsSendGridConfigured())
+        {
+            _logger.LogWarning("SendGrid API key not configured — email not sent: {Subject}", subject);
+            return;
+        }
+
+        await TrySendWithSendGridAsync(toEmail, toName, subject, plainText, htmlBody, "ByteBill Security", "password reset");
+    }
+
+    public async Task SendSecurityCodeAsync(string toEmail, string toName, string code, DateTime expiresAt)
+    {
+        var subject = "Your ByteBill security code";
+        var htmlBody = $@"<div style='font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#1f2937'>
+<p>Hello {WebUtility.HtmlEncode(toName)},</p>
+<p>Your ByteBill verification code is:</p>
+<p style='font-size:28px;font-weight:700;letter-spacing:4px;margin:12px 0'>{WebUtility.HtmlEncode(code)}</p>
+<p>This code expires at <strong>{expiresAt.ToLocalTime():f}</strong>.</p>
+<p>If this was not you, please secure your account immediately.</p>
+</div>";
+        var plainText = $"Hello {toName}, your ByteBill verification code is {code}. It expires at {expiresAt.ToLocalTime():f}.";
+
+        if (await TrySendWithSmtpAsync(toEmail, toName, subject, plainText, htmlBody, "MFA code"))
+        {
+            return;
+        }
+
+        if (!IsSendGridConfigured())
+        {
+            _logger.LogWarning("No working SMTP/SendGrid configuration — MFA code email not sent to {Email}", toEmail);
+            throw new InvalidOperationException("Unable to deliver verification code email. Please check email provider configuration.");
+        }
+
+        await TrySendWithSendGridAsync(toEmail, toName, subject, plainText, htmlBody, "ByteBill Security", "MFA code");
+    }
+
+    public async Task SendInitialCredentialsAsync(string toEmail, string toName, string userName, string temporaryPassword)
+    {
+        var subject = "Your ByteBill account is ready";
+        var htmlBody = $@"<div style='font-family:Segoe UI,Arial,sans-serif;line-height:1.6;color:#1f2937'>
+<p>Hello {WebUtility.HtmlEncode(toName)},</p>
+<p>Your ByteBill account has been created after your successful subscription payment.</p>
+<p><strong>Username:</strong> {WebUtility.HtmlEncode(userName)}<br/>
+<strong>Temporary Password:</strong> {WebUtility.HtmlEncode(temporaryPassword)}</p>
+<p>For security, you will be required to change this password immediately after your first login.</p>
+<p>Open ByteBill and sign in using these temporary credentials.</p>
+</div>";
+
+        var plainText = $"Hello {toName}, your ByteBill account is ready. Username: {userName}. Temporary password: {temporaryPassword}. You will be required to change this password on first login.";
+
+        if (await TrySendWithSmtpAsync(toEmail, toName, subject, plainText, htmlBody, "onboarding credentials"))
+        {
+            return;
+        }
+
+        if (!IsSendGridConfigured())
+        {
+            _logger.LogWarning("No working SMTP/SendGrid configuration — initial credentials email not sent to {Email}", toEmail);
+            return;
+        }
+
+        await TrySendWithSendGridAsync(toEmail, toName, subject, plainText, htmlBody, "ByteBill Security", "onboarding credentials");
+    }
+
+    private bool IsSendGridConfigured()
+    {
+        return !string.IsNullOrWhiteSpace(_settings.ApiKey);
+    }
+
+    private async Task<bool> TrySendWithSmtpAsync(
+        string toEmail,
+        string toName,
+        string subject,
+        string plainText,
+        string htmlContent,
+        string context)
+    {
+        var effectiveSmtp = await GetEffectiveSmtpSettingsAsync();
+        if (!IsSmtpConfigured(effectiveSmtp))
+        {
+            return false;
+        }
+
+        try
+        {
+            await SendWithSmtpAsync(toEmail, toName, subject, plainText, htmlContent, effectiveSmtp);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "SMTP send failed for {Context} email to {Email}. Will try SendGrid fallback if configured.", context, toEmail);
+            return false;
+        }
+    }
+
+    private async Task<bool> TrySendWithSendGridAsync(
+        string toEmail,
+        string toName,
+        string subject,
+        string plainText,
+        string htmlContent,
+        string fromName,
+        string context)
+    {
+        if (!IsSendGridConfigured())
+        {
+            return false;
+        }
+
+        var client = new SendGridClient(_settings.ApiKey);
+        var from = new EmailAddress(_settings.FromEmail, fromName);
+        var to = new EmailAddress(toEmail, toName);
+        var msg = MailHelper.CreateSingleEmail(from, to, subject, plainText, htmlContent);
+
+        try
+        {
+            var response = await client.SendEmailAsync(msg);
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("{Context} email sent to {Email}", context, toEmail);
+                return true;
+            }
+
+            var body = await response.Body.ReadAsStringAsync();
+            _logger.LogWarning("SendGrid returned {StatusCode} for {Context} email to {Email}: {Body}",
+                response.StatusCode, context, toEmail, body);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send {Context} email to {Email}", context, toEmail);
+            return false;
+        }
+    }
+
     // ═════════════════════════════════════════════════════════════════════
     //  SEND EMAIL VIA SENDGRID
     // ═════════════════════════════════════════════════════════════════════
@@ -221,6 +392,83 @@ public class EmailService : IEmailService
         {
             _logger.LogError(ex, "Failed to send email to {Email}: {Subject}", toEmail, subject);
         }
+    }
+
+    private bool IsSmtpConfigured(SmtpSettings settings)
+    {
+        return settings.Enabled
+            && !string.IsNullOrWhiteSpace(settings.Host)
+            && settings.Port > 0
+            && !string.IsNullOrWhiteSpace(settings.FromEmail)
+            && (!string.IsNullOrWhiteSpace(settings.Username) || !string.IsNullOrWhiteSpace(settings.Password));
+    }
+
+    private async Task SendWithSmtpAsync(string toEmail, string toName, string subject, string plainText, string htmlContent, SmtpSettings settings)
+    {
+        if (!settings.EnableSsl)
+        {
+            _logger.LogError("SMTP SSL is disabled; refusing to send email to {Email}.", toEmail);
+            throw new InvalidOperationException("SMTP SSL is required.");
+        }
+
+        using var client = new SmtpClient(settings.Host, settings.Port)
+        {
+            EnableSsl = true,
+            Credentials = new NetworkCredential(settings.Username, settings.Password)
+        };
+
+        using var message = new MailMessage
+        {
+            From = new MailAddress(settings.FromEmail, settings.FromName),
+            Subject = subject,
+            Body = plainText,
+            IsBodyHtml = false
+        };
+        message.To.Add(new MailAddress(toEmail, toName));
+        message.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(htmlContent, null, "text/html"));
+
+        await client.SendMailAsync(message);
+        _logger.LogInformation("SMTP email sent to {Email}: {Subject}", toEmail, subject);
+    }
+
+    private async Task<SmtpSettings> GetEffectiveSmtpSettingsAsync()
+    {
+        var effective = new SmtpSettings
+        {
+            Enabled = _smtpSettings.Enabled,
+            Host = _smtpSettings.Host,
+            Port = _smtpSettings.Port,
+            Username = _smtpSettings.Username,
+            Password = _smtpSettings.Password,
+            FromEmail = _smtpSettings.FromEmail,
+            FromName = _smtpSettings.FromName,
+            EnableSsl = _smtpSettings.EnableSsl
+        };
+
+        var settingRows = await _db.PlatformSettings
+            .AsNoTracking()
+            .Where(s => s.Category == "Email")
+            .ToDictionaryAsync(s => s.SettingKey, s => s.SettingValue);
+
+        if (settingRows.TryGetValue("Email.SmtpHost", out var host) && !string.IsNullOrWhiteSpace(host))
+            effective.Host = host;
+        if (settingRows.TryGetValue("Email.SmtpPort", out var portRaw) && int.TryParse(portRaw, out var port) && port > 0)
+            effective.Port = port;
+        if (settingRows.TryGetValue("Email.SmtpUsername", out var username))
+            effective.Username = username;
+        if (settingRows.TryGetValue("Email.SmtpPassword", out var password))
+            effective.Password = password;
+        if (settingRows.TryGetValue("Email.FromEmail", out var fromEmail) && !string.IsNullOrWhiteSpace(fromEmail))
+            effective.FromEmail = fromEmail;
+        if (settingRows.TryGetValue("Email.FromName", out var fromName) && !string.IsNullOrWhiteSpace(fromName))
+            effective.FromName = fromName;
+        if (settingRows.TryGetValue("Email.SmtpUseSsl", out var sslRaw))
+            effective.EnableSsl = string.Equals(sslRaw, "true", StringComparison.OrdinalIgnoreCase);
+
+        // Consider SMTP enabled when Email tab has a host configured.
+        effective.Enabled = !string.IsNullOrWhiteSpace(effective.Host);
+
+        return effective;
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -430,6 +678,77 @@ public class EmailService : IEmailService
                     <p style=""font-size:13px; color:#94a3b8;"">Thank you for choosing ByteBill! 🚀</p>
                 </div>
             </div>");
+    }
+
+    private static string BuildPasswordResetEmailHtml(string toName, string resetUrl, DateTime expiresAt)
+    {
+        var (localExpiry, timeZoneLabel) = GetLocalExpiryLabel(expiresAt);
+        return WrapEmailLayout("ByteBill", $@"
+            <div style=""text-align:center; padding:30px 0 10px;"">
+                <div style=""display:inline-block; background:#fff7ed; border-radius:50%; width:64px; height:64px; line-height:64px; text-align:center;"">
+                    <span style=""font-size:28px;"">🔐</span>
+                </div>
+                <h1 style=""margin:16px 0 4px; font-size:22px; color:#1e293b; font-weight:700;"">Password Reset Request</h1>
+                <p style=""margin:0; font-size:14px; color:#64748b;"">Use the secure link below to set a new password.</p>
+            </div>
+
+            <div style=""padding:20px 30px;"">
+                <p style=""font-size:14px; color:#334155; line-height:1.6; margin:0 0 16px;"">
+                    Hi {Encode(string.IsNullOrWhiteSpace(toName) ? "there" : toName)},
+                </p>
+                <p style=""font-size:14px; color:#334155; line-height:1.6; margin:0 0 20px;"">
+                    We received a request to reset your ByteBill account password. This link expires on
+                    <strong>{localExpiry:MMMM d, yyyy h:mm tt} {Encode(timeZoneLabel)}</strong>.
+                </p>
+
+                <div style=""text-align:center; margin:24px 0;"">
+                    <a href=""{Encode(resetUrl)}"" style=""display:inline-block; background:#0f766e; color:#ffffff; text-decoration:none; padding:12px 22px; border-radius:8px; font-weight:600; font-size:14px;"">
+                        Reset Password
+                    </a>
+                </div>
+
+                <p style=""font-size:12px; color:#64748b; line-height:1.6; margin:0 0 8px;"">
+                    If the button does not work, copy and paste this link in your browser:
+                </p>
+                <p style=""font-size:12px; color:#0f172a; line-height:1.6; word-break:break-all; margin:0;"">{Encode(resetUrl)}</p>
+
+                <div style=""background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-top:20px;"">
+                    <p style=""margin:0; font-size:12px; color:#475569;"">
+                        If you did not request this reset, you can ignore this email and your password will remain unchanged.
+                    </p>
+                </div>
+            </div>");
+    }
+
+    private static string BuildPasswordResetPlainText(string toName, string resetUrl, DateTime expiresAt)
+    {
+        var (localExpiry, timeZoneLabel) = GetLocalExpiryLabel(expiresAt);
+        return $@"Hi {(string.IsNullOrWhiteSpace(toName) ? "there" : toName)},
+
+We received a request to reset your ByteBill password.
+
+Reset link:
+{resetUrl}
+
+This link expires on {localExpiry:MMMM d, yyyy h:mm tt} {timeZoneLabel}.
+
+If you did not request this, you can ignore this email.";
+    }
+
+    private static (DateTime LocalExpiry, string TimeZoneLabel) GetLocalExpiryLabel(DateTime expiresAtUtc)
+    {
+        var utc = expiresAtUtc.Kind == DateTimeKind.Utc
+            ? expiresAtUtc
+            : DateTime.SpecifyKind(expiresAtUtc, DateTimeKind.Utc);
+
+        var localExpiry = TimeZoneInfo.ConvertTimeFromUtc(utc, TimeZoneInfo.Local);
+        var offset = TimeZoneInfo.Local.GetUtcOffset(utc);
+        var offsetLabel = offset >= TimeSpan.Zero ? $"+{offset:hh\\:mm}" : $"-{offset:hh\\:mm}";
+        var zoneName = string.IsNullOrWhiteSpace(TimeZoneInfo.Local.StandardName)
+            ? TimeZoneInfo.Local.Id
+            : TimeZoneInfo.Local.StandardName;
+
+        return (localExpiry, $"{zoneName} (UTC{offsetLabel})");
     }
 
     /// <summary>Shared email layout wrapper with shop branding header and footer.</summary>

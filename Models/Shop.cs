@@ -6,7 +6,9 @@ public class Shop
     public string ShopCode { get; set; } = string.Empty;
     public string ShopName { get; set; } = string.Empty;
     public string? Email { get; set; }
+    public string? EmailHash { get; set; }
     public string? Phone { get; set; }
+    public string? PhoneHash { get; set; }
     public string? Address { get; set; }
     public string Status { get; set; } = "Active";
     public decimal DefaultPartMarkupPct { get; set; } = 0;

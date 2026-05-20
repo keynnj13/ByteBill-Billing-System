@@ -188,6 +188,13 @@ public class ReportsController : Controller
     public async Task<IActionResult> Revenue(DateTime? from, DateTime? to)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Invalid filters.";
+            return RedirectToAction(nameof(Revenue));
+        }
+
         var shopId = User.GetShopId();
 
         var dateFrom = from ?? DateTime.Today.AddMonths(-6);

@@ -1,6 +1,9 @@
 using ByteBill_BS.Models;
 using ByteBill_BS.Models.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.Logging;
+using System.IO;
 
 namespace ByteBill_BS.Data;
 
@@ -10,7 +13,10 @@ namespace ByteBill_BS.Data;
 /// </summary>
 public static class DbSeeder
 {
-    public static async Task SeedAsync(ApplicationDbContext db)
+    private static readonly string[] ProtectedSuperAdminUserNames = ["vkpadao", "vkbackup"];
+    private static readonly string[] LegacySuperAdminUserNames = ["rootadmin", "root admin", "guardadmin", "guard admin", "backupsuperadmin", "backup-superadmin", "backup superadmin"];
+
+    public static async Task SeedAsync(ApplicationDbContext db, bool isDevelopment)
     {
         // Ensure the database exists (no-op if already created via SQL script)
         // Use a generous timeout for cold-start scenarios (LocalDB spin-up)
@@ -21,11 +27,19 @@ public static class DbSeeder
         catch { /* will fail naturally below if truly unreachable */ }
 
         await db.Database.EnsureCreatedAsync();
+        await ApplyAuthAndPasswordResetSchemaFixesAsync(db);
+        await ApplyPiiSchemaFixesAsync(db);
+        await BackfillProtectedPiiAsync(db);
 
         await SeedShopAsync(db);
         await SeedRolesAsync(db);
-        await SeedUsersAsync(db);
-        await SeedUserRolesAsync(db);
+        await PurgeLegacySuperAdminAccountsAsync(db);
+        await EnsureSystemSuperAdminsAsync(db);
+        if (isDevelopment)
+        {
+            await SeedUsersAsync(db);
+            await SeedUserRolesAsync(db);
+        }
 
         // Sample data for all modules
         await SeedCustomersAsync(db);
@@ -53,6 +67,146 @@ public static class DbSeeder
         await RepairInvoiceBalancesAsync(db);
     }
 
+    private static async Task ApplyAuthAndPasswordResetSchemaFixesAsync(ApplicationDbContext db)
+    {
+        var logger = db.GetService<ILoggerFactory>().CreateLogger("DbSeeder");
+
+        // Use the migration SQL script as the single source of truth.
+        var relativePath = Path.Combine("Database", "Migration_ForgotPasswordRecovery.sql");
+        var candidatePaths = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, relativePath),
+            Path.Combine(Directory.GetCurrentDirectory(), relativePath),
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", relativePath))
+        }
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+
+        var scriptPath = candidatePaths.FirstOrDefault(File.Exists);
+        if (scriptPath is null)
+        {
+            logger.LogWarning("Schema patch script not found. Checked: {Paths}", string.Join(" | ", candidatePaths));
+            return;
+        }
+
+        var sql = await File.ReadAllTextAsync(scriptPath);
+        if (string.IsNullOrWhiteSpace(sql))
+        {
+            logger.LogWarning("Schema patch script is empty: {ScriptPath}", scriptPath);
+            return;
+        }
+
+        try
+        {
+            await db.Database.ExecuteSqlRawAsync(sql);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Schema patch failed: {ScriptPath}", scriptPath);
+        }
+    }
+
+    private static async Task ApplyPiiSchemaFixesAsync(ApplicationDbContext db)
+    {
+        var logger = db.GetService<ILoggerFactory>().CreateLogger("DbSeeder");
+
+        var relativePath = Path.Combine("Database", "Migration_PhoneHash.sql");
+        var candidatePaths = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, relativePath),
+            Path.Combine(Directory.GetCurrentDirectory(), relativePath),
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", relativePath))
+        }
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+
+        var scriptPath = candidatePaths.FirstOrDefault(File.Exists);
+        if (scriptPath is null)
+        {
+            logger.LogWarning("Schema patch script not found. Checked: {Paths}", string.Join(" | ", candidatePaths));
+            return;
+        }
+
+        var sql = await File.ReadAllTextAsync(scriptPath);
+        if (string.IsNullOrWhiteSpace(sql))
+        {
+            logger.LogWarning("Schema patch script is empty: {ScriptPath}", scriptPath);
+            return;
+        }
+
+        try
+        {
+            await db.Database.ExecuteSqlRawAsync(sql);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Schema patch failed: {ScriptPath}", scriptPath);
+        }
+    }
+
+    private static async Task BackfillProtectedPiiAsync(ApplicationDbContext db)
+    {
+        var emailSecurity = db.GetService<ByteBill_BS.Services.IEmailSecurityService>();
+
+        var users = await db.Users.Where(u => u.Email != null || u.Phone != null).ToListAsync();
+        BackfillPiiForEntities(users, emailSecurity, BackfillUserPii);
+
+        var customers = await db.Customers.Where(c => c.Email != null || c.Phone != null).ToListAsync();
+        BackfillPiiForEntities(customers, emailSecurity, BackfillCustomerPii);
+
+        var shops = await db.Shops.Where(s => s.Email != null || s.Phone != null).ToListAsync();
+        BackfillPiiForEntities(shops, emailSecurity, BackfillShopPii);
+
+        await db.SaveChangesAsync();
+    }
+
+    private static void BackfillPiiForEntities<T>(IEnumerable<T> entities, ByteBill_BS.Services.IEmailSecurityService emailSecurity, Action<T, ByteBill_BS.Services.IEmailSecurityService> update)
+    {
+        foreach (var entity in entities)
+        {
+            update(entity, emailSecurity);
+        }
+    }
+
+    private static void BackfillUserPii(User user, ByteBill_BS.Services.IEmailSecurityService emailSecurity)
+    {
+        var emailPlain = emailSecurity.Decrypt(user.Email);
+        if (!emailSecurity.IsEncryptedV2(user.Email))
+            user.Email = emailSecurity.Encrypt(emailPlain);
+        user.EmailHash = emailSecurity.ComputeHash(emailPlain);
+
+        var phonePlain = emailSecurity.Decrypt(user.Phone);
+        if (!emailSecurity.IsEncryptedV2(user.Phone))
+            user.Phone = emailSecurity.Encrypt(phonePlain);
+        user.PhoneHash = emailSecurity.ComputePhoneHash(phonePlain);
+    }
+
+    private static void BackfillCustomerPii(Customer customer, ByteBill_BS.Services.IEmailSecurityService emailSecurity)
+    {
+        var emailPlain = emailSecurity.Decrypt(customer.Email);
+        if (!emailSecurity.IsEncryptedV2(customer.Email))
+            customer.Email = emailSecurity.Encrypt(emailPlain);
+        customer.EmailHash = emailSecurity.ComputeHash(emailPlain);
+
+        var phonePlain = emailSecurity.Decrypt(customer.Phone);
+        if (!emailSecurity.IsEncryptedV2(customer.Phone))
+            customer.Phone = emailSecurity.Encrypt(phonePlain);
+        customer.PhoneHash = emailSecurity.ComputePhoneHash(phonePlain);
+    }
+
+    private static void BackfillShopPii(Shop shop, ByteBill_BS.Services.IEmailSecurityService emailSecurity)
+    {
+        var emailPlain = emailSecurity.Decrypt(shop.Email);
+        if (!emailSecurity.IsEncryptedV2(shop.Email))
+            shop.Email = emailSecurity.Encrypt(emailPlain);
+        shop.EmailHash = emailSecurity.ComputeHash(emailPlain);
+
+        var phonePlain = emailSecurity.Decrypt(shop.Phone);
+        if (!emailSecurity.IsEncryptedV2(shop.Phone))
+            shop.Phone = emailSecurity.Encrypt(phonePlain);
+        shop.PhoneHash = emailSecurity.ComputePhoneHash(phonePlain);
+    }
+
     // ── Shop ─────────────────────────────────────────────────────────────
     private static async Task SeedShopAsync(ApplicationDbContext db)
     {
@@ -75,9 +229,7 @@ public static class DbSeeder
     // ── Roles ────────────────────────────────────────────────────────────
     private static async Task SeedRolesAsync(ApplicationDbContext db)
     {
-        if (await db.Roles.AnyAsync()) return;
-
-        var roles = new List<Role>
+        var requiredRoles = new List<Role>
         {
             new() { RoleName = "SuperAdmin",  Description = "Full system access across all shops" },
             new() { RoleName = "Admin",        Description = "Shop Owner — full access within a single shop" },
@@ -86,7 +238,19 @@ public static class DbSeeder
             new() { RoleName = "Auditor",      Description = "Auditor — read-only access for review and compliance" }
         };
 
-        db.Roles.AddRange(roles);
+        var existingRoleNames = await db.Roles.Select(r => r.RoleName).ToListAsync();
+        var existingSet = existingRoleNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var missingRoles = requiredRoles
+            .Where(r => !existingSet.Contains(r.RoleName))
+            .ToList();
+
+        if (missingRoles.Count == 0)
+        {
+            return;
+        }
+
+        db.Roles.AddRange(missingRoles);
         await db.SaveChangesAsync();
     }
 
@@ -103,8 +267,6 @@ public static class DbSeeder
     // └──────────────┴──────────────┴────────────────────┘
     private static async Task SeedUsersAsync(ApplicationDbContext db)
     {
-        if (await db.Users.AnyAsync()) return;
-
         var shop = await db.Shops.FirstAsync();
 
         var seedUsers = new (string FirstName, string LastName, string UserName, string Password)[]
@@ -118,6 +280,12 @@ public static class DbSeeder
 
         foreach (var s in seedUsers)
         {
+            var exists = await db.Users.AnyAsync(u => u.UserName == s.UserName);
+            if (exists)
+            {
+                continue;
+            }
+
             db.Users.Add(new User
             {
                 ShopId       = shop.ShopId,
@@ -133,17 +301,253 @@ public static class DbSeeder
         await db.SaveChangesAsync();
     }
 
+    private static async Task PurgeLegacySuperAdminAccountsAsync(ApplicationDbContext db)
+    {
+        var legacyUserNameSet = LegacySuperAdminUserNames
+            .Select(NormalizeLegacyKey)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var legacyUsers = await db.Users
+            .Include(u => u.UserRoles)
+            .ThenInclude(ur => ur.Role)
+            .Where(u => legacyUserNameSet.Contains((u.UserName ?? string.Empty).ToLower().Replace("-", string.Empty).Replace("_", string.Empty).Replace(" ", string.Empty))
+                || u.UserRoles.Any(ur => ur.Role != null && (ur.Role.RoleName ?? string.Empty).ToLower().Replace("-", string.Empty).Replace("_", string.Empty).Replace(" ", string.Empty) == "backupsuperadmin"))
+            .ToListAsync();
+
+        if (legacyUsers.Count == 0)
+        {
+            var obsoleteRoles = await db.Roles
+                .Where(r => (r.RoleName ?? string.Empty).ToLower().Replace("-", string.Empty).Replace("_", string.Empty).Replace(" ", string.Empty) == "backupsuperadmin")
+                .ToListAsync();
+            foreach (var obsoleteRole in obsoleteRoles)
+            {
+                var hasAssignments = await db.UserRoles.AnyAsync(ur => ur.RoleId == obsoleteRole.RoleId);
+                if (!hasAssignments)
+                {
+                    db.Roles.Remove(obsoleteRole);
+                }
+            }
+
+            await db.SaveChangesAsync();
+
+            return;
+        }
+
+        var mainSuperAdmin = await db.Users.FirstOrDefaultAsync(u => u.UserName == "vkpadao");
+        var fallbackSuperAdminId = mainSuperAdmin?.UserId;
+
+        var legacyUserIds = legacyUsers.Select(u => u.UserId).ToList();
+
+        // Repoint required FK references to vkpadao when available.
+        if (fallbackSuperAdminId.HasValue)
+        {
+            var announcements = await db.Announcements
+                .Where(a => legacyUserIds.Contains(a.CreatedByUserId))
+                .ToListAsync();
+            foreach (var row in announcements)
+            {
+                row.CreatedByUserId = fallbackSuperAdminId.Value;
+            }
+
+            var jobOrders = await db.JobOrders
+                .Where(j => legacyUserIds.Contains(j.CreatedByUserId) || (j.AssignedTechUserId.HasValue && legacyUserIds.Contains(j.AssignedTechUserId.Value)))
+                .ToListAsync();
+            foreach (var row in jobOrders)
+            {
+                if (legacyUserIds.Contains(row.CreatedByUserId))
+                {
+                    row.CreatedByUserId = fallbackSuperAdminId.Value;
+                }
+
+                if (row.AssignedTechUserId.HasValue && legacyUserIds.Contains(row.AssignedTechUserId.Value))
+                {
+                    row.AssignedTechUserId = fallbackSuperAdminId.Value;
+                }
+            }
+
+            var payments = await db.Payments
+                .Where(p => legacyUserIds.Contains(p.ReceivedByUserId))
+                .ToListAsync();
+            foreach (var row in payments)
+            {
+                row.ReceivedByUserId = fallbackSuperAdminId.Value;
+            }
+
+            var adjustments = await db.CreditDebitAdjustments
+                .Where(a => legacyUserIds.Contains(a.CreatedByUserId) || (a.ReviewedByUserId.HasValue && legacyUserIds.Contains(a.ReviewedByUserId.Value)))
+                .ToListAsync();
+            foreach (var row in adjustments)
+            {
+                if (legacyUserIds.Contains(row.CreatedByUserId))
+                {
+                    row.CreatedByUserId = fallbackSuperAdminId.Value;
+                }
+
+                if (row.ReviewedByUserId.HasValue && legacyUserIds.Contains(row.ReviewedByUserId.Value))
+                {
+                    row.ReviewedByUserId = fallbackSuperAdminId.Value;
+                }
+            }
+
+            var payMongo = await db.PayMongoTxns
+                .Where(t => legacyUserIds.Contains(t.InitiatedByUserId))
+                .ToListAsync();
+            foreach (var row in payMongo)
+            {
+                row.InitiatedByUserId = fallbackSuperAdminId.Value;
+            }
+        }
+
+        var auditLogs = await db.AuditLogs
+            .Where(a => a.UserId.HasValue && legacyUserIds.Contains(a.UserId.Value))
+            .ToListAsync();
+        foreach (var row in auditLogs)
+        {
+            row.UserId = null;
+        }
+
+        var superAdminAuditLogs = await db.SuperAdminAuditLogs
+            .Where(a => legacyUserIds.Contains(a.UserId))
+            .ToListAsync();
+        if (superAdminAuditLogs.Count > 0)
+        {
+            db.SuperAdminAuditLogs.RemoveRange(superAdminAuditLogs);
+        }
+
+        var notifications = await db.Notifications
+            .Where(n => legacyUserIds.Contains(n.UserId))
+            .ToListAsync();
+        if (notifications.Count > 0)
+        {
+            db.Notifications.RemoveRange(notifications);
+        }
+
+        var resetTokens = await db.PasswordResetTokens
+            .Where(t => legacyUserIds.Contains(t.UserId))
+            .ToListAsync();
+        if (resetTokens.Count > 0)
+        {
+            db.PasswordResetTokens.RemoveRange(resetTokens);
+        }
+
+        var userRoles = await db.UserRoles
+            .Where(ur => legacyUserIds.Contains(ur.UserId))
+            .ToListAsync();
+        if (userRoles.Count > 0)
+        {
+            db.UserRoles.RemoveRange(userRoles);
+        }
+
+        db.Users.RemoveRange(legacyUsers);
+        await db.SaveChangesAsync();
+
+        var obsoleteBackupRoles = await db.Roles
+            .Where(r => (r.RoleName ?? string.Empty).ToLower().Replace("-", string.Empty).Replace("_", string.Empty).Replace(" ", string.Empty) == "backupsuperadmin")
+            .ToListAsync();
+        foreach (var obsoleteBackupRole in obsoleteBackupRoles)
+        {
+            var hasAssignments = await db.UserRoles.AnyAsync(ur => ur.RoleId == obsoleteBackupRole.RoleId);
+            if (!hasAssignments)
+            {
+                db.Roles.Remove(obsoleteBackupRole);
+            }
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    private static string NormalizeLegacyKey(string? value)
+    {
+        return (value ?? string.Empty)
+            .Trim()
+            .ToLowerInvariant()
+            .Replace("-", string.Empty)
+            .Replace("_", string.Empty)
+            .Replace(" ", string.Empty);
+    }
+
+    private static async Task EnsureSystemSuperAdminsAsync(ApplicationDbContext db)
+    {
+        var superAdminRole = await db.Roles.FirstOrDefaultAsync(r => r.RoleName == "SuperAdmin");
+        if (superAdminRole is null)
+        {
+            return;
+        }
+
+        var shop = await db.Shops.FirstOrDefaultAsync();
+        if (shop is null)
+        {
+            return;
+        }
+
+        var desiredUsers = new[]
+        {
+            new { UserName = "vkpadao", FirstName = "Vaness", LastName = "Padao", Email = "vkpadao@bytebill.local", Password = "Superadmin123!" },
+            new { UserName = "vkbackup", FirstName = "VK", LastName = "Backup", Email = "vkbackup@bytebill.local", Password = "SuperAdminBackup123!" }
+        };
+
+        foreach (var su in desiredUsers)
+        {
+            var user = await db.Users
+                .Include(u => u.UserRoles)
+                .FirstOrDefaultAsync(u => u.UserName == su.UserName);
+
+            if (user is null)
+            {
+                user = new User
+                {
+                    ShopId = shop.ShopId,
+                    FirstName = su.FirstName,
+                    LastName = su.LastName,
+                    UserName = su.UserName,
+                    Email = su.Email,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(su.Password, workFactor: 12),
+                    IsActive = true,
+                    IsMfaEnabled = true,
+                    MfaType = "TOTP",
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                db.Users.Add(user);
+                await db.SaveChangesAsync();
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(user.Email))
+                {
+                    user.Email = su.Email;
+                }
+
+                user.IsActive = true;
+                user.IsMfaEnabled = true;
+                user.MfaType = "TOTP";
+                await db.SaveChangesAsync();
+            }
+
+            var hasRole = await db.UserRoles.AnyAsync(ur => ur.UserId == user.UserId && ur.RoleId == superAdminRole.RoleId);
+            if (!hasRole)
+            {
+                db.UserRoles.Add(new UserRoleAssignment
+                {
+                    UserId = user.UserId,
+                    RoleId = superAdminRole.RoleId,
+                    AssignedAt = DateTime.UtcNow
+                });
+                await db.SaveChangesAsync();
+            }
+        }
+    }
+
     // ── User-Role Assignments ────────────────────────────────────────────
     private static async Task SeedUserRolesAsync(ApplicationDbContext db)
     {
-        if (await db.UserRoles.AnyAsync()) return;
-
         var roleMap = await db.Roles.ToDictionaryAsync(r => r.RoleName, r => r.RoleId);
         var users = await db.Users.ToListAsync();
 
         var mapping = new Dictionary<string, string>
         {
             ["vkpadao"]    = "SuperAdmin",
+            ["vkbackup"]   = "SuperAdmin",
             ["admin"]      = "Admin",
             ["billing"]    = "Billing",
             ["technician"] = "Technician",
@@ -155,6 +559,9 @@ public static class DbSeeder
             if (mapping.TryGetValue(user.UserName, out var roleName) &&
                 roleMap.TryGetValue(roleName, out var roleId))
             {
+                var exists = await db.UserRoles.AnyAsync(ur => ur.UserId == user.UserId && ur.RoleId == roleId);
+                if (exists) continue;
+
                 db.UserRoles.Add(new UserRoleAssignment
                 {
                     UserId = user.UserId,

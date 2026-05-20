@@ -6,6 +6,7 @@ using ByteBill_BS.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace ByteBill_BS.Controllers.Api;
 
@@ -99,24 +100,25 @@ public class PayMongoApiController : ControllerBase
     // POST api/paymongoapi/webhook
     [HttpPost("webhook")]
     [AllowAnonymous]
-    public async Task<IActionResult> Webhook()
+    public async Task<IActionResult> Webhook(
+        [FromBody] JsonElement payload,
+        [FromHeader(Name = "Svix-Id")] string? svixId,
+        [FromHeader(Name = "Svix-Timestamp")] string? svixTimestamp,
+        [FromHeader(Name = "Svix-Signature")] string? svixSignature)
     {
-        string rawBody;
-        using (var reader = new StreamReader(Request.Body))
+        if (payload.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
         {
-            rawBody = await reader.ReadToEndAsync();
+            _logger.LogWarning("PayMongo webhook received empty body");
+            return BadRequest(new { error = "Empty body" });
         }
+
+        var rawBody = payload.GetRawText();
 
         if (string.IsNullOrEmpty(rawBody))
         {
             _logger.LogWarning("PayMongo webhook received empty body");
             return BadRequest(new { error = "Empty body" });
         }
-
-        // Extract Svix headers for signature validation
-        var svixId = Request.Headers["Svix-Id"].FirstOrDefault();
-        var svixTimestamp = Request.Headers["Svix-Timestamp"].FirstOrDefault();
-        var svixSignature = Request.Headers["Svix-Signature"].FirstOrDefault();
 
         var handled = await _svc.HandleWebhookAsync(rawBody, svixId, svixTimestamp, svixSignature);
 

@@ -29,6 +29,9 @@ public class JobOrdersController : Controller
 
     private bool IsAuthorized() => User.IsInRoles("Admin", "SuperAdmin");
 
+    private static bool IsAjaxRequest(string? requestedWith)
+        => string.Equals(requestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+
     // ── helpers ──────────────────────────────────────────────────────────
     private static string GetInitials(string name)
     {
@@ -82,6 +85,12 @@ public class JobOrdersController : Controller
     public async Task<IActionResult> Index(string? search, JobOrderStatus? status, int page = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Invalid filters.";
+            return RedirectToAction(nameof(Index));
+        }
 
         var shopId = User.GetShopId();
         var result = await _jobOrderService.GetListAsync(shopId, new JobOrderPagedRequest
@@ -168,14 +177,16 @@ public class JobOrdersController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(JobOrderCreateViewModel model)
+    public async Task<IActionResult> Create(
+        JobOrderCreateViewModel model,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
         if (!ModelState.IsValid)
         {
             await PopulateDropdowns(model, User.GetShopId());
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_CreateModal", model);
             return View(model);
         }
@@ -206,13 +217,13 @@ public class JobOrdersController : Controller
         {
             ModelState.AddModelError("", result.Message ?? "Failed to create job order.");
             await PopulateDropdowns(model, shopId);
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_CreateModal", model);
             return View(model);
         }
 
         TempData["Success"] = "Job order created successfully!";
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = true, message = "Job order created successfully!", id = result.Data?.JobOrderId });
         return RedirectToAction(nameof(Index));
     }
@@ -427,14 +438,16 @@ public class JobOrdersController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(JobOrderCreateViewModel model)
+    public async Task<IActionResult> Edit(
+        JobOrderCreateViewModel model,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
         if (!ModelState.IsValid)
         {
             await PopulateDropdowns(model, User.GetShopId());
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_EditModal", model);
             ViewBag.JobOrderNumber = $"JO Edit #{model.Id}";
             return View(model);
@@ -451,7 +464,7 @@ public class JobOrdersController : Controller
         {
             ModelState.AddModelError("", "Job order not found.");
             await PopulateDropdowns(model, shopId);
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_EditModal", model);
             return View(model);
         }
@@ -484,7 +497,7 @@ public class JobOrdersController : Controller
         await _db.SaveChangesAsync();
 
         TempData["Success"] = "Job order updated successfully!";
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = true, message = "Job order updated successfully!" });
         return RedirectToAction(nameof(Index));
     }

@@ -23,6 +23,9 @@ public class AnnouncementsController : Controller
         return roleClaim == UserRole.SuperAdmin.ToString();
     }
 
+    private static bool IsAjaxRequest(string? requestedWith)
+        => string.Equals(requestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+
     private long GetUserId() => long.TryParse(User.Claims.FirstOrDefault(c => c.Type == "UserId")?.Value, out var id) ? id : 0;
 
     [HttpGet]
@@ -43,20 +46,22 @@ public class AnnouncementsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(AnnouncementFormViewModel model)
+    public async Task<IActionResult> Create(
+        AnnouncementFormViewModel model,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return Forbid();
 
         if (!ModelState.IsValid)
         {
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_FormModal", model);
             return RedirectToAction(nameof(Index));
         }
 
         var result = await _service.CreateAnnouncementAsync(model, GetUserId());
 
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = result.Success, message = result.Message });
 
         if (result.Success) TempData["Success"] = result.Message;
@@ -74,20 +79,22 @@ public class AnnouncementsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(AnnouncementFormViewModel model)
+    public async Task<IActionResult> Edit(
+        AnnouncementFormViewModel model,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return Forbid();
 
         if (!ModelState.IsValid)
         {
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_FormModal", model);
             return RedirectToAction(nameof(Index));
         }
 
         var result = await _service.UpdateAnnouncementAsync(model, GetUserId());
 
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = result.Success, message = result.Message });
 
         if (result.Success) TempData["Success"] = result.Message;
@@ -96,22 +103,38 @@ public class AnnouncementsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Publish(long id)
+    public async Task<IActionResult> Publish(
+        long id,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid)
+        {
+            if (IsAjaxRequest(requestedWith))
+                return Json(new { success = false, message = "Invalid request." });
+            return RedirectToAction(nameof(Index));
+        }
         var result = await _service.PublishAnnouncementAsync(id, GetUserId());
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = result.Success, message = result.Message });
         return RedirectToAction(nameof(Index));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Delete(long id)
+    public async Task<IActionResult> Delete(
+        long id,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return Forbid();
+        if (!ModelState.IsValid)
+        {
+            if (IsAjaxRequest(requestedWith))
+                return Json(new { success = false, message = "Invalid request." });
+            return RedirectToAction(nameof(Index));
+        }
         var result = await _service.DeleteAnnouncementAsync(id, GetUserId());
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = result.Success, message = result.Message });
         return RedirectToAction(nameof(Index));
     }

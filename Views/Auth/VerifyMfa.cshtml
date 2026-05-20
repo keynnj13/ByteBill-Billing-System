@@ -1,0 +1,213 @@
+@model ByteBill_BS.ViewModels.Auth.MfaChallengeViewModel
+@{
+    ViewData["Title"] = "Multi-Factor Verification";
+    ViewData["HideNavigation"] = true;
+}
+
+<div class="auth-recovery-page">
+    <div class="auth-recovery-card">
+        <h1>Verify your sign-in</h1>
+        <p class="auth-subtitle">Enter the email code we sent, or switch to your authenticator app.</p>
+
+        @if (TempData["AuthMessage"] != null)
+        {
+            <div class="auth-alert auth-alert-success">@TempData["AuthMessage"]</div>
+        }
+
+        <form method="post" asp-action="VerifyMfa" asp-controller="Auth">
+            @Html.AntiForgeryToken()
+            <partial name="_ValidationSummary" />
+
+            @if (Model.CanUseEmailOtp && Model.CanUseTotp)
+            {
+                <div class="auth-toggle" role="tablist" aria-label="Choose verification method">
+                    <input type="radio" asp-for="SelectedMethod" value="email" id="mfa-method-email" />
+                    <label for="mfa-method-email">Email code</label>
+                    <input type="radio" asp-for="SelectedMethod" value="totp" id="mfa-method-totp" />
+                    <label for="mfa-method-totp">Authenticator app</label>
+                </div>
+            }
+            else
+            {
+                <input type="hidden" asp-for="SelectedMethod" />
+            }
+
+            @if (Model.CanUseEmailOtp)
+            {
+                <div class="mfa-panel" data-mfa-panel="email" @(Model.SelectedMethod == "email" ? "" : "hidden")>
+                    <label asp-for="EmailCode" class="auth-label">Email Code</label>
+                    <input asp-for="EmailCode" class="auth-input" autocomplete="one-time-code" inputmode="numeric" placeholder="6-digit code" maxlength="6" />
+                    <span asp-validation-for="EmailCode" class="form-error"></span>
+                </div>
+            }
+
+            @if (Model.CanUseTotp)
+            {
+                <div class="mfa-panel" data-mfa-panel="totp" @(Model.SelectedMethod == "totp" ? "" : "hidden")>
+                    <label asp-for="TotpCode" class="auth-label">Authenticator Code</label>
+                    <input asp-for="TotpCode" class="auth-input" autocomplete="one-time-code" inputmode="numeric" placeholder="6-digit code" maxlength="6" />
+                    <span asp-validation-for="TotpCode" class="form-error"></span>
+                </div>
+            }
+
+            <button type="submit" class="auth-btn">Verify and Sign In</button>
+        </form>
+
+        @if (Model.CanUseEmailOtp)
+        {
+            <div class="mfa-panel" data-mfa-panel="email-resend" @(Model.SelectedMethod == "email" ? "" : "hidden")>
+                <form method="post" asp-action="ResendMfaEmailCode" asp-controller="Auth" style="margin-top:10px;">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="auth-link-btn">Resend Email Code</button>
+                </form>
+            </div>
+        }
+    </div>
+</div>
+
+@section Styles {
+<style>
+    .auth-recovery-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: linear-gradient(145deg, #0f172a, #1e293b 55%, #134e4a);
+    }
+    .auth-recovery-card {
+        width: 100%;
+        max-width: 460px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(10px);
+        border-radius: 18px;
+        padding: 28px;
+        color: #fff;
+    }
+    .auth-recovery-card h1 {
+        margin: 0 0 8px;
+        font-size: 28px;
+        line-height: 1.15;
+    }
+    .auth-subtitle {
+        margin: 0 0 18px;
+        color: rgba(255,255,255,0.75);
+        font-size: 14px;
+    }
+    .auth-label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .auth-input {
+        width: 100%;
+        height: 46px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.2);
+        background: rgba(15, 23, 42, 0.55);
+        color: #fff;
+        padding: 0 12px;
+        margin-bottom: 6px;
+    }
+    .auth-toggle {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 12px;
+        padding: 6px;
+        margin-bottom: 16px;
+    }
+    .auth-toggle input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+    .auth-toggle label {
+        text-align: center;
+        padding: 10px 8px;
+        border-radius: 9px;
+        font-size: 13px;
+        font-weight: 600;
+        color: rgba(255,255,255,0.75);
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease;
+    }
+    .auth-toggle input:checked + label {
+        background: rgba(20, 184, 166, 0.2);
+        color: #e6fffb;
+        border: 1px solid rgba(20, 184, 166, 0.6);
+    }
+    .mfa-panel[hidden] {
+        display: none;
+    }
+    .auth-btn {
+        margin-top: 14px;
+        width: 100%;
+        border: none;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #14b8a6, #0f766e);
+        color: #fff;
+        height: 46px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .auth-link-btn {
+        width: 100%;
+        border: 1px solid rgba(255,255,255,0.25);
+        border-radius: 10px;
+        background: transparent;
+        color: #d1fae5;
+        height: 42px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .auth-alert {
+        border-radius: 10px;
+        padding: 10px 12px;
+        margin-bottom: 14px;
+        font-size: 13px;
+    }
+    .auth-alert-success {
+        background: rgba(16, 185, 129, 0.15);
+        border: 1px solid rgba(16, 185, 129, 0.35);
+        color: #bbf7d0;
+    }
+</style>
+}
+
+@section Scripts {
+<script>
+    (function () {
+        const panels = document.querySelectorAll("[data-mfa-panel]");
+        const methodInputs = document.querySelectorAll("input[name='SelectedMethod']");
+
+        function resolveSelectedMethod() {
+            const checked = document.querySelector("input[name='SelectedMethod']:checked");
+            if (checked) {
+                return checked.value;
+            }
+
+            const fallback = document.querySelector("input[name='SelectedMethod']");
+            return fallback ? fallback.value : "email";
+        }
+
+        function syncPanels() {
+            const selected = resolveSelectedMethod();
+            panels.forEach(panel => {
+                const key = panel.getAttribute("data-mfa-panel");
+                const show = selected === "email"
+                    ? (key === "email" || key === "email-resend")
+                    : key === "totp";
+                panel.hidden = !show;
+            });
+        }
+
+        methodInputs.forEach(input => input.addEventListener("change", syncPanels));
+        syncPanels();
+    })();
+</script>
+}

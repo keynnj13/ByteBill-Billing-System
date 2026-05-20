@@ -42,6 +42,10 @@ public class ServiceCategoriesController : Controller
     public async Task<IActionResult> Create(string categoryName, string? description)
     {
         if (!IsAuthorized()) return Forbid();
+
+        if (!ModelState.IsValid)
+            return Json(new { success = false, message = "Invalid request." });
+
         var shopId = User.GetShopId();
 
         if (string.IsNullOrWhiteSpace(categoryName))
@@ -68,6 +72,13 @@ public class ServiceCategoriesController : Controller
     public async Task<IActionResult> Edit(long id, string categoryName, string? description)
     {
         if (!IsAuthorized()) return Forbid();
+
+        if (id <= 0)
+            ModelState.AddModelError(nameof(id), "Invalid category id.");
+
+        if (!ModelState.IsValid)
+            return Json(new { success = false, message = "Invalid request." });
+
         var shopId = User.GetShopId();
 
         if (string.IsNullOrWhiteSpace(categoryName))
@@ -93,6 +104,13 @@ public class ServiceCategoriesController : Controller
     public async Task<IActionResult> Archive(long id)
     {
         if (!IsAuthorized()) return Forbid();
+
+        if (id <= 0)
+            ModelState.AddModelError(nameof(id), "Invalid category id.");
+
+        if (!ModelState.IsValid)
+            return Json(new { success = false, message = "Invalid request." });
+
         var shopId = User.GetShopId();
 
         var cat = await _db.ServiceCategories

@@ -91,10 +91,12 @@ public class SuperAdminDashboardData
 public class SuperAdminService : ISuperAdminService
 {
     private readonly ApplicationDbContext _db;
+    private readonly IEmailSecurityService _emailSecurity;
 
-    public SuperAdminService(ApplicationDbContext db)
+    public SuperAdminService(ApplicationDbContext db, IEmailSecurityService emailSecurity)
     {
         _db = db;
+        _emailSecurity = emailSecurity;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -256,9 +258,10 @@ public class SuperAdminService : ISuperAdminService
         if (!string.IsNullOrWhiteSpace(search))
         {
             var q = search.ToLower();
+            var qHash = _emailSecurity.ComputeHash(q);
             query = query.Where(s =>
                 s.ShopName.ToLower().Contains(q) ||
-                (s.Email != null && s.Email.ToLower().Contains(q)) ||
+                (s.EmailHash != null && s.EmailHash == qHash) ||
                 s.ShopCode.ToLower().Contains(q));
         }
 
@@ -536,9 +539,10 @@ public class SuperAdminService : ISuperAdminService
         if (!string.IsNullOrWhiteSpace(search))
         {
             var q = search.ToLower();
+            var qHash = _emailSecurity.ComputeHash(q);
             query = query.Where(u =>
                 (u.FirstName + " " + u.LastName).ToLower().Contains(q) ||
-                (u.Email != null && u.Email.ToLower().Contains(q)) ||
+                (u.EmailHash != null && u.EmailHash == qHash) ||
                 u.UserName.ToLower().Contains(q));
         }
 
@@ -741,8 +745,9 @@ public class SuperAdminService : ISuperAdminService
         // Check for duplicate email
         if (!string.IsNullOrEmpty(model.Email))
         {
+            var emailHash = _emailSecurity.ComputeHash(model.Email);
             var emailTaken = await _db.Users
-                .AnyAsync(u => u.UserId != model.Id && u.Email != null && u.Email.ToLower() == model.Email.ToLower().Trim());
+                .AnyAsync(u => u.UserId != model.Id && u.EmailHash != null && u.EmailHash == emailHash);
             if (emailTaken)
                 return (false, "Email is already used by another user.");
         }

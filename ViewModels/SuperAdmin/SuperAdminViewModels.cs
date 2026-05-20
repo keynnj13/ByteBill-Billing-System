@@ -53,6 +53,9 @@ public class ShopItemViewModel
 /// </summary>
 public class ShopCreateViewModel
 {
+    private const string NamePattern = @"^[A-Za-z]+(?:[ '-][A-Za-z]+)*$";
+    private const string PhMobilePattern = @"^(09\d{9}|\+639\d{9})$";
+
     // Shop fields
     [Required(ErrorMessage = "Shop name is required")]
     [StringLength(100)]
@@ -65,8 +68,8 @@ public class ShopCreateViewModel
     [Display(Name = "Shop Email")]
     public string Email { get; set; } = string.Empty;
 
-    [StringLength(11)]
-    [RegularExpression(@"^09\d{9}$", ErrorMessage = "Phone must be 11 digits starting with 09")]
+    [StringLength(13)]
+    [RegularExpression(PhMobilePattern, ErrorMessage = "Phone must be in 09XXXXXXXXX or +639XXXXXXXXX format")]
     [Display(Name = "Phone")]
     public string? Phone { get; set; }
 
@@ -77,15 +80,18 @@ public class ShopCreateViewModel
     // Admin user fields
     [Required(ErrorMessage = "Admin first name is required")]
     [StringLength(50)]
+    [RegularExpression(NamePattern, ErrorMessage = "First name may contain letters, spaces, hyphen, and apostrophe only")]
     [Display(Name = "First Name")]
     public string AdminFirstName { get; set; } = string.Empty;
 
     [StringLength(50)]
+    [RegularExpression(NamePattern, ErrorMessage = "Middle name may contain letters, spaces, hyphen, and apostrophe only")]
     [Display(Name = "Middle Name")]
     public string? AdminMiddleName { get; set; }
 
     [Required(ErrorMessage = "Admin last name is required")]
     [StringLength(50)]
+    [RegularExpression(NamePattern, ErrorMessage = "Last name may contain letters, spaces, hyphen, and apostrophe only")]
     [Display(Name = "Last Name")]
     public string AdminLastName { get; set; } = string.Empty;
 
@@ -95,8 +101,8 @@ public class ShopCreateViewModel
     [Display(Name = "Admin Email")]
     public string AdminEmail { get; set; } = string.Empty;
 
-    [StringLength(11)]
-    [RegularExpression(@"^09\d{9}$", ErrorMessage = "Phone must be 11 digits starting with 09")]
+    [StringLength(13)]
+    [RegularExpression(PhMobilePattern, ErrorMessage = "Phone must be in 09XXXXXXXXX or +639XXXXXXXXX format")]
     [Display(Name = "Admin Phone")]
     public string? AdminPhone { get; set; }
 
@@ -227,19 +233,25 @@ public class GlobalUserItemViewModel
 
 public class GlobalUserFormViewModel
 {
+    private const string NamePattern = @"^[A-Za-z]+(?:\s+[A-Za-z]+)*$";
+    private const string PhMobilePattern = @"^\d{11}$";
+
     public long Id { get; set; }
 
     [Required(ErrorMessage = "First name is required")]
     [StringLength(50)]
+    [RegularExpression(NamePattern, ErrorMessage = "First name may contain letters and spaces only")]
     [Display(Name = "First Name")]
     public string FirstName { get; set; } = string.Empty;
 
     [StringLength(50)]
+    [RegularExpression(NamePattern, ErrorMessage = "Middle name may contain letters and spaces only")]
     [Display(Name = "Middle Name")]
     public string? MiddleName { get; set; }
 
     [Required(ErrorMessage = "Last name is required")]
     [StringLength(50)]
+    [RegularExpression(NamePattern, ErrorMessage = "Last name may contain letters and spaces only")]
     [Display(Name = "Last Name")]
     public string LastName { get; set; } = string.Empty;
 
@@ -249,8 +261,8 @@ public class GlobalUserFormViewModel
     [Display(Name = "Email")]
     public string Email { get; set; } = string.Empty;
 
-    [StringLength(11)]
-    [RegularExpression(@"^09\d{9}$", ErrorMessage = "Phone must be 11 digits starting with 09")]
+    [StringLength(11, MinimumLength = 11, ErrorMessage = "Phone must be exactly 11 digits")]
+    [RegularExpression(PhMobilePattern, ErrorMessage = "Phone must be exactly 11 digits")]
     [Display(Name = "Phone")]
     public string? Phone { get; set; }
 
@@ -596,7 +608,7 @@ public class SystemSettingsViewModel
 
     [Range(5, 1440)]
     [Display(Name = "Session Timeout (minutes)")]
-    public int SessionTimeout { get; set; } = 60;
+    public int SessionTimeout { get; set; } = 5;
 
     [Range(1, 10)]
     [Display(Name = "Max Login Attempts")]

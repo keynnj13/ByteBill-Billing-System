@@ -1,6 +1,7 @@
 using ByteBill_BS.Extensions;
 using ByteBill_BS.Models.Enums;
 using ByteBill_BS.Services;
+using ByteBill_BS.ViewModels.Adjustments;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -45,6 +46,15 @@ public class AdjustmentsController : Controller
     {
         if (!IsAuthorized()) return Forbid();
 
+        if (id <= 0)
+            ModelState.AddModelError(nameof(id), "Invalid request.");
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Invalid request.";
+            return RedirectToAction(nameof(Index));
+        }
+
         var shopId = User.GetShopId();
         var userId = User.GetUserId();
         var result = await _adjustmentService.ApproveAsync(id, shopId, userId);
@@ -62,6 +72,15 @@ public class AdjustmentsController : Controller
     {
         if (!IsAuthorized()) return Forbid();
 
+        if (id <= 0)
+            ModelState.AddModelError(nameof(id), "Invalid request.");
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Invalid request.";
+            return RedirectToAction(nameof(Index));
+        }
+
         var shopId = User.GetShopId();
         var userId = User.GetUserId();
         var result = await _adjustmentService.RejectAsync(id, shopId, userId);
@@ -76,22 +95,42 @@ public class AdjustmentsController : Controller
     // ── Adjustment Type Config CRUD ──────────────────────────────────
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateTypeConfig(string name, string category, decimal percentage)
+    public async Task<IActionResult> CreateTypeConfig(AdjustmentTypeConfigCreateViewModel model)
     {
         if (!IsAuthorized()) return Forbid();
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Invalid adjustment type data.";
+            return RedirectToAction(nameof(Index));
+        }
+
         var shopId = User.GetShopId();
-        await _adjustmentService.CreateTypeConfigAsync(shopId, name, category, percentage);
-        TempData["Success"] = $"Adjustment type '{name}' created.";
+        await _adjustmentService.CreateTypeConfigAsync(shopId, model.Name, model.Category, model.Percentage);
+        TempData["Success"] = $"Adjustment type '{model.Name}' created.";
         return RedirectToAction(nameof(Index));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateTypeConfig(long configId, string name, string category, decimal percentage, bool isActive)
+    public async Task<IActionResult> UpdateTypeConfig(AdjustmentTypeConfigUpdateViewModel model)
     {
         if (!IsAuthorized()) return Forbid();
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Invalid adjustment type data.";
+            return RedirectToAction(nameof(Index));
+        }
+
         var shopId = User.GetShopId();
-        var result = await _adjustmentService.UpdateTypeConfigAsync(shopId, configId, name, category, percentage, isActive);
+        var result = await _adjustmentService.UpdateTypeConfigAsync(
+            shopId,
+            model.ConfigId,
+            model.Name,
+            model.Category,
+            model.Percentage,
+            model.IsActive);
         TempData[result ? "Success" : "Error"] = result ? "Type config updated." : "Config not found.";
         return RedirectToAction(nameof(Index));
     }
@@ -101,6 +140,16 @@ public class AdjustmentsController : Controller
     public async Task<IActionResult> DeleteTypeConfig(long configId)
     {
         if (!IsAuthorized()) return Forbid();
+
+        if (configId <= 0)
+            ModelState.AddModelError(nameof(configId), "Invalid request.");
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Invalid request.";
+            return RedirectToAction(nameof(Index));
+        }
+
         var shopId = User.GetShopId();
         var result = await _adjustmentService.DeleteTypeConfigAsync(shopId, configId);
         TempData[result ? "Success" : "Error"] = result ? "Type config removed." : "Config not found.";

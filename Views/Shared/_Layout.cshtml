@@ -1,6 +1,7 @@
 ﻿@using ByteBill_BS.Services
 @using ByteBill_BS.Models.Enums
 @inject INavigationService NavigationService
+@inject IConfiguration Configuration
 @{
     var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
     var userRole = UserRole.Billing; // Default, will be overridden by claims
@@ -20,6 +21,9 @@
     
     var showNavigation = isAuthenticated && !ViewData.ContainsKey("HideNavigation");
     var isAuditor = userRole == UserRole.Auditor;
+    var emailKey = Configuration["Security:EmailEncryptionKey"];
+    var showKeyWarning = string.IsNullOrWhiteSpace(emailKey)
+        || emailKey == "ByteBill-Default-Email-Key-Please-Override";
 }
 <!DOCTYPE html>
 <html lang="en" data-theme="@(Context.Request.Cookies["ByteBillTheme"] ?? "light")">
@@ -27,17 +31,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - ByteBill</title>
-    <script>
-        // Flicker-free theme: apply before paint
-        (function() {
-            var m = document.cookie.match(/ByteBillTheme=(light|dark)/);
-            if (m) document.documentElement.setAttribute('data-theme', m[1]);
-        })();
-    </script>
     <link rel="icon" type="image/png" href="~/img/logo-bytebill.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/fonts-inter.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/design-system.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/components.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
@@ -51,6 +46,15 @@
     }
     
     <main class="@(showNavigation ? "main-content" : "")">
+        @if (showNavigation && showKeyWarning && (userRole == UserRole.Admin || userRole == UserRole.SuperAdmin))
+        {
+            <div class="readonly-banner" style="background:#fff4e5; color:#5c3b00; border-color:#ffd8a8;">
+                <svg class="readonly-banner-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z"></path>
+                </svg>
+                <span>Security warning: Email encryption key is not configured.</span>
+            </div>
+        }
         @if (isAuditor && showNavigation)
         {
             <div class="readonly-banner">

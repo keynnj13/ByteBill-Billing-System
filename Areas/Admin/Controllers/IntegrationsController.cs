@@ -38,6 +38,9 @@ public class IntegrationsController : Controller
         return roleClaim == UserRole.Admin.ToString();
     }
 
+    private static bool IsAjaxRequest(string? requestedWith)
+        => string.Equals(requestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+
     [HttpGet]
     public async Task<IActionResult> Index()
     {
@@ -189,13 +192,14 @@ public class IntegrationsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DisconnectXero()
+    public async Task<IActionResult> DisconnectXero(
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return Forbid();
         var shopId = User.GetShopId();
         await _xero.DisconnectAsync(shopId);
 
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = true, message = "Xero disconnected successfully." });
 
         TempData["XeroSuccess"] = "Xero disconnected.";
@@ -204,7 +208,8 @@ public class IntegrationsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SyncXero()
+    public async Task<IActionResult> SyncXero(
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return Forbid();
         var shopId = User.GetShopId();
@@ -213,7 +218,7 @@ public class IntegrationsController : Controller
         var isConnected = await _xero.IsConnectedAsync(shopId);
         if (!isConnected)
         {
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return Json(new { success = false, message = "Xero is not connected. Please connect first." });
             TempData["XeroError"] = "Xero is not connected.";
             return RedirectToAction(nameof(Index));
@@ -222,7 +227,7 @@ public class IntegrationsController : Controller
         var (synced, failed) = await _xero.SyncAllAsync(shopId, userId);
         var message = $"Sync complete: {synced} synced, {failed} failed.";
 
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = true, message, synced, failed });
 
         TempData[synced > 0 ? "XeroSuccess" : "XeroError"] = message;
@@ -254,6 +259,13 @@ public class IntegrationsController : Controller
     public async Task<IActionResult> PayMongoTxnDetail(long id)
     {
         if (!IsAuthorized()) return Forbid();
+
+        if (id <= 0)
+            ModelState.AddModelError(nameof(id), "Invalid transaction id.");
+
+        if (!ModelState.IsValid)
+            return BadRequest(new { error = "Invalid request." });
+
         var shopId = User.GetShopId();
 
         var txn = await _db.PayMongoTxns

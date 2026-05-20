@@ -1,15 +1,106 @@
 using ByteBill_BS.Models;
 using ByteBill_BS.Models.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace ByteBill_BS.Data;
 
 public class ApplicationDbContext : DbContext
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-        : base(options)
-    {
+      private readonly ByteBill_BS.Services.IEmailSecurityService _emailSecurity;
+
+      public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, ByteBill_BS.Services.IEmailSecurityService emailSecurity)
+            : base(options)
+      {
+            _emailSecurity = emailSecurity;
     }
+
+      public override int SaveChanges()
+      {
+            ApplyPiiHashes();
+            return base.SaveChanges();
+      }
+
+      public override int SaveChanges(bool acceptAllChangesOnSuccess)
+      {
+            ApplyPiiHashes();
+            return base.SaveChanges(acceptAllChangesOnSuccess);
+      }
+
+      public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+      {
+            ApplyPiiHashes();
+            return base.SaveChangesAsync(cancellationToken);
+      }
+
+      public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+      {
+            ApplyPiiHashes();
+            return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+      }
+
+      private void ApplyPiiHashes()
+      {
+            UpdatePiiHashes(ChangeTracker.Entries<User>(), NormalizeUserPii);
+            UpdatePiiHashes(ChangeTracker.Entries<Customer>(), NormalizeCustomerPii);
+            UpdatePiiHashes(ChangeTracker.Entries<Shop>(), NormalizeShopPii);
+      }
+
+      private void UpdatePiiHashes<T>(IEnumerable<EntityEntry<T>> entries, Action<T> normalize) where T : class
+      {
+            foreach (var entry in entries)
+            {
+                  if (entry.State is EntityState.Added or EntityState.Modified)
+                  {
+                        normalize(entry.Entity);
+                  }
+            }
+      }
+
+      private void NormalizeUserPii(User user)
+      {
+            NormalizeContactFields(user.Email, user.Phone,
+                  normalized => user.Email = normalized,
+                  hash => user.EmailHash = hash,
+                  normalized => user.Phone = normalized,
+                  hash => user.PhoneHash = hash);
+      }
+
+      private void NormalizeCustomerPii(Customer customer)
+      {
+            NormalizeContactFields(customer.Email, customer.Phone,
+                  normalized => customer.Email = normalized,
+                  hash => customer.EmailHash = hash,
+                  normalized => customer.Phone = normalized,
+                  hash => customer.PhoneHash = hash);
+      }
+
+      private void NormalizeShopPii(Shop shop)
+      {
+            NormalizeContactFields(shop.Email, shop.Phone,
+                  normalized => shop.Email = normalized,
+                  hash => shop.EmailHash = hash,
+                  normalized => shop.Phone = normalized,
+                  hash => shop.PhoneHash = hash);
+      }
+
+      private void NormalizeContactFields(
+            string? email,
+            string? phone,
+            Action<string?> setEmail,
+            Action<string?> setEmailHash,
+            Action<string?> setPhone,
+            Action<string?> setPhoneHash)
+      {
+            var normalizedEmail = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
+            setEmail(normalizedEmail);
+            setEmailHash(_emailSecurity.ComputeHash(normalizedEmail));
+
+            var normalizedPhone = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim();
+            setPhone(normalizedPhone);
+            setPhoneHash(_emailSecurity.ComputePhoneHash(normalizedPhone));
+      }
 
     // ── DbSets ──────────────────────────────────────────────────────────
     public DbSet<Shop> Shops => Set<Shop>();
@@ -36,6 +127,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<AdjustmentTypeConfig> AdjustmentTypeConfigs => Set<AdjustmentTypeConfig>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+            public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<AccountingEntry> AccountingEntries => Set<AccountingEntry>();
     public DbSet<XeroSyncLog> XeroSyncLogs => Set<XeroSyncLog>();
     public DbSet<XeroConnection> XeroConnections => Set<XeroConnection>();
@@ -53,6 +145,10 @@ public class ApplicationDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+            var piiConverter = new ValueConverter<string?, string?>(
+                  value => _emailSecurity.Encrypt(value),
+                  value => _emailSecurity.Decrypt(value));
+
         // ═══════════════════════════════════════════════════════════════
         // A. SHOP
         // ═══════════════════════════════════════════════════════════════
@@ -63,8 +159,10 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ShopId).HasColumnName("ShopID");
             entity.Property(e => e.ShopCode).HasMaxLength(30).IsRequired();
             entity.Property(e => e.ShopName).HasMaxLength(150).IsRequired();
-            entity.Property(e => e.Email).HasMaxLength(100);
-            entity.Property(e => e.Phone).HasMaxLength(30);
+            entity.Property(e => e.Email).HasMaxLength(512).HasConversion(piiConverter);
+            entity.Property(e => e.EmailHash).HasMaxLength(64);
+            entity.Property(e => e.Phone).HasMaxLength(512).HasConversion(piiConverter);
+            entity.Property(e => e.PhoneHash).HasMaxLength(64);
             entity.Property(e => e.Address).HasMaxLength(255);
             entity.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue("Active");
             entity.Property(e => e.DefaultPartMarkupPct).HasPrecision(18, 2).HasDefaultValue(0m);
@@ -75,6 +173,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime2(0)");
             entity.HasIndex(e => e.ShopCode).IsUnique();
+                  entity.HasIndex(e => e.EmailHash);
+                  entity.HasIndex(e => e.PhoneHash);
         });
 
         // ═══════════════════════════════════════════════════════════════
@@ -91,18 +191,39 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.LastName).HasMaxLength(50).IsRequired();
             entity.Property(e => e.UserName).HasMaxLength(100).IsRequired();
             entity.Property(e => e.PasswordHash).HasMaxLength(255).IsRequired();
-            entity.Property(e => e.Email).HasMaxLength(150);
-            entity.Property(e => e.Phone).HasMaxLength(20);
+            entity.Property(e => e.Email).HasMaxLength(512).HasConversion(piiConverter);
+            entity.Property(e => e.EmailHash).HasMaxLength(64);
+            entity.Property(e => e.Phone).HasMaxLength(512).HasConversion(piiConverter);
+            entity.Property(e => e.PhoneHash).HasMaxLength(64);
             entity.Property(e => e.ThemePreference).HasMaxLength(10).HasDefaultValue("light");
             entity.Property(e => e.EmailNotifications).HasDefaultValue(true);
             entity.Property(e => e.InAppNotifications).HasDefaultValue(true);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.AuthVersion).HasDefaultValue(1);
+            entity.Property(e => e.FailedLoginAttempts).HasDefaultValue(0);
+            entity.Property(e => e.LockoutEndAt).HasColumnType("datetime2(0)");
+            entity.Property(e => e.LockoutCycleCount).HasDefaultValue(0);
+            entity.Property(e => e.IsPermanentlyLocked).HasDefaultValue(false);
+            entity.Property(e => e.PermanentlyLockedAt).HasColumnType("datetime2(0)");
+            entity.Property(e => e.LockoutReason).HasMaxLength(200);
+            entity.Property(e => e.LastFailedLoginAt).HasColumnType("datetime2(0)");
+            entity.Property(e => e.IsMfaEnabled).HasDefaultValue(false);
+            entity.Property(e => e.MfaType).HasMaxLength(20);
+            entity.Property(e => e.TotpSecretKey).HasMaxLength(256);
+            entity.Property(e => e.EmailOtpHash).HasMaxLength(128);
+            entity.Property(e => e.EmailOtpExpiresAt).HasColumnType("datetime2(0)");
+            entity.Property(e => e.EmailOtpFailedAttempts).HasDefaultValue(0);
+            entity.Property(e => e.LastMfaAt).HasColumnType("datetime2(0)");
+            entity.Property(e => e.MustChangePassword).HasDefaultValue(false);
+            entity.Property(e => e.TemporaryPasswordIssuedAt).HasColumnType("datetime2(0)");
             entity.Property(e => e.LastLoginAt).HasColumnType("datetime2(0)");
             entity.Property(e => e.LastIpAddress).HasMaxLength(50);
             entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime2(0)");
             entity.HasIndex(e => new { e.ShopId, e.UserName }).IsUnique();
             entity.HasIndex(e => e.ShopId);
+            entity.HasIndex(e => e.EmailHash);
+            entity.HasIndex(e => e.PhoneHash);
             entity.Ignore(e => e.FullName);
             entity.Ignore(e => e.Initials);
 
@@ -163,12 +284,16 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.FirstName).HasMaxLength(50).IsRequired();
             entity.Property(e => e.MiddleName).HasMaxLength(50);
             entity.Property(e => e.LastName).HasMaxLength(50).IsRequired();
-            entity.Property(e => e.Email).HasMaxLength(100);
-            entity.Property(e => e.Phone).HasMaxLength(30);
+            entity.Property(e => e.Email).HasMaxLength(512).HasConversion(piiConverter);
+            entity.Property(e => e.EmailHash).HasMaxLength(64);
+            entity.Property(e => e.Phone).HasMaxLength(512).HasConversion(piiConverter);
+            entity.Property(e => e.PhoneHash).HasMaxLength(64);
             entity.Property(e => e.Address).HasMaxLength(255);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
             entity.HasIndex(e => e.ShopId);
+            entity.HasIndex(e => new { e.ShopId, e.EmailHash });
+            entity.HasIndex(e => new { e.ShopId, e.PhoneHash });
             entity.Ignore(e => e.FullName);
             entity.Ignore(e => e.Initials);
 
@@ -791,6 +916,30 @@ public class ApplicationDbContext : DbContext
                   .IsRequired(false)
                   .OnDelete(DeleteBehavior.NoAction);
         });
+
+            // ═══════════════════════════════════════════════════════════════
+            // U1. PASSWORD_RESET_TOKENS
+            // ═══════════════════════════════════════════════════════════════
+            modelBuilder.Entity<PasswordResetToken>(entity =>
+            {
+                  entity.ToTable("PASSWORD_RESET_TOKENS");
+                  entity.HasKey(e => e.PasswordResetTokenId);
+                  entity.Property(e => e.PasswordResetTokenId).HasColumnName("PasswordResetTokenID");
+                  entity.Property(e => e.UserId).HasColumnName("UserID");
+                  entity.Property(e => e.TokenHash).HasMaxLength(128).IsRequired();
+                  entity.Property(e => e.ExpiresAt).HasColumnType("datetime2(0)");
+                  entity.Property(e => e.UsedAt).HasColumnType("datetime2(0)");
+                  entity.Property(e => e.RequestedIp).HasMaxLength(45);
+                  entity.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql("SYSDATETIME()");
+
+                  entity.HasIndex(e => e.TokenHash).IsUnique();
+                  entity.HasIndex(e => new { e.UserId, e.CreatedAt });
+
+                  entity.HasOne(e => e.User)
+                          .WithMany(u => u.PasswordResetTokens)
+                          .HasForeignKey(e => e.UserId)
+                          .OnDelete(DeleteBehavior.Cascade);
+            });
 
         // ═══════════════════════════════════════════════════════════════
         // V. ACCOUNTING_ENTRY

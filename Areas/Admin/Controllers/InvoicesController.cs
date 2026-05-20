@@ -34,6 +34,9 @@ public class InvoicesController : Controller
 
     private bool IsAuthorized() => User.IsInRoles("Admin", "SuperAdmin");
 
+    private static bool IsAjaxRequest(string? requestedWith)
+        => string.Equals(requestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+
     private static string GetInitials(string name)
     {
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -49,6 +52,12 @@ public class InvoicesController : Controller
     public async Task<IActionResult> Index(string? search, InvoiceStatus? status, int page = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Invalid filters.";
+            return RedirectToAction(nameof(Index));
+        }
 
         var shopId = User.GetShopId();
 
@@ -192,13 +201,15 @@ public class InvoicesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(InvoiceCreateViewModel model)
+    public async Task<IActionResult> Create(
+        InvoiceCreateViewModel model,
+        [FromHeader(Name = "X-Requested-With")] string? requestedWith)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth", new { area = "" });
 
         if (!ModelState.IsValid)
         {
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_CreateModal", model);
             return View(model);
         }
@@ -216,7 +227,7 @@ public class InvoicesController : Controller
         if (!result.Success)
         {
             ModelState.AddModelError("", result.Message ?? "Failed to create invoice.");
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            if (IsAjaxRequest(requestedWith))
                 return PartialView("_CreateModal", model);
             return View(model);
         }
@@ -229,7 +240,7 @@ public class InvoicesController : Controller
         }
 
         TempData["Success"] = "Invoice created successfully!";
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        if (IsAjaxRequest(requestedWith))
             return Json(new { success = true, message = "Invoice created successfully!", id = result.Data?.InvoiceId });
         return RedirectToAction(nameof(Index));
     }

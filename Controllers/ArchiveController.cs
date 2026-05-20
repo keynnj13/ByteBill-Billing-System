@@ -1,5 +1,6 @@
 using ByteBill_BS.Data;
 using ByteBill_BS.Extensions;
+using ByteBill_BS.Models;
 using ByteBill_BS.Models.Enums;
 using ByteBill_BS.Services;
 using ByteBill_BS.ViewModels.Admin;
@@ -16,11 +17,13 @@ public class ArchiveController : Controller
 {
     private readonly ApplicationDbContext _db;
     private readonly IAuditService _audit;
+    private readonly IEmailSecurityService _emailSecurity;
 
-    public ArchiveController(ApplicationDbContext db, IAuditService audit)
+    public ArchiveController(ApplicationDbContext db, IAuditService audit, IEmailSecurityService emailSecurity)
     {
         _db = db;
         _audit = audit;
+        _emailSecurity = emailSecurity;
     }
 
     private bool IsAuthorized() => User.IsInRoles("Admin", "Billing", "SuperAdmin");
@@ -48,30 +51,74 @@ public class ArchiveController : Controller
         int invtPage = 1)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth");
+        if (!ModelState.IsValid) return BadRequest();
 
         var shopId = User.GetShopId();
         const int pageSize = 10;
 
-        // ── Job Orders ──
-        var joQuery = _db.JobOrders
+        var isJobOrdersTab = tab == "joborders";
+        var isInvoicesTab = tab == "invoices";
+        var isUsersTab = tab == "users";
+        var isCustomersTab = tab == "customers";
+        var isServicesTab = tab == "services";
+        var isInventoryTab = tab == "inventory";
+        ViewBag.ActiveTab = tab;
+        ViewBag.Search = search;
+        ViewBag.JoStatusFilter = joStatus;
+        ViewBag.InvStatusFilter = invStatus;
+
+        ViewBag.JobOrders = await BuildArchivedJobOrdersAsync(shopId, search, joStatus, joPage, pageSize, isJobOrdersTab);
+        ViewBag.Invoices = await BuildArchivedInvoicesAsync(shopId, search, invStatus, invPage, pageSize, isInvoicesTab);
+        ViewBag.DeactivatedUsers = await BuildDeactivatedUsersAsync(shopId, search, usrPage, pageSize, isUsersTab);
+
+        var (customers, customersTotal) = await BuildArchivedCustomersAsync(shopId, search, custPage, pageSize, isCustomersTab);
+        ViewBag.ArchivedCustomers = customers;
+        ViewBag.ArchivedCustomersTotal = customersTotal;
+        ViewBag.ArchivedCustomersPage = custPage;
+
+        var (services, servicesTotal) = await BuildArchivedServicesAsync(shopId, search, svcPage, pageSize, isServicesTab);
+        ViewBag.ArchivedServices = services;
+        ViewBag.ArchivedServicesTotal = servicesTotal;
+        ViewBag.ArchivedServicesPage = svcPage;
+
+        var (inventoryItems, inventoryTotal) = await BuildArchivedInventoryAsync(shopId, search, invtPage, pageSize, isInventoryTab);
+        ViewBag.ArchivedInventory = inventoryItems;
+        ViewBag.ArchivedInventoryTotal = inventoryTotal;
+        ViewBag.ArchivedInventoryPage = invtPage;
+        ViewBag.PageSize = pageSize;
+
+        return View();
+    }
+
+    private async Task<JobOrderListViewModel> BuildArchivedJobOrdersAsync(
+        long shopId,
+        string? search,
+        JobOrderStatus? status,
+        int page,
+        int pageSize,
+        bool applySearch)
+    {
+        var query = _db.JobOrders
             .Where(j => j.ShopId == shopId && j.IsArchived)
             .AsNoTracking();
 
-        if (joStatus.HasValue)
-            joQuery = joQuery.Where(j => j.Status == joStatus.Value);
+        if (status.HasValue)
+        {
+            query = query.Where(j => j.Status == status.Value);
+        }
 
-        if (tab == "joborders" && !string.IsNullOrWhiteSpace(search))
+        if (applySearch && !string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim().ToLower();
-            joQuery = joQuery.Where(j =>
+            query = query.Where(j =>
                 j.JobOrderNo.ToLower().Contains(term) ||
                 (j.Customer!.FirstName + " " + j.Customer.LastName).ToLower().Contains(term));
         }
 
-        var joTotal = await joQuery.CountAsync();
-        var joItems = await joQuery
+        var totalCount = await query.CountAsync();
+        var items = await query
             .OrderByDescending(j => j.ArchivedDate)
-            .Skip((joPage - 1) * pageSize)
+            .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(j => new JobOrderItemViewModel
             {
@@ -93,26 +140,46 @@ public class ArchiveController : Controller
             })
             .ToListAsync();
 
-        // ── Invoices ──
-        var invQuery = _db.Invoices
+        return new JobOrderListViewModel
+        {
+            SearchTerm = applySearch ? search : null,
+            StatusFilter = status,
+            CurrentPage = page,
+            TotalCount = totalCount,
+            PageSize = pageSize,
+            JobOrders = items
+        };
+    }
+
+    private async Task<InvoiceListViewModel> BuildArchivedInvoicesAsync(
+        long shopId,
+        string? search,
+        InvoiceStatus? status,
+        int page,
+        int pageSize,
+        bool applySearch)
+    {
+        var query = _db.Invoices
             .Where(i => i.ShopId == shopId && i.IsArchived)
             .AsNoTracking();
 
-        if (invStatus.HasValue)
-            invQuery = invQuery.Where(i => i.Status == invStatus.Value);
+        if (status.HasValue)
+        {
+            query = query.Where(i => i.Status == status.Value);
+        }
 
-        if (tab == "invoices" && !string.IsNullOrWhiteSpace(search))
+        if (applySearch && !string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim().ToLower();
-            invQuery = invQuery.Where(i =>
+            query = query.Where(i =>
                 i.InvoiceNo.ToLower().Contains(term) ||
                 (i.Customer!.FirstName + " " + i.Customer.LastName).ToLower().Contains(term));
         }
 
-        var invTotal = await invQuery.CountAsync();
-        var invItems = await invQuery
+        var totalCount = await query.CountAsync();
+        var items = await query
             .OrderByDescending(i => i.ArchivedDate)
-            .Skip((invPage - 1) * pageSize)
+            .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(i => new InvoiceItemViewModel
             {
@@ -129,61 +196,53 @@ public class ArchiveController : Controller
             })
             .ToListAsync();
 
-        ViewBag.ActiveTab = tab;
-        ViewBag.Search = search;
-
-        ViewBag.JoStatusFilter = joStatus;
-        ViewBag.InvStatusFilter = invStatus;
-
-        ViewBag.JobOrders = new JobOrderListViewModel
+        return new InvoiceListViewModel
         {
-            SearchTerm = tab == "joborders" ? search : null,
-            StatusFilter = joStatus,
-            CurrentPage = joPage,
-            TotalCount = joTotal,
+            SearchTerm = applySearch ? search : null,
+            StatusFilter = status,
+            CurrentPage = page,
+            TotalCount = totalCount,
             PageSize = pageSize,
-            JobOrders = joItems
+            Invoices = items
         };
+    }
 
-        ViewBag.Invoices = new InvoiceListViewModel
-        {
-            SearchTerm = tab == "invoices" ? search : null,
-            StatusFilter = invStatus,
-            CurrentPage = invPage,
-            TotalCount = invTotal,
-            PageSize = pageSize,
-            Invoices = invItems
-        };
-
-        // ── Deactivated Users ──
-        var usrQuery = _db.Users
+    private async Task<UserListViewModel> BuildDeactivatedUsersAsync(
+        long shopId,
+        string? search,
+        int page,
+        int pageSize,
+        bool applySearch)
+    {
+        var query = _db.Users
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .Where(u => u.ShopId == shopId && !u.IsActive)
             .Where(u => !u.UserRoles.Any(ur => ur.Role!.RoleName == "SuperAdmin"))
             .AsNoTracking();
 
-        if (tab == "users" && !string.IsNullOrWhiteSpace(search))
+        if (applySearch && !string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim().ToLower();
-            usrQuery = usrQuery.Where(u =>
+            var termHash = _emailSecurity.ComputeHash(term);
+            query = query.Where(u =>
                 (u.FirstName + " " + u.LastName).ToLower().Contains(term) ||
-                (u.Email != null && u.Email.ToLower().Contains(term)));
+                (u.EmailHash != null && u.EmailHash == termHash));
         }
 
-        var usrTotal = await usrQuery.CountAsync();
-        var usrItems = await usrQuery
+        var totalCount = await query.CountAsync();
+        var items = await query
             .OrderBy(u => u.FirstName).ThenBy(u => u.LastName)
-            .Skip((usrPage - 1) * pageSize)
+            .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
-        ViewBag.DeactivatedUsers = new UserListViewModel
+        return new UserListViewModel
         {
-            SearchTerm = tab == "users" ? search : null,
-            CurrentPage = usrPage,
-            TotalCount = usrTotal,
+            SearchTerm = applySearch ? search : null,
+            CurrentPage = page,
+            TotalCount = totalCount,
             PageSize = pageSize,
-            Users = usrItems.Select(u =>
+            Users = items.Select(u =>
             {
                 var roleName = u.UserRoles.FirstOrDefault()?.Role?.RoleName ?? "Billing";
                 _ = Enum.TryParse<UserRole>(roleName, out var parsedRole);
@@ -201,87 +260,101 @@ public class ArchiveController : Controller
                 };
             }).ToList()
         };
+    }
 
-        // ── Archived Customers ──
-        var custQuery = _db.Customers
+    private async Task<(List<Customer> Items, int Total)> BuildArchivedCustomersAsync(
+        long shopId,
+        string? search,
+        int page,
+        int pageSize,
+        bool applySearch)
+    {
+        var query = _db.Customers
             .Where(c => c.ShopId == shopId && !c.IsActive)
             .AsNoTracking();
 
-        if (tab == "customers" && !string.IsNullOrWhiteSpace(search))
+        if (applySearch && !string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim().ToLower();
-            custQuery = custQuery.Where(c =>
+            var termHash = _emailSecurity.ComputeHash(term);
+            query = query.Where(c =>
                 (c.FirstName + " " + c.LastName).ToLower().Contains(term) ||
-                (c.Email != null && c.Email.ToLower().Contains(term)));
+                (c.EmailHash != null && c.EmailHash == termHash));
         }
 
-        var custTotal = await custQuery.CountAsync();
-        var custItems = await custQuery
+        var totalCount = await query.CountAsync();
+        var items = await query
             .OrderBy(c => c.FirstName).ThenBy(c => c.LastName)
-            .Skip((custPage - 1) * pageSize)
+            .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
-        ViewBag.ArchivedCustomers = custItems;
-        ViewBag.ArchivedCustomersTotal = custTotal;
-        ViewBag.ArchivedCustomersPage = custPage;
+        return (items, totalCount);
+    }
 
-        // ── Archived Services ──
-        var svcQuery = _db.ServiceCatalogs
+    private async Task<(List<ServiceCatalog> Items, int Total)> BuildArchivedServicesAsync(
+        long shopId,
+        string? search,
+        int page,
+        int pageSize,
+        bool applySearch)
+    {
+        var query = _db.ServiceCatalogs
             .Include(s => s.ServiceCategory)
             .Where(s => s.ShopId == shopId && !s.IsActive)
             .AsNoTracking();
 
-        if (tab == "services" && !string.IsNullOrWhiteSpace(search))
+        if (applySearch && !string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim().ToLower();
-            svcQuery = svcQuery.Where(s => s.ServiceName.ToLower().Contains(term));
+            query = query.Where(s => s.ServiceName.ToLower().Contains(term));
         }
 
-        var svcTotal = await svcQuery.CountAsync();
-        var svcItems = await svcQuery
+        var totalCount = await query.CountAsync();
+        var items = await query
             .OrderBy(s => s.ServiceName)
-            .Skip((svcPage - 1) * pageSize)
+            .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
-        ViewBag.ArchivedServices = svcItems;
-        ViewBag.ArchivedServicesTotal = svcTotal;
-        ViewBag.ArchivedServicesPage = svcPage;
+        return (items, totalCount);
+    }
 
-        // ── Archived Inventory Items ──
-        var invtQuery = _db.InventoryItems
+    private async Task<(List<InventoryItem> Items, int Total)> BuildArchivedInventoryAsync(
+        long shopId,
+        string? search,
+        int page,
+        int pageSize,
+        bool applySearch)
+    {
+        var query = _db.InventoryItems
             .Include(i => i.InventoryCategory)
             .Where(i => i.ShopId == shopId && !i.IsActive)
             .AsNoTracking();
 
-        if (tab == "inventory" && !string.IsNullOrWhiteSpace(search))
+        if (applySearch && !string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim().ToLower();
-            invtQuery = invtQuery.Where(i =>
+            query = query.Where(i =>
                 i.ItemName.ToLower().Contains(term) ||
                 i.SKU.ToLower().Contains(term));
         }
 
-        var invtTotal = await invtQuery.CountAsync();
-        var invtItems = await invtQuery
+        var totalCount = await query.CountAsync();
+        var items = await query
             .OrderBy(i => i.ItemName)
-            .Skip((invtPage - 1) * pageSize)
+            .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
-        ViewBag.ArchivedInventory = invtItems;
-        ViewBag.ArchivedInventoryTotal = invtTotal;
-        ViewBag.ArchivedInventoryPage = invtPage;
-        ViewBag.PageSize = pageSize;
-
-        return View();
+        return (items, totalCount);
     }
 
     [HttpPost("/Archive/RestoreJobOrder/{id}"), ValidateAntiForgeryToken]
     public async Task<IActionResult> RestoreJobOrder(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth");
+        if (!ModelState.IsValid) return BadRequest();
         var shopId = User.GetShopId();
         var jo = await _db.JobOrders.FirstOrDefaultAsync(j => j.ShopId == shopId && j.JobOrderId == id);
         if (jo == null) return NotFound();
@@ -302,6 +375,7 @@ public class ArchiveController : Controller
     public async Task<IActionResult> RestoreInvoice(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth");
+        if (!ModelState.IsValid) return BadRequest();
         var shopId = User.GetShopId();
         var inv = await _db.Invoices.FirstOrDefaultAsync(i => i.ShopId == shopId && i.InvoiceId == id);
         if (inv == null) return NotFound();
@@ -322,6 +396,7 @@ public class ArchiveController : Controller
     public async Task<IActionResult> ReactivateUser(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth");
+        if (!ModelState.IsValid) return BadRequest();
         var shopId = User.GetShopId();
         var user = await _db.Users.FirstOrDefaultAsync(u => u.ShopId == shopId && u.UserId == id);
         if (user == null) return NotFound();
@@ -342,6 +417,7 @@ public class ArchiveController : Controller
     public async Task<IActionResult> RestoreCustomer(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth");
+        if (!ModelState.IsValid) return BadRequest();
         var shopId = User.GetShopId();
         var customer = await _db.Customers.FirstOrDefaultAsync(c => c.ShopId == shopId && c.CustomerId == id);
         if (customer == null) return NotFound();
@@ -361,6 +437,7 @@ public class ArchiveController : Controller
     public async Task<IActionResult> RestoreService(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth");
+        if (!ModelState.IsValid) return BadRequest();
         var shopId = User.GetShopId();
         var svc = await _db.ServiceCatalogs.FirstOrDefaultAsync(s => s.ShopId == shopId && s.ServiceId == id);
         if (svc == null) return NotFound();
@@ -380,6 +457,7 @@ public class ArchiveController : Controller
     public async Task<IActionResult> RestoreInventory(long id)
     {
         if (!IsAuthorized()) return RedirectToAction("AccessDenied", "Auth");
+        if (!ModelState.IsValid) return BadRequest();
         var shopId = User.GetShopId();
         var item = await _db.InventoryItems.FirstOrDefaultAsync(i => i.ShopId == shopId && i.ItemId == id);
         if (item == null) return NotFound();
